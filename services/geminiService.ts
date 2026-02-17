@@ -1,5 +1,4 @@
 
-import { GoogleGenAI } from "@google/genai";
 import { Resource, Project, Allocation } from "../types";
 
 export const getCapacityInsights = async (
@@ -10,8 +9,9 @@ export const getCapacityInsights = async (
 ): Promise<string> => {
   const apiKey = process.env.API_KEY || '';
 
-  // If no API key is set, return a quick mocked response for demo purposes.
-  if (!apiKey) {
+  // Avoid importing server-only SDK in browser. If there's no API key or
+  // we're on the client, return a mock response for the demo.
+  if (!apiKey || typeof window !== 'undefined') {
     const overAllocated = resources.filter(r => {
       const total = allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0);
       return total > 100;
@@ -35,8 +35,9 @@ export const getCapacityInsights = async (
     return new Promise(resolve => setTimeout(() => resolve(reply), 700));
   }
 
-  // Otherwise attempt to call the real GenAI client
+  // Otherwise attempt to call the real GenAI client (server-side only).
   try {
+    const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
     const context = `You are a PMO Resource Management Expert. RESOURCES: ${JSON.stringify(resources)} PROJECTS: ${JSON.stringify(projects)} ALLOCATIONS: ${JSON.stringify(allocations)} The user: "${userPrompt}"`;
     const response = await ai.models.generateContent({
