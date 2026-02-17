@@ -26,6 +26,28 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
   const [allocations, setAllocations] = useState<Allocation[]>(MOCK_ALLOCATIONS);
   
+  // Persist to localStorage so demo changes survive reloads
+  useEffect(() => {
+    const rs = localStorage.getItem('pcp_resources');
+    const ps = localStorage.getItem('pcp_projects');
+    const al = localStorage.getItem('pcp_allocations');
+    if (rs) setResources(JSON.parse(rs));
+    if (ps) setProjects(JSON.parse(ps));
+    if (al) setAllocations(JSON.parse(al));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('pcp_resources', JSON.stringify(resources));
+  }, [resources]);
+
+  useEffect(() => {
+    localStorage.setItem('pcp_projects', JSON.stringify(projects));
+  }, [projects]);
+
+  useEffect(() => {
+    localStorage.setItem('pcp_allocations', JSON.stringify(allocations));
+  }, [allocations]);
+  
   const [activeTab, setActiveTab] = useState<'dashboard' | 'resources' | 'projects' | 'allocations'>('dashboard');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -65,6 +87,26 @@ const App: React.FC = () => {
     const response = await getCapacityInsights(resources, projects, allocations, aiPrompt);
     setAiResponse(response);
     setIsAiLoading(false);
+  };
+
+  // Resource CRUD
+  const updateResource = (id: string, patch: Partial<Resource>) => {
+    setResources(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+  };
+
+  const deleteResource = (id: string) => {
+    if (!confirm('Delete resource?')) return;
+    setResources(prev => prev.filter(r => r.id !== id));
+    setAllocations(prev => prev.filter(a => a.resourceId !== id));
+  };
+
+  // Project CRUD
+  const addProject = (proj: Project) => setProjects(prev => [proj, ...prev]);
+  const updateProject = (id: string, patch: Partial<Project>) => setProjects(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
+  const deleteProject = (id: string) => {
+    if (!confirm('Delete project?')) return;
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setAllocations(prev => prev.filter(a => a.projectId !== id));
   };
 
   const updateAllocation = (resId: string, projId: string, val: string) => {
@@ -116,15 +158,41 @@ const App: React.FC = () => {
   };
 
   const handleNewEntry = () => {
-    const name = window.prompt('Enter new resource name:');
-    if (!name) return;
-    const newRes = {
-      id: `r-${Date.now()}`,
-      name,
-      type: 'PERMANENT'
-    } as unknown as Resource;
-    setResources(prev => [newRes, ...prev]);
-    setActiveTab('resources');
+    const type = window.prompt('Type "r" to add Resource or "p" to add Project (r/p):');
+    if (!type) return;
+    if (type.toLowerCase() === 'r') {
+      const name = window.prompt('Resource name:');
+      if (!name) return;
+      const role = window.prompt('Role/title (optional):') || '';
+      const dept = window.prompt('Department (optional):') || '';
+      const newRes: Resource = {
+        id: `r-${Date.now()}`,
+        name,
+        role,
+        type: ResourceType.PERMANENT,
+        department: dept,
+        totalCapacity: 100
+      };
+      setResources(prev => [newRes, ...prev]);
+      setActiveTab('resources');
+      return;
+    }
+
+    if (type.toLowerCase() === 'p') {
+      const name = window.prompt('Project name:');
+      if (!name) return;
+      const desc = window.prompt('Description (optional):') || '';
+      const newProj: Project = {
+        id: `p-${Date.now()}`,
+        name,
+        status: ProjectStatus.PLANNING,
+        priority: 'Medium',
+        description: desc
+      };
+      setProjects(prev => [newProj, ...prev]);
+      setActiveTab('projects');
+      return;
+    }
   };
 
   return (
@@ -455,21 +523,112 @@ const App: React.FC = () => {
           )}
 
           {/* Fallback for empty tabs */}
-          {(activeTab === 'resources' || activeTab === 'projects') && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center animate-in zoom-in-95 duration-300">
-              <div className="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                {activeTab === 'resources' ? <Users size={40} className="text-blue-600" /> : <Briefcase size={40} className="text-blue-600" />}
+          {activeTab === 'resources' && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 animate-in slide-in-from-bottom-2 duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Team Directory</h2>
+                  <p className="text-sm text-slate-500">Manage people and their details. Changes persist in your browser.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={handleNewEntry} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50">Add Resource</button>
+                  <button onClick={() => { localStorage.removeItem('pcp_resources'); setResources(MOCK_RESOURCES); }} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50">Reset</button>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Manager</h2>
-              <p className="text-slate-500 max-w-md mx-auto mb-8">
-                Manage your {activeTab} list here. In a production environment, this would integrate with your HRMS or Project Management tool.
-              </p>
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95"
-              >
-                Return to Dashboard
-              </button>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-2">Name</th>
+                      <th className="px-4 py-2">Role</th>
+                      <th className="px-4 py-2">Department</th>
+                      <th className="px-4 py-2">Type</th>
+                      <th className="px-4 py-2">Util %</th>
+                      <th className="px-4 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {resources.map(r => (
+                      <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 font-semibold">{r.name}</td>
+                        <td className="px-4 py-3 text-slate-600">{r.role}</td>
+                        <td className="px-4 py-3 text-slate-600">{r.department}</td>
+                        <td className="px-4 py-3 text-slate-600">{r.type}</td>
+                        <td className="px-4 py-3 text-slate-700 font-bold">{getResourceUtilization(r.id)}%</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => {
+                              const name = window.prompt('Edit name:', r.name) || r.name;
+                              const role = window.prompt('Edit role:', r.role) || r.role;
+                              const dept = window.prompt('Edit department:', r.department) || r.department;
+                              updateResource(r.id, { name, role, department: dept });
+                            }} className="text-sm text-blue-600">Edit</button>
+                            <button onClick={() => deleteResource(r.id)} className="text-sm text-red-600">Delete</button>
+                            <button onClick={() => setActiveTab('allocations')} className="text-sm text-slate-600">Manage Allocations</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'projects' && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 animate-in slide-in-from-bottom-2 duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Projects</h2>
+                  <p className="text-sm text-slate-500">Create and manage projects. Deleting a project removes its allocations.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => {
+                    const name = window.prompt('Project name:');
+                    if (!name) return;
+                    const desc = window.prompt('Description (optional):') || '';
+                    const newProj: Project = { id: `p-${Date.now()}`, name, status: ProjectStatus.PLANNING, priority: 'Medium', description: desc };
+                    addProject(newProj);
+                  }} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50">Add Project</button>
+                  <button onClick={() => { localStorage.removeItem('pcp_projects'); setProjects(MOCK_PROJECTS); }} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50">Reset</button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-2">Name</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2">Priority</th>
+                      <th className="px-4 py-2">Team Size</th>
+                      <th className="px-4 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {projects.map(p => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 font-semibold">{p.name}</td>
+                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${p.status === ProjectStatus.ACTIVE ? 'bg-green-100 text-green-700' : (p.status === ProjectStatus.PLANNING ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600')}`}>{p.status}</span></td>
+                        <td className="px-4 py-3 text-slate-600">{p.priority}</td>
+                        <td className="px-4 py-3 text-slate-700 font-bold">{allocations.filter(a => a.projectId === p.id).length}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => {
+                              const name = window.prompt('Edit project name:', p.name) || p.name;
+                              const statusVal = window.prompt('Status (Active/Planning/On Hold/Completed):', p.status) as ProjectStatus || p.status;
+                              updateProject(p.id, { name, status: statusVal });
+                            }} className="text-sm text-blue-600">Edit</button>
+                            <button onClick={() => deleteProject(p.id)} className="text-sm text-red-600">Delete</button>
+                            <button onClick={() => setActiveTab('allocations')} className="text-sm text-slate-600">View Allocations</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
