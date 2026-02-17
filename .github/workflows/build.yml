@@ -24,6 +24,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Show environment and build output
+        run: |
+          echo "Node and npm versions:";
+          node -v || true;
+          npm -v || true;
+          echo "-- package.json --";
+          cat package.json || true;
+          echo "-- repo root listing --";
+          ls -la || true;
+          echo "-- dist listing (if any) --";
+          if [ -d dist ]; then ls -la dist || true; else echo "dist directory not found"; fi
+
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
 
