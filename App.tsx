@@ -94,6 +94,39 @@ const App: React.FC = () => {
       .reduce((sum, a) => sum + a.percentage, 0);
   };
 
+  const exportCSV = () => {
+    const headers = ['resourceId', 'resourceName', 'projectId', 'projectName', 'percentage'];
+    const rows: string[] = [];
+    allocations.forEach(a => {
+      const res = resources.find(r => r.id === a.resourceId);
+      const proj = projects.find(p => p.id === a.projectId);
+      rows.push([a.resourceId, res?.name || '', a.projectId, proj?.name || '', String(a.percentage)].map(v => `"${v.replaceAll('"','""')}"`).join(','));
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'allocations.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleNewEntry = () => {
+    const name = window.prompt('Enter new resource name:');
+    if (!name) return;
+    const newRes = {
+      id: `r-${Date.now()}`,
+      name,
+      type: 'PERMANENT'
+    } as unknown as Resource;
+    setResources(prev => [newRes, ...prev]);
+    setActiveTab('resources');
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
@@ -180,7 +213,7 @@ const App: React.FC = () => {
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full">
               <Filter size={18} />
             </button>
-            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+            <button onClick={handleNewEntry} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
               <Plus size={16} />
               <span>New Entry</span>
             </button>
@@ -293,7 +326,7 @@ const App: React.FC = () => {
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="font-bold text-slate-800">Project Staffing Status</h3>
-                  <button className="text-sm text-blue-600 font-medium hover:underline">View All Projects</button>
+                  <button onClick={() => setActiveTab('projects')} className="text-sm text-blue-600 font-medium hover:underline">View All Projects</button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
@@ -357,7 +390,7 @@ const App: React.FC = () => {
                   <p className="text-sm text-slate-500">Threshold alerts: <span className="text-red-600 font-bold">100%+</span>, <span className="text-amber-600 font-bold">80%-100%</span>, <span className="text-blue-600 font-bold">60%-80%</span></p>
                 </div>
                 <div className="flex gap-4">
-                  <button className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Export CSV</button>
+                  <button onClick={exportCSV} className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Export CSV</button>
                 </div>
               </div>
               
