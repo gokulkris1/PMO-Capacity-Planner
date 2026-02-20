@@ -11,10 +11,10 @@ export const MOCK_RESOURCES: Resource[] = [
 ];
 
 export const MOCK_PROJECTS: Project[] = [
-  { id: 'p1', name: 'Apollo Revamp', status: ProjectStatus.ACTIVE, priority: 'High', description: 'Major UI overhaul of the main customer portal.' },
-  { id: 'p2', name: 'Skyline API', status: ProjectStatus.ACTIVE, priority: 'Medium', description: 'Internal API modernization project.' },
-  { id: 'p3', name: 'Nebula Analytics', status: ProjectStatus.PLANNING, priority: 'High', description: 'Next-gen data visualization tool development.' },
-  { id: 'p4', name: 'Legacy Patching', status: ProjectStatus.ON_HOLD, priority: 'Low', description: 'Ongoing maintenance for v1.0 platforms.' },
+  { id: 'p1', name: 'Apollo Revamp', status: ProjectStatus.ACTIVE, priority: 'High', description: 'Major UI overhaul of the main customer portal.', startDate: '2026-01-05', endDate: '2026-04-15' },
+  { id: 'p2', name: 'Skyline API', status: ProjectStatus.ACTIVE, priority: 'Medium', description: 'Internal API modernization project.', startDate: '2026-02-01', endDate: '2026-06-30' },
+  { id: 'p3', name: 'Nebula Analytics', status: ProjectStatus.PLANNING, priority: 'High', description: 'Next-gen data visualization tool development.', startDate: '2026-05-01', endDate: '2026-10-15' },
+  { id: 'p4', name: 'Legacy Patching', status: ProjectStatus.ON_HOLD, priority: 'Low', description: 'Ongoing maintenance for v1.0 platforms.', startDate: '2025-11-01', endDate: '2026-03-01' },
 ];
 
 export const MOCK_ALLOCATIONS: Allocation[] = [

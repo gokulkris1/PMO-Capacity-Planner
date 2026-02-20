@@ -52,6 +52,10 @@ const App: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  // Scenario (What-if) mode state
+  const [scenarioMode, setScenarioMode] = useState(false);
+  const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   // Derived metrics
   const stats = useMemo(() => {
@@ -111,14 +115,21 @@ const App: React.FC = () => {
 
   const updateAllocation = (resId: string, projId: string, val: string) => {
     const num = parseInt(val) || 0;
-    const existing = allocations.find(a => a.resourceId === resId && a.projectId === projId);
-    
+    // If in scenario mode, edit the scenario allocations copy
+    const targetAllocations = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
+    const setTarget = (next: Allocation[]) => {
+      if (scenarioMode) setScenarioAllocations(next);
+      else setAllocations(next);
+    };
+
+    const existing = targetAllocations.find(a => a.resourceId === resId && a.projectId === projId);
     if (existing) {
-      setAllocations(prev => prev.map(a => 
+      const next = targetAllocations.map(a => 
         a.resourceId === resId && a.projectId === projId 
           ? { ...a, percentage: Math.min(100, Math.max(0, num)) }
           : a
-      ));
+      );
+      setTarget(next);
     } else {
       const newAlloc: Allocation = {
         id: `a-${Date.now()}-${Math.random()}`,
@@ -126,14 +137,43 @@ const App: React.FC = () => {
         projectId: projId,
         percentage: Math.min(100, Math.max(0, num))
       };
-      setAllocations(prev => [...prev, newAlloc]);
+      setTarget([...targetAllocations, newAlloc]);
     }
   };
 
+  const enterScenarioMode = () => {
+    setScenarioAllocations(JSON.parse(JSON.stringify(allocations)));
+    setScenarioMode(true);
+  };
+
+  const applyScenario = () => {
+    if (!scenarioAllocations) return;
+    setAllocations(scenarioAllocations);
+    setScenarioAllocations(null);
+    setScenarioMode(false);
+  };
+
+  const discardScenario = () => {
+    setScenarioAllocations(null);
+    setScenarioMode(false);
+  };
+
   const getResourceUtilization = (resId: string) => {
-    return allocations
+    const target = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
+    return target
       .filter(a => a.resourceId === resId)
       .reduce((sum, a) => sum + a.percentage, 0);
+  };
+
+  const getResourceAvailableDate = (resId: string) => {
+    // find all allocations for resource that have a project with endDate, take latest endDate
+    const resAllocs = allocations.filter(a => a.resourceId === resId && a.percentage > 0);
+    const endDates = resAllocs
+      .map(a => projects.find(p => p.id === a.projectId)?.endDate)
+      .filter(Boolean) as string[];
+    if (endDates.length === 0) return 'Available now';
+    const latest = endDates.sort().reverse()[0];
+    return latest;
   };
 
   const exportCSV = () => {
@@ -281,6 +321,14 @@ const App: React.FC = () => {
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full">
               <Filter size={18} />
             </button>
+            {!scenarioMode ? (
+              <button onClick={enterScenarioMode} className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded text-sm font-semibold">Enter What-If</button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button onClick={applyScenario} className="px-3 py-1 bg-green-600 text-white rounded text-sm font-semibold">Apply Scenario</button>
+                <button onClick={discardScenario} className="px-3 py-1 bg-white border border-slate-200 rounded text-sm font-semibold">Discard</button>
+              </div>
+            )}
             <button onClick={handleNewEntry} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
               <Plus size={16} />
               <span>New Entry</span>
@@ -459,6 +507,15 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex gap-4">
                   <button onClick={exportCSV} className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Export CSV</button>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-slate-500">Filter:</label>
+                    <select value={selectedProjectId || ''} onChange={(e) => setSelectedProjectId(e.target.value || null)} className="text-sm border border-slate-200 rounded px-2 py-1">
+                      <option value="">All projects</option>
+                      {projects.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}{p.startDate ? ` (${p.startDate}→${p.endDate || '—'})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               
@@ -476,7 +533,11 @@ const App: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {resources.map(res => {
+                    {resources.filter(r => {
+                      if (!selectedProjectId) return true;
+                      // show all resources but inputs will be filtered in columns; keep rows intact
+                      return true;
+                    }).map(res => {
                       const util = getResourceUtilization(res.id);
                       return (
                         <tr key={res.id} className={`border-b border-slate-100 ${util > 100 ? 'bg-red-50' : (util > 80 ? 'bg-amber-50' : 'hover:bg-slate-50 transition-colors')}`}>
@@ -497,7 +558,8 @@ const App: React.FC = () => {
                             </span>
                           </td>
                           {projects.map(proj => {
-                            const alloc = allocations.find(a => a.resourceId === res.id && a.projectId === proj.id);
+                            const target = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
+                            const alloc = target.find(a => a.resourceId === res.id && a.projectId === proj.id);
                             return (
                               <td key={proj.id} className="px-4 py-4 border-r border-slate-100">
                                 <div className="relative group">
@@ -519,6 +581,27 @@ const App: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+              {selectedProjectId && (
+                <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4">
+                  <h3 className="font-bold text-slate-800 mb-2">Project allocations — {projects.find(p=>p.id===selectedProjectId)?.name}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {allocations.filter(a => a.projectId === selectedProjectId).map(a => {
+                      const res = resources.find(r => r.id === a.resourceId);
+                      return (
+                        <div key={a.id} className="p-3 bg-slate-50 rounded">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold text-slate-800">{res?.name}</div>
+                              <div className="text-xs text-slate-500">{res?.role}</div>
+                            </div>
+                            <div className="font-bold text-slate-700">{a.percentage}%</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -544,6 +627,7 @@ const App: React.FC = () => {
                       <th className="px-4 py-2">Role</th>
                       <th className="px-4 py-2">Department</th>
                       <th className="px-4 py-2">Type</th>
+                      <th className="px-4 py-2">Available From</th>
                       <th className="px-4 py-2">Util %</th>
                       <th className="px-4 py-2">Actions</th>
                     </tr>
@@ -555,6 +639,7 @@ const App: React.FC = () => {
                         <td className="px-4 py-3 text-slate-600">{r.role}</td>
                         <td className="px-4 py-3 text-slate-600">{r.department}</td>
                         <td className="px-4 py-3 text-slate-600">{r.type}</td>
+                        <td className="px-4 py-3 text-slate-700">{getResourceAvailableDate(r.id)}</td>
                         <td className="px-4 py-3 text-slate-700 font-bold">{getResourceUtilization(r.id)}%</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">

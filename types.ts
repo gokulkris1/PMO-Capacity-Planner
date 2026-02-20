@@ -17,6 +17,8 @@ export interface Project {
   status: ProjectStatus;
   priority: 'High' | 'Medium' | 'Low';
   description: string;
+  startDate?: string; // ISO date string, optional
+  endDate?: string;   // ISO date string, optional
 }
 
 export interface Resource {
