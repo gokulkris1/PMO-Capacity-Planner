@@ -43,3 +43,14 @@ What I can do for you
 - I cannot perform the Netlify web UI steps from this environment — you'll get the final Netlify URL after connecting.
 
 If you want me to push, paste the Git remote (HTTPS or SSH) and confirm I should push to `main`.
+
+GitHub Actions workflow
+- A workflow has been added at `.github/workflows/deploy-netlify.yml` that will:
+   - run `npm ci` and `npm run build`
+   - deploy the generated `dist` folder to Netlify using the Netlify CLI
+
+Required GitHub repository secrets
+- `NETLIFY_AUTH_TOKEN`: a Netlify personal access token with deploy permissions
+- `NETLIFY_SITE_ID`: the Netlify site ID (found in Site settings → Site information)
+
+After you add these secrets and push to `main`, the workflow will run and deploy automatically.
