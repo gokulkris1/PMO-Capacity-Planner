@@ -35,6 +35,13 @@
   status = 200
   force = true
 
+# Route /api/verify/* to verify Function for OTP
+[[redirects]]
+  from = "/api/verify/*"
+  to = "/.netlify/functions/verify/:splat"
+  status = 200
+  force = true
+
 # SPA fallback — all other routes serve index.html
 [[redirects]]
   from = "/*"
