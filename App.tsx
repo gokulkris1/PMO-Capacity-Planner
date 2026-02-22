@@ -18,6 +18,7 @@ import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
+import { exportExecSummaryPDF } from './utils/pdfExport';
 import { AdminPanel } from './components/AdminPanel';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
 
@@ -111,24 +112,39 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const initialLoadDone = React.useRef(false);
+  const syncTimeoutRef = React.useRef<any>(null);
+
   // Load/switch data when user logs in or out
   useEffect(() => {
     if (user) {
-      // Authenticated — load their personal workspace (scoped to user ID)
-      const rs = localStorage.getItem(`pcp_${user.id}_resources`);
-      const ps = localStorage.getItem(`pcp_${user.id}_projects`);
-      const al = localStorage.getItem(`pcp_${user.id}_allocations`);
-      setResources(rs ? JSON.parse(rs) : []);
-      setProjects(ps ? JSON.parse(ps) : []);
-      setAllocations(al ? JSON.parse(al) : []);
+      // Authenticated — fetch from Postgres
+      initialLoadDone.current = false;
+      const token = localStorage.getItem('pcp_token');
+      fetch('/api/workspace', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.resources) setResources(data.resources);
+          if (data.projects) setProjects(data.projects);
+          if (data.allocations) setAllocations(data.allocations);
+          initialLoadDone.current = true;
+        })
+        .catch(err => {
+          console.error('Failed to load workspace', err);
+          initialLoadDone.current = true;
+        });
     } else {
       // Guest/demo — restore demo data
+      initialLoadDone.current = false;
       const rs = localStorage.getItem('pcp_resources');
       const ps = localStorage.getItem('pcp_projects');
       const al = localStorage.getItem('pcp_allocations');
       setResources(rs ? JSON.parse(rs) : MOCK_RESOURCES);
       setProjects(ps ? JSON.parse(ps) : MOCK_PROJECTS);
       setAllocations(al ? JSON.parse(al) : MOCK_ALLOCATIONS);
+      initialLoadDone.current = true;
     }
 
     if (!localStorage.getItem('pcp_tour_done')) {
@@ -136,21 +152,29 @@ const App: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Persist data — use user-scoped keys when authenticated
+  // Persist data — sync to Postgres when authenticated, localStorage when guest
   useEffect(() => {
-    if (user) localStorage.setItem(`pcp_${user.id}_resources`, JSON.stringify(resources));
-    else localStorage.setItem('pcp_resources', JSON.stringify(resources));
-  }, [resources, user?.id]);
+    if (!initialLoadDone.current) return;
 
-  useEffect(() => {
-    if (user) localStorage.setItem(`pcp_${user.id}_projects`, JSON.stringify(projects));
-    else localStorage.setItem('pcp_projects', JSON.stringify(projects));
-  }, [projects, user?.id]);
-
-  useEffect(() => {
-    if (user) localStorage.setItem(`pcp_${user.id}_allocations`, JSON.stringify(allocations));
-    else localStorage.setItem('pcp_allocations', JSON.stringify(allocations));
-  }, [allocations, user?.id]);
+    if (user) {
+      // Debounce Postgres sync by 1.5s
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        const token = localStorage.getItem('pcp_token');
+        if (!token) return;
+        fetch('/api/workspace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ resources, projects, allocations })
+        }).catch(err => console.error('Sync failed', err));
+      }, 1500);
+    } else {
+      // Demo users still save to local storage
+      localStorage.setItem('pcp_resources', JSON.stringify(resources));
+      localStorage.setItem('pcp_projects', JSON.stringify(projects));
+      localStorage.setItem('pcp_allocations', JSON.stringify(allocations));
+    }
+  }, [resources, projects, allocations, user?.id]);
 
 
   /* ── derived stats ──────────────────────────────────────── */
@@ -396,6 +420,9 @@ const App: React.FC = () => {
           {/* Data Management */}
           <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
             <div className="nav-section-label">Data</div>
+            <button className="nav-item" onClick={() => exportExecSummaryPDF(resources, projects, liveAlloc)}>
+              <span style={{ fontSize: 15 }}>📄</span><span>Exec Summary (PDF)</span>
+            </button>
             <button className="nav-item" onClick={exportCSV}>
               <span style={{ fontSize: 15 }}>⬇️</span><span>Export CSV</span>
             </button>
