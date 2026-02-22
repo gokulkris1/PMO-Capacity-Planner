@@ -38,7 +38,7 @@ The PMO Capacity Planner follows a modern, decoupled client-server architecture:
    - Provides horizontal scalability and seamless connection pooling for serverless environments.
 
 ## Environment Variables
-Create a `.env` in the root and add the following:
+Create a `.env` in the root:
 ```
 NEON_DATABASE_URL=postgres://...
 JWT_SECRET=your_super_secret_jwt_key
@@ -47,12 +47,66 @@ PORT=4000
 ```
 
 ## Running Locally
-1. Install everything: `npm install`
-2. Start the dev server: `npm run dev`
-3. Run backend tests: `npm test`
+```bash
+npm install
 
-## Swagger API Documentation
-Once the server is running on port 4000, visit `http://localhost:4000/api-docs` to interact with the API definition via Swagger UI.
+# Start frontend (Vite, port 3000) + backend (Express, port 4000) together:
+npm run dev:all
+
+# Or separately:
+npm run dev      # Frontend only
+npm run server   # Backend only
+```
+
+Visit `http://localhost:3000` — the app loads with demo data without requiring login.
+
+## Running DB Migrations
+```bash
+node -e "
+require('dotenv').config();
+const { Pool } = require('pg');
+const fs = require('fs');
+const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL });
+Promise.all([
+  pool.query(fs.readFileSync('server/migrations_user.sql','utf8')),
+  pool.query(fs.readFileSync('server/migrations.sql','utf8'))
+]).then(() => { console.log('Migrations OK'); pool.end(); });
+"
+```
+
+## Swagger API Docs
+With backend running: `http://localhost:4000/api-docs`
 
 ## Deployment
-This repository includes a `.github/workflows/deploy.yml` configured for automatic CI testing and build generation. You can deploy the frontend to Vercel/Netlify and the Node process to your cloud provider of choice.
+
+### Backend → Render.com (Free tier)
+1. Go to [render.com](https://render.com) → **New Web Service** → connect GitHub repo
+2. Render auto-detects `render.yaml` — click **Deploy**
+3. Set environment variables in the Render dashboard:
+   - `NEON_DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`
+4. Copy the **Deploy Hook URL** from Render → add as `RENDER_DEPLOY_HOOK_URL` in GitHub Secrets
+
+### Frontend → Vercel (Free tier)
+1. Go to [vercel.com](https://vercel.com) → **New Project** → import GitHub repo
+2. Framework: **Vite** | Output: `dist`
+3. Add env var: `VITE_API_URL` = your Render backend URL
+4. Add GitHub Secrets for CI: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+
+### GitHub Secrets required
+| Secret | Where to get it |
+|--------|----------------|
+| `NEON_DATABASE_URL` | Neon dashboard → Connection string |
+| `JWT_SECRET` | Any long random string |
+| `OPENAI_API_KEY` | platform.openai.com |
+| `RENDER_DEPLOY_HOOK_URL` | Render → Service → Settings → Deploy Hook |
+| `VERCEL_TOKEN` | vercel.com → Settings → Tokens |
+| `VERCEL_ORG_ID` | `vercel.json` or Vercel dashboard |
+| `VERCEL_PROJECT_ID` | `vercel.json` or Vercel dashboard |
+
+## Pricing
+| Plan | Price | Projects | Resources | AI Questions |
+|------|-------|----------|-----------|--------------|
+| Free | €0 | Demo only | — | — |
+| Basic | €29/mo | 1 | 5 | 50 |
+| Pro | €79/mo | 10 | 50 | 500 |
+| Max | €199/mo | Unlimited | Unlimited | 2,000 |
