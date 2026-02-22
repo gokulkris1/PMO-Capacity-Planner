@@ -51,7 +51,8 @@ type ModalState =
   | { type: 'editProject'; project: Project }
   | { type: 'deleteResource'; resource: Resource }
   | { type: 'deleteProject'; project: Project }
-  | { type: 'importCSV' };
+  | { type: 'importCSV' }
+  | { type: 'login' };
 
 /* ─────────────────────────────────────────────────────────── */
 const App: React.FC = () => {
@@ -226,10 +227,6 @@ const App: React.FC = () => {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-main)', fontFamily: 'Inter' }}>Loading...</div>;
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
   return (
     <div className="app-shell">
       {/* ── SIDEBAR ─────────────────────────────────── */}
@@ -305,9 +302,15 @@ const App: React.FC = () => {
             <button className="nav-item" onClick={() => setShowTour(true)} style={{ marginTop: 4 }}>
               <span style={{ fontSize: 15 }}>🎓</span><span>Take a Tour</span>
             </button>
-            <button className="nav-item" onClick={logout} style={{ marginTop: 4, color: 'var(--text-muted)' }}>
-              <span style={{ fontSize: 15 }}>🚪</span><span>Log Out</span>
-            </button>
+            {user ? (
+              <button className="nav-item" onClick={logout} style={{ marginTop: 4, color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: 15 }}>🚪</span><span>Log Out</span>
+              </button>
+            ) : (
+              <button className="nav-item" onClick={() => setModal({ type: 'login' })} style={{ marginTop: 4, color: 'var(--primary-light)' }}>
+                <span style={{ fontSize: 15 }}>🔑</span><span>Log In</span>
+              </button>
+            )}
           </div>
         </nav>
 
@@ -522,6 +525,26 @@ const App: React.FC = () => {
             onConfirm={handleBulkImport}
             onClose={() => setModal({ type: 'none' })}
           />
+        )
+      }
+      {
+        modal.type === 'login' && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+          }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setModal({ type: 'none' })}
+                style={{
+                  position: 'absolute', top: 10, right: 10, background: 'none',
+                  border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer', zIndex: 10
+                }}
+              >✕</button>
+              <Login onSuccess={() => setModal({ type: 'none' })} />
+            </div>
+          </div>
         )
       }
     </div >

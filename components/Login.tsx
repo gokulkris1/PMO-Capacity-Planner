@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export const Login: React.FC = () => {
+export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
     const { login } = useAuth();
     const [isRegistering, setIsRegistering] = useState(false);
     const [email, setEmail] = useState('');
@@ -10,8 +10,8 @@ export const Login: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // We assume the backend runs on port 4000 for local dev
-    const API_URL = 'http://localhost:4000/api/auth';
+    // Use relative path for API so it works smoothly with a proxy or in production
+    const API_URL = '/api/auth';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,6 +36,7 @@ export const Login: React.FC = () => {
             }
 
             login(data.token, data.user);
+            if (onSuccess) onSuccess();
         } catch (err: any) {
             setError(err.message);
         } finally {
