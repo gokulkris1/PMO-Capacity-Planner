@@ -127,10 +127,47 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // ── ADMIN: list all users ─────────────────────────────────
         if (subpath === '/users' && event.httpMethod === 'GET') {
             if (!isPMO) return fail('Forbidden', 403);
-            const users = await sql`
-        SELECT id, email, name, role, plan, created_at FROM users ORDER BY created_at DESC
-      `;
-            return ok({ users });
+
+            if (isSuperuser) {
+                const users = await sql`SELECT id, email, name, role, plan, created_at, org_id FROM users ORDER BY created_at DESC`;
+                return ok({ users });
+            } else {
+                const [caller] = await sql`SELECT org_id FROM users WHERE id = ${actor.id}`;
+                if (!caller?.org_id) return fail('No Organization found for this user', 400);
+
+                const users = await sql`
+                    SELECT id, email, name, role, plan, created_at 
+                    FROM users 
+                    WHERE org_id = ${caller.org_id}
+                    ORDER BY created_at DESC
+                `;
+                return ok({ users });
+            }
+        }
+
+        // ── ADMIN: invite user to org ─────────────────────────────
+        if (subpath === '/users/invite' && event.httpMethod === 'POST') {
+            if (!isPMO) return fail('Forbidden', 403);
+            const { email, role = 'VIEWER', name = '' } = body;
+            if (!email) return fail('Email required', 400);
+
+            const [caller] = await sql`SELECT org_id, plan FROM users WHERE id = ${actor.id}`;
+            if (!caller?.org_id) return fail('No Organization found', 400);
+
+            const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
+            if (existing.length > 0) return fail('Email already in use', 400);
+
+            // Give them a random password, they can reset it later (or login via future magic link)
+            const randomPassword = Math.random().toString(36).slice(-10);
+            const hash = await bcrypt.hash(randomPassword, 10);
+            const userPlan = caller.plan || 'FREE';
+
+            const [newUser] = await sql`
+                INSERT INTO users (email, password_hash, name, role, plan, org_id)
+                VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, ${role}, ${userPlan}, ${caller.org_id})
+                RETURNING id, email, name, role, plan, created_at
+            `;
+            return ok({ user: newUser, password: randomPassword }); // In real app, email the password
         }
 
         // ── SUPERUSER: platform stats ─────────────────────────────

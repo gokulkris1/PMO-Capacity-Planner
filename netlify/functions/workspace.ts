@@ -41,19 +41,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
         try {
             // Get user's org and workspace
             let wsRows = await sql`
-                SELECT w.id FROM workspaces w
+                SELECT w.id, w.name as ws_name, o.name as org_name 
+                FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
+                JOIN organizations o ON o.id = w.org_id
                 WHERE u.id = ${userId}
                 LIMIT 1
             `;
-            let wsId = wsRows.length > 0 ? wsRows[0].id : null;
+            let wsId, wsName, orgName;
 
-            // Legacy User Fallback (if they existed before Orgs)
-            if (!wsId) {
-                const [org] = await sql`INSERT INTO organizations (id, name) VALUES (gen_random_uuid(), 'Legacy Org') RETURNING id`;
-                const [ws] = await sql`INSERT INTO workspaces (id, org_id, name) VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace') RETURNING id`;
+            if (wsRows.length > 0) {
+                wsId = wsRows[0].id;
+                wsName = wsRows[0].ws_name;
+                orgName = wsRows[0].org_name;
+            } else {
+                // Legacy User Fallback (if they existed before Orgs)
+                const [org] = await sql`INSERT INTO organizations (id, name) VALUES (gen_random_uuid(), 'Legacy Org') RETURNING id, name`;
+                const [ws] = await sql`INSERT INTO workspaces (id, org_id, name) VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace') RETURNING id, name`;
                 await sql`UPDATE users SET org_id = ${org.id} WHERE id = ${userId}`;
                 wsId = ws.id;
+                wsName = ws.name;
+                orgName = org.name;
             }
 
             const resources = await sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`;
@@ -77,7 +85,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 startDate: a.start_date, endDate: a.end_date
             }));
 
-            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc });
+            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc, orgName, workspaceName: wsName });
         } catch (e: any) {
             console.error(e);
             return fail('Failed to fetch workspace: ' + e.message, 500);

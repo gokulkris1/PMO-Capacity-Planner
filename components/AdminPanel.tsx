@@ -31,6 +31,12 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
 
+    // Invite state
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState<'PMO' | 'PM' | 'VIEWER'>('VIEWER');
+    const [inviting, setInviting] = useState(false);
+    const [inviteSuccess, setInviteSuccess] = useState('');
+
     useEffect(() => {
         fetchUsers();
     }, []);
@@ -67,6 +73,30 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             alert('Error: ' + e.message);
         } finally {
             setSaving(null);
+        }
+    };
+
+    const inviteUser = async () => {
+        if (!inviteEmail.trim()) return;
+        setInviting(true);
+        setError('');
+        setInviteSuccess('');
+        try {
+            const res = await fetch('/api/auth/users/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Invite failed');
+
+            setInviteSuccess(`User created! Temporary Password: ${data.password}`);
+            setInviteEmail('');
+            setUsers(prev => [data.user, ...prev]);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setInviting(false);
         }
     };
 
@@ -126,18 +156,58 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
                 </div>
 
-                {/* Search */}
-                <div style={{ padding: '12px 24px 0' }}>
+                {/* Search & Invite */}
+                <div style={{ padding: '16px 24px 0', display: 'flex', gap: 12 }}>
                     <input
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        placeholder="Search users by name or email..."
+                        placeholder="Search users..."
                         style={{
-                            width: '100%', padding: '9px 14px', background: '#1e293b', border: '1px solid #334155',
-                            borderRadius: 10, color: '#f1f5f9', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                            flex: 1, padding: '9px 14px', background: '#1e293b', border: '1px solid #334155',
+                            borderRadius: 10, color: '#f1f5f9', fontSize: 13, outline: 'none'
                         }}
                     />
+                    <div style={{ display: 'flex', gap: 6, background: '#1e293b', border: '1px solid #334155', borderRadius: 10, padding: 4 }}>
+                        <input
+                            value={inviteEmail}
+                            onChange={e => setInviteEmail(e.target.value)}
+                            placeholder="New member email"
+                            style={{
+                                width: 180, padding: '5px 10px', background: 'transparent', border: 'none',
+                                color: '#f1f5f9', fontSize: 13, outline: 'none'
+                            }}
+                        />
+                        <select
+                            value={inviteRole}
+                            onChange={e => setInviteRole(e.target.value as any)}
+                            style={{
+                                background: '#334155', border: 'none', borderRadius: 6, color: '#f1f5f9',
+                                fontSize: 12, padding: '0 8px', outline: 'none', cursor: 'pointer'
+                            }}
+                        >
+                            <option value="VIEWER">Viewer</option>
+                            <option value="PM">PM</option>
+                            <option value="PMO">Admin</option>
+                        </select>
+                        <button
+                            onClick={inviteUser}
+                            disabled={inviting || !inviteEmail}
+                            style={{
+                                background: '#2563eb', border: 'none', borderRadius: 6, color: '#fff',
+                                padding: '0 12px', fontSize: 13, fontWeight: 600, cursor: inviting || !inviteEmail ? 'not-allowed' : 'pointer',
+                                opacity: inviting || !inviteEmail ? 0.6 : 1
+                            }}
+                        >
+                            {inviting ? '...' : 'Invite'}
+                        </button>
+                    </div>
                 </div>
+
+                {inviteSuccess && (
+                    <div style={{ margin: '16px 24px 0', padding: '10px 14px', background: '#ecfdf5', border: '1px solid #10b981', color: '#047857', borderRadius: 8, fontSize: 13, fontWeight: 500 }}>
+                        {inviteSuccess} <span style={{ color: '#065f46', fontSize: 11, marginLeft: 8 }}>(Please supply this password to the user. They can log in immediately.)</span>
+                    </div>
+                )}
 
                 {/* Table */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '12px 24px 20px' }}>

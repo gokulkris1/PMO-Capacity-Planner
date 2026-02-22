@@ -84,6 +84,10 @@ const App: React.FC = () => {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
+  /* tenant state */
+  const [workspaceName, setWorkspaceName] = useState<string>('Default Workspace');
+  const [orgName, setOrgName] = useState<string>('My Organization');
+
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
   const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(null);
@@ -136,6 +140,8 @@ const App: React.FC = () => {
           if (data.resources) setResources(data.resources);
           if (data.projects) setProjects(data.projects);
           if (data.allocations) setAllocations(data.allocations);
+          if (data.orgName) setOrgName(data.orgName);
+          if (data.workspaceName) setWorkspaceName(data.workspaceName);
           initialLoadDone.current = true;
         })
         .catch(err => {
@@ -346,6 +352,20 @@ const App: React.FC = () => {
             <div className="sidebar-logo-sub">Capacity Management</div>
           </div>
         </div>
+
+        {/* ── Workspace Tenant Info ── */}
+        {user && (
+          <div style={{ padding: '0 12px', marginTop: 12 }}>
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 4 }}>
+                {orgName}
+              </div>
+              <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#6366f1' }}>↳</span> {workspaceName}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Auth Row: always at top of sidebar ── */}
         <div style={{ padding: '12px 12px 0' }}>
