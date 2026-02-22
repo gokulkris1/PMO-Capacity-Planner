@@ -8,8 +8,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_prod';
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase().trim();
 
 function getDb() {
-    const url = process.env.NEON_DATABASE_URL;
-    if (!url) throw new Error('NEON_DATABASE_URL not set in environment');
+    // Try manually set var first, then Netlify's auto-injected Neon integration vars
+    const url =
+        process.env.NEON_DATABASE_URL ||
+        process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
+        process.env.NETLIFY_DATABASE_URL;
+    if (!url) throw new Error('No DB URL found — set NEON_DATABASE_URL or connect Neon via Netlify Integrations');
     return neon(url);
 }
 
