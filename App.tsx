@@ -18,6 +18,7 @@ import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
+import { AdminPanel } from './components/AdminPanel';
 
 const APP_VERSION = '1.0.0';
 
@@ -70,6 +71,7 @@ const App: React.FC = () => {
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -379,6 +381,15 @@ const App: React.FC = () => {
             </button>
           </div>
 
+          {/* Admin Panel - only PMO role */}
+          {user?.role === 'PMO' && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+              <button className="nav-item" onClick={() => setShowAdmin(true)}>
+                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#fbbf24', fontWeight: 600 }}>Admin Panel</span>
+              </button>
+            </div>
+          )}
+
           {/* Take a Tour */}
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
             <button className="nav-item" onClick={() => setShowTour(true)}>
@@ -437,7 +448,7 @@ const App: React.FC = () => {
             </div>
 
             {!scenarioMode ? (
-              <button className="btn btn-warning" onClick={() => authGate(enterScenario)}>🔬 What-If {!user && '🔒'}</button>
+              <button className="btn btn-warning" onClick={enterScenario}>🔬 What-If</button>
             ) : (
               <>
                 <button className="btn btn-success" onClick={applyScenario}>✅ Apply</button>
@@ -635,7 +646,10 @@ const App: React.FC = () => {
           currentPlan={user?.plan || 'Free'}
         />
       )}
-    </div>
+      {showAdmin && (
+        <AdminPanel onClose={() => setShowAdmin(false)} />
+      )}
+    </div >
   );
 };
 
