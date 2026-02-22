@@ -1,16 +1,15 @@
 // server/routes/ai.ts
 import { Router } from 'express';
-import { Configuration, OpenAIApi } from 'openai';
-import dotenv from 'dotenv';
+import OpenAI from 'openai';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 const router = Router();
 
-const configuration = new Configuration({
+const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 // POST /api/ai/advice
 router.post('/advice', async (req, res) => {
@@ -19,12 +18,12 @@ router.post('/advice', async (req, res) => {
         return res.status(400).json({ error: 'Question is required' });
     }
     try {
-        const completion = await openai.createChatCompletion({
+        const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [{ role: 'user', content: question }],
             max_tokens: 300,
         });
-        const answer = completion.data.choices?.[0]?.message?.content?.trim() || 'No answer';
+        const answer = completion.choices[0]?.message?.content?.trim() || 'No answer';
         res.json({ answer });
     } catch (err) {
         console.error('OpenAI error', err);

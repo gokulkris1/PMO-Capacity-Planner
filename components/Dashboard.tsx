@@ -4,6 +4,8 @@ import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, P
 import { Team } from '../types';
 import { StatCard } from './StatCard';
 import { CapacityChart } from './CapacityChart';
+import { Heatmap } from './Heatmap';
+import { RiskScanner } from './RiskScanner';
 
 interface Props {
     resources: Resource[];
@@ -183,6 +185,9 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                 </div>
             </div>
 
+            {/* Heatmap Section */}
+            <Heatmap resources={resources} allocations={liveAllocations} />
+
             {/* Project Staffing Summary */}
             <div className="panel">
                 <div className="panel-header">
@@ -244,26 +249,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                 </div>
             </div>
 
-            {/* Alert panel: over-allocated */}
-            {stats.overAllocated.length > 0 && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '16px 20px' }}>
-                    <div style={{ fontWeight: 700, color: '#b91c1c', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>⚠️</span> Action Required – Over-Allocated Resources
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {stats.overAllocated.map(r => {
-                            const u = getUtil(liveAllocations, r.id);
-                            return (
-                                <div key={r.id} style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 8, padding: '6px 12px', fontSize: 12 }}>
-                                    <span style={{ fontWeight: 700, color: '#7f1d1d' }}>{r.name}</span>
-                                    <span style={{ color: '#ef4444', fontWeight: 800, marginLeft: 6 }}>{u}%</span>
-                                    <span style={{ color: '#94a3b8', marginLeft: 4 }}>(+{u - 100}% over)</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+            {/* Risk Scanner replacing the old Alert panel */}
+            <RiskScanner resources={resources} projects={projects} allocations={liveAllocations} />
         </div>
     );
 };

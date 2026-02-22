@@ -14,6 +14,10 @@ import { TeamView } from './components/TeamView';
 import { WhatIfPanel } from './components/WhatIfPanel';
 import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { TourOverlay } from './components/TourOverlay';
+import { useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
+import { TimeGranularity, TimeSelector } from './components/TimeSelector';
+import { ImportCSVModal } from './components/ImportCSVModal';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function getUtil(allocs: Allocation[], resId: string) {
@@ -46,10 +50,12 @@ type ModalState =
   | { type: 'addProject' }
   | { type: 'editProject'; project: Project }
   | { type: 'deleteResource'; resource: Resource }
-  | { type: 'deleteProject'; project: Project };
+  | { type: 'deleteProject'; project: Project }
+  | { type: 'importCSV' };
 
 /* ─────────────────────────────────────────────────────────── */
 const App: React.FC = () => {
+  const { user, logout, isLoading } = useAuth();
   /* data state */
   const [resources, setResources] = useState<Resource[]>(MOCK_RESOURCES);
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
@@ -60,6 +66,7 @@ const App: React.FC = () => {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [showTour, setShowTour] = useState(false);
+  const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('Month');
 
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -77,6 +84,10 @@ const App: React.FC = () => {
     if (rs) setResources(JSON.parse(rs));
     if (ps) setProjects(JSON.parse(ps));
     if (al) setAllocations(JSON.parse(al));
+
+    const tg = localStorage.getItem('pcp_time_granularity');
+    if (tg) setTimeGranularity(tg as TimeGranularity);
+
     if (!localStorage.getItem('pcp_tour_done')) {
       // Small delay so the app renders first
       setTimeout(() => setShowTour(true), 600);
@@ -86,6 +97,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('pcp_resources', JSON.stringify(resources)); }, [resources]);
   useEffect(() => { localStorage.setItem('pcp_projects', JSON.stringify(projects)); }, [projects]);
   useEffect(() => { localStorage.setItem('pcp_allocations', JSON.stringify(allocations)); }, [allocations]);
+  useEffect(() => { localStorage.setItem('pcp_time_granularity', timeGranularity); }, [timeGranularity]);
 
   /* ── derived stats ──────────────────────────────────────── */
   const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
@@ -169,6 +181,14 @@ const App: React.FC = () => {
     setAllocations(prev => prev.filter(a => a.projectId !== id));
   };
 
+  /* ── bulk import ────────────────────────────────────────── */
+  const handleBulkImport = (newRes: Resource[], newProj: Project[], newAlloc: Allocation[]) => {
+    setResources(newRes);
+    setProjects(newProj);
+    setAllocations(newAlloc);
+    setModal({ type: 'none' });
+  };
+
   /* ── CSV export ─────────────────────────────────────────── */
   const exportCSV = () => {
     const headers = ['Resource', 'Role', 'Department', 'Project', 'Project Status', 'Allocation %'];
@@ -196,7 +216,19 @@ const App: React.FC = () => {
     'what-if': { title: 'What-If Scenarios', subtitle: 'Explore hypothetical reallocation scenarios' },
   };
 
+  /* ── permissions ────────────────────────────────────────── */
+  const isAdminList = ['PMO', 'PM'];
+  const canEdit = user && isAdminList.includes(user.role);
+
   const current = PAGE_TITLES[activeTab];
+
+  if (isLoading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-main)', fontFamily: 'Inter' }}>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <div className="app-shell">
@@ -234,16 +266,17 @@ const App: React.FC = () => {
             );
           })}
 
-          {/* Quick Add Buttons */}
-          <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-            <div className="nav-section-label">Quick Add</div>
-            <button className="nav-item" onClick={() => setModal({ type: 'addResource' })}>
-              <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
-            </button>
-            <button className="nav-item" onClick={() => setModal({ type: 'addProject' })}>
-              <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
-            </button>
-          </div>
+          {canEdit && (
+            <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+              <div className="nav-section-label">Quick Add</div>
+              <button className="nav-item" onClick={() => setModal({ type: 'addResource' })}>
+                <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
+              </button>
+              <button className="nav-item" onClick={() => setModal({ type: 'addProject' })}>
+                <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
+              </button>
+            </div>
+          )}
 
           {/* Data Management */}
           <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
@@ -251,19 +284,29 @@ const App: React.FC = () => {
             <button className="nav-item" onClick={exportCSV}>
               <span style={{ fontSize: 15 }}>⬇️</span><span>Export CSV</span>
             </button>
-            <button className="nav-item" onClick={() => {
-              if (window.confirm('Reset all data to demo defaults?')) {
-                localStorage.clear();
-                setResources(MOCK_RESOURCES);
-                setProjects(MOCK_PROJECTS);
-                setAllocations(MOCK_ALLOCATIONS);
-                discardScenario();
-              }
-            }}>
-              <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo</span>
-            </button>
+            {canEdit && (
+              <button className="nav-item" onClick={() => setModal({ type: 'importCSV' })}>
+                <span style={{ fontSize: 15 }}>⬆️</span><span>Import CSV</span>
+              </button>
+            )}
+            {canEdit && (
+              <button className="nav-item" onClick={() => {
+                if (window.confirm('Reset all data to demo defaults?')) {
+                  localStorage.clear();
+                  setResources(MOCK_RESOURCES);
+                  setProjects(MOCK_PROJECTS);
+                  setAllocations(MOCK_ALLOCATIONS);
+                  discardScenario();
+                }
+              }}>
+                <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo</span>
+              </button>
+            )}
             <button className="nav-item" onClick={() => setShowTour(true)} style={{ marginTop: 4 }}>
               <span style={{ fontSize: 15 }}>🎓</span><span>Take a Tour</span>
+            </button>
+            <button className="nav-item" onClick={logout} style={{ marginTop: 4, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 15 }}>🚪</span><span>Log Out</span>
             </button>
           </div>
         </nav>
@@ -305,25 +348,30 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="header-actions">
+            <TimeSelector value={timeGranularity} onChange={setTimeGranularity} />
             <div className="search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><circle cx={11} cy={11} r={8} /><path d="m21 21-4.3-4.3" /></svg>
               <input className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
-            {!scenarioMode ? (
+            {canEdit && (!scenarioMode ? (
               <button className="btn btn-warning" onClick={enterScenario}>🔬 What-If</button>
             ) : (
               <>
                 <button className="btn btn-success" onClick={applyScenario}>✅ Apply</button>
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
+            ))}
+            {canEdit && (
+              <>
+                <button className="btn btn-primary" onClick={() => setModal({ type: 'addResource' })}>
+                  + Add Resource
+                </button>
+                <button className="btn btn-secondary" onClick={() => setModal({ type: 'addProject' })}>
+                  + Add Project
+                </button>
+              </>
             )}
-            <button className="btn btn-primary" onClick={() => setModal({ type: 'addResource' })}>
-              + Add Resource
-            </button>
-            <button className="btn btn-secondary" onClick={() => setModal({ type: 'addProject' })}>
-              + Add Project
-            </button>
           </div>
         </header>
 
@@ -412,46 +460,71 @@ const App: React.FC = () => {
       </main>
 
       {/* ── TOUR ────────────────────────────────────── */}
-      {showTour && (
-        <TourOverlay
-          onClose={() => {
-            setShowTour(false);
-            localStorage.setItem('pcp_tour_done', '1');
-          }}
-          onNavigate={tab => setActiveTab(tab as ViewTab)}
-        />
-      )}
+      {
+        showTour && (
+          <TourOverlay
+            onClose={() => {
+              setShowTour(false);
+              localStorage.setItem('pcp_tour_done', '1');
+            }}
+            onNavigate={tab => setActiveTab(tab as ViewTab)}
+          />
+        )
+      }
 
       {/* ── MODALS ───────────────────────────────────── */}
-      {modal.type === 'addResource' && (
-        <ResourceModal teams={TEAMS} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
-      )}
-      {modal.type === 'editResource' && (
-        <ResourceModal teams={TEAMS} initial={modal.resource} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
-      )}
-      {modal.type === 'addProject' && (
-        <ProjectModal onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
-      )}
-      {modal.type === 'editProject' && (
-        <ProjectModal initial={modal.project} onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
-      )}
-      {modal.type === 'deleteResource' && (
-        <ConfirmModal
-          title="Delete Resource"
-          message={`Are you sure you want to delete "${modal.resource.name}"? All their allocations will also be removed.`}
-          onConfirm={() => deleteResource(modal.resource.id)}
-          onClose={() => setModal({ type: 'none' })}
-        />
-      )}
-      {modal.type === 'deleteProject' && (
-        <ConfirmModal
-          title="Delete Project"
-          message={`Are you sure you want to delete "${modal.project.name}"? All its allocations will also be removed.`}
-          onConfirm={() => deleteProject(modal.project.id)}
-          onClose={() => setModal({ type: 'none' })}
-        />
-      )}
-    </div>
+      {
+        modal.type === 'addResource' && (
+          <ResourceModal teams={TEAMS} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+        )
+      }
+      {
+        modal.type === 'editResource' && (
+          <ResourceModal teams={TEAMS} initial={modal.resource} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+        )
+      }
+      {
+        modal.type === 'addProject' && (
+          <ProjectModal onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
+        )
+      }
+      {
+        modal.type === 'editProject' && (
+          <ProjectModal initial={modal.project} onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
+        )
+      }
+      {
+        modal.type === 'deleteResource' && (
+          <ConfirmModal
+            title="Delete Resource"
+            message={`Are you sure you want to delete "${modal.resource.name}"? All their allocations will also be removed.`}
+            onConfirm={() => deleteResource(modal.resource.id)}
+            onClose={() => setModal({ type: 'none' })}
+          />
+        )
+      }
+      {
+        modal.type === 'deleteProject' && (
+          <ConfirmModal
+            title="Delete Project"
+            message={`Are you sure you want to delete "${modal.project.name}"? All its allocations will also be removed.`}
+            onConfirm={() => deleteProject(modal.project.id)}
+            onClose={() => setModal({ type: 'none' })}
+          />
+        )
+      }
+      {
+        modal.type === 'importCSV' && (
+          <ImportCSVModal
+            currentResources={resources}
+            currentProjects={projects}
+            currentAllocations={allocations}
+            onConfirm={handleBulkImport}
+            onClose={() => setModal({ type: 'none' })}
+          />
+        )
+      }
+    </div >
   );
 };
 
