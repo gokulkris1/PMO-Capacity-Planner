@@ -19,6 +19,7 @@ import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
 import { AdminPanel } from './components/AdminPanel';
+import { SuperAdminPanel } from './components/SuperAdminPanel';
 
 const APP_VERSION = '1.0.0';
 
@@ -72,6 +73,7 @@ const App: React.FC = () => {
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -381,8 +383,18 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Admin Panel - only PMO role */}
-          {user?.role === 'PMO' && (
+          {/* Superuser Console — SUPERUSER role only */}
+          {user?.role === 'SUPERUSER' && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+              <button className="nav-item" onClick={() => setShowSuperAdmin(true)}
+                style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}>
+                <span style={{ fontSize: 15 }}>🦸</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Superuser Console</span>
+              </button>
+            </div>
+          )}
+
+          {/* Admin Panel - PMO role */}
+          {(user?.role === 'PMO') && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <button className="nav-item" onClick={() => setShowAdmin(true)}>
                 <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#fbbf24', fontWeight: 600 }}>Admin Panel</span>
@@ -648,6 +660,9 @@ const App: React.FC = () => {
       )}
       {showAdmin && (
         <AdminPanel onClose={() => setShowAdmin(false)} />
+      )}
+      {showSuperAdmin && (
+        <SuperAdminPanel onClose={() => setShowSuperAdmin(false)} />
       )}
     </div >
   );

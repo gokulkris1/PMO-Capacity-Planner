@@ -4,7 +4,7 @@ export interface User {
     id: string;
     email: string;
     name?: string;
-    role: 'PMO' | 'PM' | 'VIEWER';
+    role: 'SUPERUSER' | 'PMO' | 'PM' | 'VIEWER';
     plan?: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
 }
 
