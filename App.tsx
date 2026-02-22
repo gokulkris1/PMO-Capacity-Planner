@@ -121,8 +121,12 @@ const App: React.FC = () => {
   // Load/switch data when user logs in or out
   useEffect(() => {
     if (user) {
-      // Authenticated — fetch from Postgres
+      // Authenticated — instantly clear demo data to avoid bleed-over
       initialLoadDone.current = false;
+      setResources([]);
+      setProjects([]);
+      setAllocations([]);
+
       const token = localStorage.getItem('pcp_token');
       fetch('/api/workspace', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -144,9 +148,9 @@ const App: React.FC = () => {
       const rs = localStorage.getItem('pcp_resources');
       const ps = localStorage.getItem('pcp_projects');
       const al = localStorage.getItem('pcp_allocations');
-      setResources(rs ? JSON.parse(rs) : MOCK_RESOURCES);
-      setProjects(ps ? JSON.parse(ps) : MOCK_PROJECTS);
-      setAllocations(al ? JSON.parse(al) : MOCK_ALLOCATIONS);
+      setResources(rs && rs !== "[]" ? JSON.parse(rs) : MOCK_RESOURCES);
+      setProjects(ps && ps !== "[]" ? JSON.parse(ps) : MOCK_PROJECTS);
+      setAllocations(al && al !== "[]" ? JSON.parse(al) : MOCK_ALLOCATIONS);
       initialLoadDone.current = true;
     }
 

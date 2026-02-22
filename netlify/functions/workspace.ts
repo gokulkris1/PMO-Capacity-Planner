@@ -39,9 +39,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     if (event.httpMethod === 'GET') {
         try {
-            const resources = await sql`SELECT * FROM resources WHERE user_id = ${userId}`;
-            const projects = await sql`SELECT * FROM projects WHERE user_id = ${userId}`;
-            const allocations = await sql`SELECT * FROM allocations WHERE user_id = ${userId}`;
+            // Get user's org and workspace
+            let wsRows = await sql`
+                SELECT w.id FROM workspaces w
+                JOIN users u ON u.org_id = w.org_id
+                WHERE u.id = ${userId}
+                LIMIT 1
+            `;
+            let wsId = wsRows.length > 0 ? wsRows[0].id : null;
+
+            // Legacy User Fallback (if they existed before Orgs)
+            if (!wsId) {
+                const [org] = await sql`INSERT INTO organizations (id, name) VALUES (gen_random_uuid(), 'Legacy Org') RETURNING id`;
+                const [ws] = await sql`INSERT INTO workspaces (id, org_id, name) VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace') RETURNING id`;
+                await sql`UPDATE users SET org_id = ${org.id} WHERE id = ${userId}`;
+                wsId = ws.id;
+            }
+
+            const resources = await sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`;
+            const projects = await sql`SELECT * FROM projects WHERE workspace_id = ${wsId}`;
+            const allocations = await sql`SELECT * FROM allocations WHERE workspace_id = ${wsId}`;
 
             const mapRes = resources.map(r => ({
                 id: r.id, name: r.name, role: r.role, type: r.type, department: r.department,
@@ -56,7 +73,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 color: p.color
             }));
             const mapAlloc = allocations.map(a => ({
-                id: a.id, resourceId: a.resource_id, projectId: a.project_id, percentage: Number(a.percentage)
+                id: a.id, resourceId: a.resource_id, projectId: a.project_id, percentage: Number(a.percentage),
+                startDate: a.start_date, endDate: a.end_date
             }));
 
             return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc });
@@ -71,30 +89,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const body = JSON.parse(event.body || '{}');
             const { resources = [], projects = [], allocations = [] } = body;
 
-            // Wipe current data for the user
-            await sql`DELETE FROM allocations WHERE user_id = ${userId}`;
-            await sql`DELETE FROM projects WHERE user_id = ${userId}`;
-            await sql`DELETE FROM resources WHERE user_id = ${userId}`;
+            // Get user's Workspace ID
+            let wsRows = await sql`
+                SELECT w.id FROM workspaces w
+                JOIN users u ON u.org_id = w.org_id
+                WHERE u.id = ${userId}
+                LIMIT 1
+            `;
+            const wsId = wsRows.length > 0 ? wsRows[0].id : null;
+            if (!wsId) return fail('No workspace found for user', 400);
 
-            // Insert new data (simple loops since payload is typically small for PMO)
+            // Wipe current data for the workspace
+            await sql`DELETE FROM allocations WHERE workspace_id = ${wsId}`;
+            await sql`DELETE FROM projects WHERE workspace_id = ${wsId}`;
+            await sql`DELETE FROM resources WHERE workspace_id = ${wsId}`;
+
             if (resources.length > 0) {
                 await Promise.all(resources.map((r: any) => sql`
-          INSERT INTO resources (id, user_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur)
-          VALUES (${r.id}, ${userId}, ${r.name}, ${r.role || null}, ${r.type}, ${r.department || null}, ${r.teamId || null}, ${r.totalCapacity}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null})
+          INSERT INTO resources (id, user_id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur)
+          VALUES (${r.id}, ${userId}, ${wsId}, ${r.name}, ${r.role || null}, ${r.type}, ${r.department || null}, ${r.teamId || null}, ${r.totalCapacity}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null})
         `));
             }
 
             if (projects.length > 0) {
                 await Promise.all(projects.map((p: any) => sql`
-          INSERT INTO projects (id, user_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-          VALUES (${p.id}, ${userId}, ${p.name}, ${p.status}, ${p.priority}, ${p.description || null}, ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
+          INSERT INTO projects (id, user_id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
+          VALUES (${p.id}, ${userId}, ${wsId}, ${p.name}, ${p.status}, ${p.priority}, ${p.description || null}, ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
         `));
             }
 
             if (allocations.length > 0) {
                 await Promise.all(allocations.map((a: any) => sql`
-          INSERT INTO allocations (id, user_id, resource_id, project_id, percentage)
-          VALUES (${a.id}, ${userId}, ${a.resourceId}, ${a.projectId}, ${a.percentage})
+          INSERT INTO allocations (id, user_id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
+          VALUES (${a.id}, ${userId}, ${wsId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
         `));
             }
 
