@@ -16,9 +16,10 @@ import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { TourOverlay } from './components/TourOverlay';
 import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
-import { TimeGranularity, TimeSelector } from './components/TimeSelector';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
+
+const APP_VERSION = '1.0.0';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function getUtil(allocs: Allocation[], resId: string) {
@@ -69,7 +70,6 @@ const App: React.FC = () => {
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
-  const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('Month');
 
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
@@ -111,8 +111,6 @@ const App: React.FC = () => {
     if (ps) setProjects(JSON.parse(ps));
     if (al) setAllocations(JSON.parse(al));
 
-    const tg = localStorage.getItem('pcp_time_granularity');
-    if (tg) setTimeGranularity(tg as TimeGranularity);
 
     if (!localStorage.getItem('pcp_tour_done')) {
       // Small delay so the app renders first
@@ -123,7 +121,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('pcp_resources', JSON.stringify(resources)); }, [resources]);
   useEffect(() => { localStorage.setItem('pcp_projects', JSON.stringify(projects)); }, [projects]);
   useEffect(() => { localStorage.setItem('pcp_allocations', JSON.stringify(allocations)); }, [allocations]);
-  useEffect(() => { localStorage.setItem('pcp_time_granularity', timeGranularity); }, [timeGranularity]);
+
 
   /* ── derived stats ──────────────────────────────────────── */
   const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
@@ -276,8 +274,39 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Auth Row: always at top of sidebar ── */}
+        <div style={{ padding: '12px 12px 0' }}>
+          {user ? (
+            <div style={{ background: 'rgba(99,102,241,0.12)', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>👤</div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</div>
+                  <div style={{ fontSize: 10, color: '#64748b' }}>{(user.plan || 'FREE')} plan</div>
+                </div>
+              </div>
+              <button onClick={logout} title="Log out" style={{ background: 'none', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>Out</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { pendingActionRef.current = null; setModal({ type: 'login' }); }}
+              style={{
+                width: '100%', padding: '11px 16px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                border: 'none', borderRadius: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                color: '#fff', fontWeight: 700, fontSize: 14,
+                boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🔑</span>
+              <span>Log In / Sign Up</span>
+            </button>
+          )}
+        </div>
+
         {/* Nav */}
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" style={{ flex: 1, overflowY: 'auto' }}>
           {NAV_ITEMS.map((item, i) => {
             const prev = i > 0 ? NAV_ITEMS[i - 1] : null;
             return (
@@ -299,18 +328,26 @@ const App: React.FC = () => {
             );
           })}
 
-          {/* Quick Add – always visible, guests get login prompt */}
-          <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-            {/* Upgrade CTA for free users */}
-            {user && (!user.plan || user.plan === 'FREE') && (
-              <button
-                className="nav-item"
-                onClick={() => setShowPricing(true)}
-                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', borderRadius: 10, marginBottom: 10, color: '#fff', fontWeight: 700, justifyContent: 'center' }}
-              >
-                <span style={{ fontSize: 14 }}>⭐</span><span>Upgrade Plan</span>
-              </button>
-            )}
+          {/* Quick Add / Pricing */}
+          <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+            {/* Pricing always visible */}
+            <button
+              className="nav-item"
+              onClick={() => setShowPricing(true)}
+              style={{
+                background: user?.plan && user.plan !== 'FREE'
+                  ? 'rgba(16,185,129,0.1)'
+                  : 'rgba(99,102,241,0.1)',
+                borderRadius: 10, marginBottom: 6,
+                border: '1px solid rgba(99,102,241,0.2)',
+              }}
+            >
+              <span style={{ fontSize: 14 }}>💎</span>
+              <span style={{ fontWeight: 600, color: '#a5b4fc' }}>
+                {user?.plan && user.plan !== 'FREE' ? `${user.plan} Plan` : 'View Pricing'}
+              </span>
+            </button>
+
             <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
             <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
               <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
@@ -340,34 +377,32 @@ const App: React.FC = () => {
             })}>
               <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo {!user && '🔒'}</span>
             </button>
-            <button className="nav-item" onClick={() => setShowTour(true)} style={{ marginTop: 4 }}>
+          </div>
+
+          {/* Take a Tour */}
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            <button className="nav-item" onClick={() => setShowTour(true)}>
               <span style={{ fontSize: 15 }}>🎓</span><span>Take a Tour</span>
             </button>
-            {user ? (
-              <button className="nav-item" onClick={logout} style={{ marginTop: 4, color: 'var(--text-muted)' }}>
-                <span style={{ fontSize: 15 }}>🚪</span><span>Log Out ({user.name || user.email})</span>
-              </button>
-            ) : (
-              <button className="nav-item" onClick={() => { pendingActionRef.current = null; setModal({ type: 'login' }); }} style={{ marginTop: 4, color: 'var(--primary-light)', fontWeight: 600 }}>
-                <span style={{ fontSize: 15 }}>🔑</span><span>Log In / Sign Up</span>
-              </button>
-            )}
           </div>
         </nav>
 
-        {/* AI Widget */}
+        {/* Sidebar Footer: AI widget + version */}
         <div className="sidebar-footer">
           <div className="ai-widget">
             <div className="ai-widget-header">
               <div className="ai-pulse" />
               <span className="ai-widget-label">AI Advisor</span>
+              {!user && <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>🔒 login to use</span>}
             </div>
             <div className="ai-widget-desc">Ask about capacity, risks, or reallocation ideas.</div>
             <div className="ai-input-wrap">
               <input
                 className="ai-input"
-                placeholder="Ask Gemini..."
+                placeholder={user ? 'Ask about your team...' : 'Log in to ask AI...'}
+                disabled={!user}
                 onKeyDown={e => {
+                  if (!user) { setModal({ type: 'login' }); return; }
                   if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
                     handleAiAsk((e.target as HTMLInputElement).value);
                     (e.target as HTMLInputElement).value = '';
@@ -377,6 +412,10 @@ const App: React.FC = () => {
               />
               <button className="ai-send-btn">→</button>
             </div>
+          </div>
+          {/* Version number */}
+          <div style={{ textAlign: 'center', fontSize: 10, color: '#334155', padding: '6px 0 2px', letterSpacing: '0.04em' }}>
+            PMO Planner v{APP_VERSION}
           </div>
         </div>
       </aside>
@@ -392,7 +431,6 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="header-actions">
-            <TimeSelector value={timeGranularity} onChange={setTimeGranularity} />
             <div className="search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><circle cx={11} cy={11} r={8} /><path d="m21 21-4.3-4.3" /></svg>
               <input className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
