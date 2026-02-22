@@ -346,7 +346,13 @@ const App: React.FC = () => {
                 )}
                 <button
                   className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    if (item.id === 'what-if' && !scenarioMode) {
+                      enterScenario();
+                    } else {
+                      setActiveTab(item.id);
+                    }
+                  }}
                 >
                   <span style={{ fontSize: 15 }}>{item.icon}</span>
                   <span>{item.label}</span>

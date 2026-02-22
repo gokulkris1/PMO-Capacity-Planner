@@ -46,6 +46,7 @@ export interface Resource {
   avatarInitials?: string;
   email?: string;
   location?: string;
+  dailyRate?: number; // optional cost per day in EUR/USD
 }
 
 export interface Project {

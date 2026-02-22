@@ -53,7 +53,7 @@ export const AllocationMatrix: React.FC<Props> = ({
     }
 
     return (
-        <div className="panel page-enter" style={{ overflow: 'hidden' }}>
+        <div className="panel page-enter" style={{ overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header">
                 <div>
                     <div className="panel-title">Allocation Matrix</div>

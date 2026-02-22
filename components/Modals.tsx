@@ -60,6 +60,10 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                         <input className="form-input" type="number" min={10} max={100} value={form.totalCapacity ?? 100} onChange={e => set('totalCapacity', Number(e.target.value))} />
                     </div>
                     <div className="form-group">
+                        <label className="form-label">Daily Cost (€)</label>
+                        <input className="form-input" type="number" min={0} value={form.dailyRate || ''} onChange={e => set('dailyRate', Number(e.target.value) || undefined)} placeholder="e.g. 500" />
+                    </div>
+                    <div className="form-group">
                         <label className="form-label">Location</label>
                         <input className="form-input" value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="City / Remote" />
                     </div>

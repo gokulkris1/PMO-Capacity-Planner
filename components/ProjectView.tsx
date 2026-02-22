@@ -33,6 +33,13 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
 
     const totalFte = projAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
 
+    // Assume 20 working days per month for cost estimate
+    const totalMonthlyCost = projAllocs.reduce((s, a) => {
+        const res = resources.find(r => r.id === a.resourceId);
+        const rate = res?.dailyRate || 0;
+        return s + (rate * 20 * (a.percentage / 100));
+    }, 0);
+
     function getProjStatusBadge(status: string) {
         const map: Record<string, string> = {
             Active: 'badge badge-active', Planning: 'badge badge-planning',
@@ -88,6 +95,12 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                 <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>FTE</span>
                             </div>
                             <div>
+                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Est. Monthly Cost</div>
+                                <span style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>
+                                    €{totalMonthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </span>
+                            </div>
+                            <div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Timeline</div>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
                                     {project.startDate && project.endDate ? `${project.startDate} → ${project.endDate}` : 'TBD'}
@@ -131,7 +144,10 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                                     {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                                 </div>
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>{res.name}</div>
+                                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
+                                                        {res.name}
+                                                        {res.dailyRate ? <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500, marginLeft: 6 }}>€{res.dailyRate}/day</span> : ''}
+                                                    </div>
                                                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role} · {res.department}</div>
                                                 </div>
                                                 <div style={{ fontSize: 18, fontWeight: 800, color: project.color || '#6366f1' }}>
