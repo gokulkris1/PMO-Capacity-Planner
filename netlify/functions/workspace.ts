@@ -97,15 +97,28 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const body = JSON.parse(event.body || '{}');
             const { resources = [], projects = [], allocations = [] } = body;
 
-            // Get user's Workspace ID
+            // Get user's Workspace ID and Plan
             let wsRows = await sql`
-                SELECT w.id FROM workspaces w
+                SELECT w.id, u.plan FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
                 WHERE u.id = ${userId}
                 LIMIT 1
             `;
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
+            const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'FREE';
+
             if (!wsId) return fail('No workspace found for user', 400);
+
+            // ── FREEMIUM LIMIT ENFORCEMENT ──
+            if (userPlan === 'FREE' || !userPlan) {
+                if (resources.length > 5) {
+                    return fail('Free Plan Limit Exceeded: Maximum 5 resources allowed. Please upgrade to Pro.', 403);
+                }
+                const ownProjects = projects.filter((p: any) => p.id !== 'demo');
+                if (ownProjects.length > 1) {
+                    return fail('Free Plan Limit Exceeded: Maximum 1 custom project allowed. Please upgrade to Pro.', 403);
+                }
+            }
 
             // Wipe current data for the workspace
             await sql`DELETE FROM allocations WHERE workspace_id = ${wsId}`;

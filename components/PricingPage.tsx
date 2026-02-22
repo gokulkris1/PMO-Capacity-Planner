@@ -122,6 +122,42 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
         return p.price;
     };
 
+    const [isCheckingOut, setIsCheckingOut] = useState<string | null>(null);
+
+    const handleCheckout = async (plan: Plan) => {
+        if (plan.name === currentPlan || plan.name === 'Free') return;
+
+        setIsCheckingOut(plan.name);
+        try {
+            const token = localStorage.getItem('pcp_token');
+            if (!token) {
+                alert('Please sign in to upgrade.');
+                return;
+            }
+
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ planTier: plan.name.toUpperCase() })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Checkout failed');
+
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        } catch (err: any) {
+            console.error('Checkout error:', err);
+            alert(err.message || 'Failed to initialize checkout.');
+        } finally {
+            setIsCheckingOut(null);
+        }
+    };
+
     return (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 9998,
@@ -230,15 +266,23 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
                             </div>
 
                             {/* CTA */}
-                            <button style={{
-                                width: '100%', padding: '12px',
-                                borderRadius: 12, border: 'none',
-                                fontWeight: 700, fontSize: 14,
-                                cursor: plan.name === currentPlan ? 'default' : 'pointer',
-                                marginBottom: 24, transition: 'all 0.2s',
-                                ...plan.ctaStyle,
-                            }}>
-                                {plan.name === currentPlan ? '✓ Current Plan' : plan.cta}
+                            <button
+                                onClick={() => handleCheckout(plan)}
+                                disabled={isCheckingOut === plan.name}
+                                style={{
+                                    width: '100%', padding: '12px',
+                                    borderRadius: 12, border: 'none',
+                                    fontWeight: 700, fontSize: 14,
+                                    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8,
+                                    cursor: plan.name === currentPlan || isCheckingOut ? 'default' : 'pointer',
+                                    marginBottom: 24, transition: 'all 0.2s', opacity: isCheckingOut === plan.name ? 0.7 : 1,
+                                    ...plan.ctaStyle,
+                                }}>
+                                {isCheckingOut === plan.name ? (
+                                    <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                ) : plan.name === currentPlan ? (
+                                    '✓ Current Plan'
+                                ) : plan.cta}
                             </button>
 
                             {/* Features */}

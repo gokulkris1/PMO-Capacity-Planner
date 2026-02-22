@@ -90,6 +90,11 @@ export const getCapacityInsights = async (
     const data = await res.json();
 
     if (!res.ok) {
+      if (res.status === 429) {
+        // Explicitly return the Quota string
+        return `⚠️ ${data.error || 'AI Quota limit reached. Please upgrade to Pro.'}`;
+      }
+
       if (data.response && data.response.includes('disabled')) {
         return data.response;
       }

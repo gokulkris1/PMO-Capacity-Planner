@@ -179,6 +179,16 @@ const App: React.FC = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ resources, projects, allocations })
+        }).then(async res => {
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 403) {
+              alert('Free Plan Limit Exceeded: ' + (data.error || 'You have exceeded your Free tier limits. Data will not be saved.'));
+              setShowPricing(true);
+            } else {
+              console.error('Failed to sync workspace');
+            }
+          }
         }).catch(err => console.error('Sync failed', err));
       }, 1500);
     } else {

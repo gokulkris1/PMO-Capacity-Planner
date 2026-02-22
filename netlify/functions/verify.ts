@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
+import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'PMO Planner <noreply@pmo-planner.com>';
@@ -68,17 +69,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
 
         try {
-            const res = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${RESEND_API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    from: FROM_EMAIL,
-                    to: cleanEmail,
-                    subject: 'Your PMO Planner verification code',
-                    html: `
+            const resend = new Resend(RESEND_API_KEY);
+            const { data, error } = await resend.emails.send({
+                from: FROM_EMAIL,
+                to: cleanEmail,
+                subject: 'Your PMO Planner verification code',
+                html: `
             <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
               <div style="font-size:28px;margin-bottom:8px">📊</div>
               <h1 style="font-size:22px;margin:0 0 8px;color:#f1f5f9">Verify your email</h1>
@@ -88,10 +84,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
               </div>
               <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
             </div>
-          `,
-                }),
+                `,
             });
-            if (!res.ok) throw new Error(await res.text());
+            if (error) {
+                console.error('Resend SDK Error:', error);
+                throw new Error(error.message);
+            }
             return ok(event, { sent: true });
         } catch (e: any) {
             console.error('Email send error:', e.message);
