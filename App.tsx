@@ -61,10 +61,15 @@ type ModalState =
 /* ─────────────────────────────────────────────────────────── */
 const App: React.FC = () => {
   const { user, logout, isLoading } = useAuth();
-  /* data state */
-  const [resources, setResources] = useState<Resource[]>(MOCK_RESOURCES);
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
-  const [allocations, setAllocations] = useState<Allocation[]>(MOCK_ALLOCATIONS);
+  // Guests see demo data; logged-in users get their own scoped workspace
+  const storageKey = useCallback((key: string) =>
+    user ? `pcp_${user.id}_${key}` : `pcp_${key}`
+    , [user]);
+
+  /* data state — guests start with MOCK, authenticated users start empty */
+  const [resources, setResources] = useState<Resource[]>(user ? [] : MOCK_RESOURCES);
+  const [projects, setProjects] = useState<Project[]>(user ? [] : MOCK_PROJECTS);
+  const [allocations, setAllocations] = useState<Allocation[]>(user ? [] : MOCK_ALLOCATIONS);
 
   /* ui state */
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
@@ -106,25 +111,46 @@ const App: React.FC = () => {
     }
   }, []);
 
-  /* persist to localStorage & show tour for first-time visitors */
+  // Load/switch data when user logs in or out
   useEffect(() => {
-    const rs = localStorage.getItem('pcp_resources');
-    const ps = localStorage.getItem('pcp_projects');
-    const al = localStorage.getItem('pcp_allocations');
-    if (rs) setResources(JSON.parse(rs));
-    if (ps) setProjects(JSON.parse(ps));
-    if (al) setAllocations(JSON.parse(al));
-
+    if (user) {
+      // Authenticated — load their personal workspace (scoped to user ID)
+      const rs = localStorage.getItem(`pcp_${user.id}_resources`);
+      const ps = localStorage.getItem(`pcp_${user.id}_projects`);
+      const al = localStorage.getItem(`pcp_${user.id}_allocations`);
+      setResources(rs ? JSON.parse(rs) : []);
+      setProjects(ps ? JSON.parse(ps) : []);
+      setAllocations(al ? JSON.parse(al) : []);
+    } else {
+      // Guest/demo — restore demo data
+      const rs = localStorage.getItem('pcp_resources');
+      const ps = localStorage.getItem('pcp_projects');
+      const al = localStorage.getItem('pcp_allocations');
+      setResources(rs ? JSON.parse(rs) : MOCK_RESOURCES);
+      setProjects(ps ? JSON.parse(ps) : MOCK_PROJECTS);
+      setAllocations(al ? JSON.parse(al) : MOCK_ALLOCATIONS);
+    }
 
     if (!localStorage.getItem('pcp_tour_done')) {
-      // Small delay so the app renders first
       setTimeout(() => setShowTour(true), 600);
     }
-  }, []);
+  }, [user?.id]);
 
-  useEffect(() => { localStorage.setItem('pcp_resources', JSON.stringify(resources)); }, [resources]);
-  useEffect(() => { localStorage.setItem('pcp_projects', JSON.stringify(projects)); }, [projects]);
-  useEffect(() => { localStorage.setItem('pcp_allocations', JSON.stringify(allocations)); }, [allocations]);
+  // Persist data — use user-scoped keys when authenticated
+  useEffect(() => {
+    if (user) localStorage.setItem(`pcp_${user.id}_resources`, JSON.stringify(resources));
+    else localStorage.setItem('pcp_resources', JSON.stringify(resources));
+  }, [resources, user?.id]);
+
+  useEffect(() => {
+    if (user) localStorage.setItem(`pcp_${user.id}_projects`, JSON.stringify(projects));
+    else localStorage.setItem('pcp_projects', JSON.stringify(projects));
+  }, [projects, user?.id]);
+
+  useEffect(() => {
+    if (user) localStorage.setItem(`pcp_${user.id}_allocations`, JSON.stringify(allocations));
+    else localStorage.setItem('pcp_allocations', JSON.stringify(allocations));
+  }, [allocations, user?.id]);
 
 
   /* ── derived stats ──────────────────────────────────────── */
