@@ -5,6 +5,7 @@ export interface User {
     email: string;
     name?: string;
     role: 'PMO' | 'PM' | 'VIEWER';
+    plan?: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
 }
 
 interface AuthContextType {

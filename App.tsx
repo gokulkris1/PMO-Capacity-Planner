@@ -18,6 +18,7 @@ import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { TimeGranularity, TimeSelector } from './components/TimeSelector';
 import { ImportCSVModal } from './components/ImportCSVModal';
+import { PricingPage } from './components/PricingPage';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function getUtil(allocs: Allocation[], resId: string) {
@@ -67,6 +68,7 @@ const App: React.FC = () => {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [showTour, setShowTour] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('Month');
 
   /* scenario state */
@@ -175,6 +177,13 @@ const App: React.FC = () => {
 
   /* ── resource CRUD ──────────────────────────────────────── */
   const saveResource = (data: Partial<Resource>) => {
+    // Freemium limit: 5 resources max without a paid plan
+    const userPlan = user?.plan || 'FREE';
+    if (modal.type === 'addResource' && userPlan === 'FREE' && resources.length >= 5) {
+      setModal({ type: 'none' });
+      setTimeout(() => setShowPricing(true), 150);
+      return;
+    }
     if (modal.type === 'editResource') {
       setResources(prev => prev.map(r => r.id === modal.resource.id ? { ...r, ...data } : r));
     } else {
@@ -191,6 +200,14 @@ const App: React.FC = () => {
 
   /* ── project CRUD ───────────────────────────────────────── */
   const saveProject = (data: Partial<Project>) => {
+    // Freemium limit: 1 project max without a paid plan
+    const userPlan = user?.plan || 'FREE';
+    const ownProjects = projects.filter(p => p.id !== 'demo');
+    if (modal.type === 'addProject' && userPlan === 'FREE' && ownProjects.length >= 1) {
+      setModal({ type: 'none' });
+      setTimeout(() => setShowPricing(true), 150);
+      return;
+    }
     if (modal.type === 'editProject') {
       setProjects(prev => prev.map(p => p.id === modal.project.id ? { ...p, ...data } : p));
     } else {
@@ -284,6 +301,16 @@ const App: React.FC = () => {
 
           {/* Quick Add – always visible, guests get login prompt */}
           <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+            {/* Upgrade CTA for free users */}
+            {user && (!user.plan || user.plan === 'FREE') && (
+              <button
+                className="nav-item"
+                onClick={() => setShowPricing(true)}
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', borderRadius: 10, marginBottom: 10, color: '#fff', fontWeight: 700, justifyContent: 'center' }}
+              >
+                <span style={{ fontSize: 14 }}>⭐</span><span>Upgrade Plan</span>
+              </button>
+            )}
             <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
             <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
               <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
@@ -564,6 +591,12 @@ const App: React.FC = () => {
           </div>
         )
       }
+      {showPricing && (
+        <PricingPage
+          onClose={() => setShowPricing(false)}
+          currentPlan={user?.plan || 'Free'}
+        />
+      )}
     </div>
   );
 };

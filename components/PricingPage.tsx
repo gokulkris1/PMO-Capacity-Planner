@@ -1,0 +1,290 @@
+import React, { useState } from 'react';
+
+interface Plan {
+    name: string;
+    emoji: string;
+    price: number | null;
+    period: string;
+    tagline: string;
+    color: string;
+    gradient: string;
+    badge?: string;
+    features: { text: string; included: boolean }[];
+    cta: string;
+    ctaStyle: React.CSSProperties;
+}
+
+const PLANS: Plan[] = [
+    {
+        name: 'Free',
+        emoji: '👀',
+        price: 0,
+        period: '/forever',
+        tagline: 'Try it risk-free, no card needed',
+        color: '#64748b',
+        gradient: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+        features: [
+            { text: '1 demo project (read-only)', included: true },
+            { text: 'Full dashboard & visualisations', included: true },
+            { text: 'Resource utilisation heatmap', included: true },
+            { text: 'Risk scanner', included: true },
+            { text: 'Export CSV', included: true },
+            { text: 'Create / edit projects', included: false },
+            { text: 'AI Advisor', included: false },
+            { text: 'What-If scenarios', included: false },
+            { text: 'CSV import', included: false },
+        ],
+        cta: 'Currently Active',
+        ctaStyle: { background: '#1e293b', border: '1.5px solid #334155', color: '#64748b', cursor: 'default' },
+    },
+    {
+        name: 'Basic',
+        emoji: '🚀',
+        price: 29,
+        period: '/month',
+        tagline: 'Perfect for a single project team',
+        color: '#6366f1',
+        gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        features: [
+            { text: '1 active project', included: true },
+            { text: 'Up to 5 resources', included: true },
+            { text: '1 team admin seat', included: true },
+            { text: '50 AI Advisor questions / month', included: true },
+            { text: 'CSV import & export', included: true },
+            { text: 'What-If scenarios', included: true },
+            { text: 'Email support', included: true },
+            { text: 'Multiple projects', included: false },
+            { text: 'Team collaboration seats', included: false },
+        ],
+        cta: 'Start Basic',
+        ctaStyle: { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' },
+    },
+    {
+        name: 'Pro',
+        emoji: '⚡',
+        price: 79,
+        period: '/month',
+        tagline: 'For growing teams managing a portfolio',
+        color: '#f59e0b',
+        gradient: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+        badge: 'Most Popular',
+        features: [
+            { text: 'Up to 10 active projects', included: true },
+            { text: 'Up to 50 resources', included: true },
+            { text: '3 admin seats + unlimited viewers', included: true },
+            { text: '500 AI Advisor questions / month', included: true },
+            { text: 'CSV import & export', included: true },
+            { text: 'What-If scenarios (unlimited)', included: true },
+            { text: 'Priority email support', included: true },
+            { text: 'Custom team structures', included: true },
+            { text: 'API access', included: false },
+        ],
+        cta: 'Start Pro',
+        ctaStyle: { background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#fff', boxShadow: '0 4px 20px rgba(245,158,11,0.4)' },
+    },
+    {
+        name: 'Max',
+        emoji: '👑',
+        price: 199,
+        period: '/month',
+        tagline: 'Enterprise-grade, unlimited scale',
+        color: '#10b981',
+        gradient: 'linear-gradient(135deg, #10b981 0%, #0891b2 100%)',
+        features: [
+            { text: 'Unlimited projects', included: true },
+            { text: 'Unlimited resources', included: true },
+            { text: 'Unlimited admin & PM seats', included: true },
+            { text: '2,000 AI Advisor questions / month', included: true },
+            { text: 'API access & webhooks', included: true },
+            { text: 'Custom onboarding session', included: true },
+            { text: 'SLA & dedicated support', included: true },
+            { text: 'SSO / SAML integration', included: true },
+            { text: 'White-label option', included: true },
+        ],
+        cta: 'Contact Sales',
+        ctaStyle: { background: 'linear-gradient(135deg, #10b981, #0891b2)', color: '#fff', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' },
+    },
+];
+
+interface Props {
+    onClose: () => void;
+    currentPlan?: string;
+}
+
+export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) => {
+    const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
+
+    const annualDiscount = 0.2; // 20% off annual
+
+    const effectivePrice = (p: Plan) => {
+        if (!p.price) return 0;
+        if (billing === 'annual') return Math.round(p.price * (1 - annualDiscount));
+        return p.price;
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 9998,
+            background: 'rgba(5,10,20,0.9)', backdropFilter: 'blur(10px)',
+            overflowY: 'auto', fontFamily: "'Inter', -apple-system, sans-serif",
+        }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+
+                {/* Close */}
+                <button onClick={onClose} style={{
+                    position: 'fixed', top: 20, right: 24,
+                    background: '#1e293b', border: '1px solid #334155',
+                    color: '#94a3b8', borderRadius: '50%',
+                    width: 36, height: 36, cursor: 'pointer', fontSize: 18,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 10,
+                }}>✕</button>
+
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: 48 }}>
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)',
+                        borderRadius: 100, padding: '6px 16px', fontSize: 13,
+                        color: '#a5b4fc', marginBottom: 20, fontWeight: 500,
+                    }}>
+                        ✨ Simple, transparent pricing
+                    </div>
+                    <h1 style={{
+                        fontSize: 42, fontWeight: 900, color: '#f1f5f9',
+                        margin: '0 0 12px', letterSpacing: '-0.03em',
+                    }}>
+                        Plans for every team
+                    </h1>
+                    <p style={{ fontSize: 17, color: '#64748b', margin: '0 auto 32px', maxWidth: 480, lineHeight: 1.6 }}>
+                        Start free — upgrade when your team is ready. Cancel any time.
+                    </p>
+
+                    {/* Billing toggle */}
+                    <div style={{
+                        display: 'inline-flex', background: '#1e293b',
+                        borderRadius: 12, padding: 4, border: '1px solid #334155',
+                        gap: 4,
+                    }}>
+                        {(['monthly', 'annual'] as const).map(b => (
+                            <button key={b} onClick={() => setBilling(b)} style={{
+                                padding: '8px 20px', borderRadius: 9, border: 'none',
+                                fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                background: billing === b ? '#6366f1' : 'transparent',
+                                color: billing === b ? '#fff' : '#64748b',
+                            }}>
+                                {b === 'monthly' ? 'Monthly' : 'Annual'}{b === 'annual' && <span style={{ marginLeft: 6, background: '#10b981', color: '#fff', fontSize: 10, borderRadius: 6, padding: '1px 6px' }}>-20%</span>}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Cards */}
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap: 20, alignItems: 'start',
+                }}>
+                    {PLANS.map(plan => (
+                        <div key={plan.name} style={{
+                            background: plan.badge ? 'linear-gradient(160deg,#1a1f35 0%,#0f1629 100%)' : '#111827',
+                            borderRadius: 20,
+                            border: plan.badge ? `1.5px solid ${plan.color}50` : '1px solid #1e293b',
+                            padding: 28,
+                            position: 'relative',
+                            transform: plan.badge ? 'scale(1.03)' : 'none',
+                            boxShadow: plan.badge ? `0 16px 48px ${plan.color}25` : '0 2px 12px rgba(0,0,0,0.3)',
+                        }}>
+                            {plan.badge && (
+                                <div style={{
+                                    position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+                                    background: `linear-gradient(135deg, ${plan.color}, #ef4444)`,
+                                    color: '#fff', fontSize: 11, fontWeight: 700,
+                                    padding: '4px 14px', borderRadius: 20, letterSpacing: '0.04em',
+                                    whiteSpace: 'nowrap',
+                                }}>⭐ {plan.badge}</div>
+                            )}
+
+                            {/* Plan header */}
+                            <div style={{ marginBottom: 20 }}>
+                                <div style={{ fontSize: 28, marginBottom: 8 }}>{plan.emoji}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9', marginBottom: 2 }}>{plan.name}</div>
+                                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>{plan.tagline}</div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                    {plan.price !== null ? (
+                                        <>
+                                            <span style={{ fontSize: 38, fontWeight: 900, color: plan.badge ? plan.color : '#f1f5f9' }}>
+                                                €{effectivePrice(plan)}
+                                            </span>
+                                            <span style={{ fontSize: 13, color: '#64748b' }}>{plan.period}</span>
+                                        </>
+                                    ) : (
+                                        <span style={{ fontSize: 38, fontWeight: 900, color: '#f1f5f9' }}>Free</span>
+                                    )}
+                                </div>
+                                {billing === 'annual' && plan.price ? (
+                                    <div style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>
+                                        €{plan.price}/mo billed monthly
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            {/* CTA */}
+                            <button style={{
+                                width: '100%', padding: '12px',
+                                borderRadius: 12, border: 'none',
+                                fontWeight: 700, fontSize: 14,
+                                cursor: plan.name === currentPlan ? 'default' : 'pointer',
+                                marginBottom: 24, transition: 'all 0.2s',
+                                ...plan.ctaStyle,
+                            }}>
+                                {plan.name === currentPlan ? '✓ Current Plan' : plan.cta}
+                            </button>
+
+                            {/* Features */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {plan.features.map(f => (
+                                    <div key={f.text} style={{
+                                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                                        opacity: f.included ? 1 : 0.35,
+                                    }}>
+                                        <span style={{
+                                            flexShrink: 0, width: 18, height: 18,
+                                            borderRadius: '50%',
+                                            background: f.included ? `${plan.color}25` : '#1e293b',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 10, color: f.included ? plan.color : '#475569',
+                                            marginTop: 1,
+                                        }}>
+                                            {f.included ? '✓' : '✕'}
+                                        </span>
+                                        <span style={{ fontSize: 13, color: f.included ? '#cbd5e1' : '#475569' }}>
+                                            {f.text}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Footer reassurance */}
+                <div style={{
+                    textAlign: 'center', marginTop: 48,
+                    display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap',
+                }}>
+                    {[
+                        { icon: '🔒', text: 'No credit card for Free' },
+                        { icon: '↩️', text: 'Cancel anytime' },
+                        { icon: '🇪🇺', text: 'GDPR compliant' },
+                        { icon: '🛡️', text: 'Data encrypted in transit' },
+                    ].map(item => (
+                        <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 13 }}>
+                            <span>{item.icon}</span><span>{item.text}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
