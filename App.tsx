@@ -77,6 +77,29 @@ const App: React.FC = () => {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
+  /* Auth-gate: queue an action and show login if not authenticated */
+  const pendingActionRef = React.useRef<(() => void) | null>(null);
+  const authGate = useCallback((action: () => void) => {
+    if (user) {
+      action();
+    } else {
+      pendingActionRef.current = action;
+      setModal({ type: 'login' });
+    }
+  }, [user]);
+
+  /* Called when login succeeds – fires the pending action if any */
+  const onLoginSuccess = useCallback(() => {
+    setModal({ type: 'none' });
+    if (pendingActionRef.current) {
+      // Defer a tick so AuthContext has updated the user
+      setTimeout(() => {
+        pendingActionRef.current?.();
+        pendingActionRef.current = null;
+      }, 50);
+    }
+  }, []);
+
   /* persist to localStorage & show tour for first-time visitors */
   useEffect(() => {
     const rs = localStorage.getItem('pcp_resources');
@@ -217,10 +240,6 @@ const App: React.FC = () => {
     'what-if': { title: 'What-If Scenarios', subtitle: 'Explore hypothetical reallocation scenarios' },
   };
 
-  /* ── permissions ────────────────────────────────────────── */
-  const isAdminList = ['PMO', 'PM'];
-  const canEdit = user && isAdminList.includes(user.role);
-
   const current = PAGE_TITLES[activeTab];
 
   if (isLoading) {
@@ -263,17 +282,16 @@ const App: React.FC = () => {
             );
           })}
 
-          {canEdit && (
-            <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-              <div className="nav-section-label">Quick Add</div>
-              <button className="nav-item" onClick={() => setModal({ type: 'addResource' })}>
-                <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
-              </button>
-              <button className="nav-item" onClick={() => setModal({ type: 'addProject' })}>
-                <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
-              </button>
-            </div>
-          )}
+          {/* Quick Add – always visible, guests get login prompt */}
+          <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+            <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
+            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
+              <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
+            </button>
+            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addProject' }))}>
+              <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
+            </button>
+          </div>
 
           {/* Data Management */}
           <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
@@ -281,34 +299,30 @@ const App: React.FC = () => {
             <button className="nav-item" onClick={exportCSV}>
               <span style={{ fontSize: 15 }}>⬇️</span><span>Export CSV</span>
             </button>
-            {canEdit && (
-              <button className="nav-item" onClick={() => setModal({ type: 'importCSV' })}>
-                <span style={{ fontSize: 15 }}>⬆️</span><span>Import CSV</span>
-              </button>
-            )}
-            {canEdit && (
-              <button className="nav-item" onClick={() => {
-                if (window.confirm('Reset all data to demo defaults?')) {
-                  localStorage.clear();
-                  setResources(MOCK_RESOURCES);
-                  setProjects(MOCK_PROJECTS);
-                  setAllocations(MOCK_ALLOCATIONS);
-                  discardScenario();
-                }
-              }}>
-                <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo</span>
-              </button>
-            )}
+            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'importCSV' }))}>
+              <span style={{ fontSize: 15 }}>⬆️</span><span>Import CSV {!user && '🔒'}</span>
+            </button>
+            <button className="nav-item" onClick={() => authGate(() => {
+              if (window.confirm('Reset all data to demo defaults?')) {
+                localStorage.clear();
+                setResources(MOCK_RESOURCES);
+                setProjects(MOCK_PROJECTS);
+                setAllocations(MOCK_ALLOCATIONS);
+                discardScenario();
+              }
+            })}>
+              <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo {!user && '🔒'}</span>
+            </button>
             <button className="nav-item" onClick={() => setShowTour(true)} style={{ marginTop: 4 }}>
               <span style={{ fontSize: 15 }}>🎓</span><span>Take a Tour</span>
             </button>
             {user ? (
               <button className="nav-item" onClick={logout} style={{ marginTop: 4, color: 'var(--text-muted)' }}>
-                <span style={{ fontSize: 15 }}>🚪</span><span>Log Out</span>
+                <span style={{ fontSize: 15 }}>🚪</span><span>Log Out ({user.name || user.email})</span>
               </button>
             ) : (
-              <button className="nav-item" onClick={() => setModal({ type: 'login' })} style={{ marginTop: 4, color: 'var(--primary-light)' }}>
-                <span style={{ fontSize: 15 }}>🔑</span><span>Log In</span>
+              <button className="nav-item" onClick={() => { pendingActionRef.current = null; setModal({ type: 'login' }); }} style={{ marginTop: 4, color: 'var(--primary-light)', fontWeight: 600 }}>
+                <span style={{ fontSize: 15 }}>🔑</span><span>Log In / Sign Up</span>
               </button>
             )}
           </div>
@@ -357,24 +371,20 @@ const App: React.FC = () => {
               <input className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
-            {canEdit && (!scenarioMode ? (
-              <button className="btn btn-warning" onClick={enterScenario}>🔬 What-If</button>
+            {!scenarioMode ? (
+              <button className="btn btn-warning" onClick={() => authGate(enterScenario)}>🔬 What-If {!user && '🔒'}</button>
             ) : (
               <>
                 <button className="btn btn-success" onClick={applyScenario}>✅ Apply</button>
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
-            ))}
-            {canEdit && (
-              <>
-                <button className="btn btn-primary" onClick={() => setModal({ type: 'addResource' })}>
-                  + Add Resource
-                </button>
-                <button className="btn btn-secondary" onClick={() => setModal({ type: 'addProject' })}>
-                  + Add Project
-                </button>
-              </>
             )}
+            <button className="btn btn-primary" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
+              + Resource {!user && '🔒'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => authGate(() => setModal({ type: 'addProject' }))}>
+              + Project {!user && '🔒'}
+            </button>
           </div>
         </header>
 
@@ -529,25 +539,32 @@ const App: React.FC = () => {
       }
       {
         modal.type === 'login' && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-          }}>
-            <div style={{ position: 'relative' }}>
+          <div
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(10, 15, 30, 0.85)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+              padding: '1rem'
+            }}
+            onClick={e => { if (e.target === e.currentTarget) { setModal({ type: 'none' }); pendingActionRef.current = null; } }}
+          >
+            <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
               <button
-                onClick={() => setModal({ type: 'none' })}
+                onClick={() => { setModal({ type: 'none' }); pendingActionRef.current = null; }}
                 style={{
-                  position: 'absolute', top: 10, right: 10, background: 'none',
-                  border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer', zIndex: 10
+                  position: 'absolute', top: -12, right: -12,
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: '#1e293b', border: '1px solid #334155',
+                  color: '#94a3b8', fontSize: 16, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
                 }}
               >✕</button>
-              <Login onSuccess={() => setModal({ type: 'none' })} />
+              <Login onSuccess={onLoginSuccess} />
             </div>
           </div>
         )
       }
-    </div >
+    </div>
   );
 };
 
