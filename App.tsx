@@ -13,6 +13,8 @@ import { ResourceView } from './components/ResourceView';
 import { TeamView } from './components/TeamView';
 import { WhatIfPanel } from './components/WhatIfPanel';
 import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
+import { AllocationModal } from './components/AllocationModal';
+import { JiraImportModal } from './components/JiraImportModal';
 import { TourOverlay } from './components/TourOverlay';
 import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
@@ -76,6 +78,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
+  const [activeAllocationModal, setActiveAllocationModal] = useState<{ resId: string, projId: string } | null>(null);
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -209,6 +212,18 @@ const App: React.FC = () => {
       if (num === 0) return prev;
       return [...prev, { id: `a-${Date.now()}-${Math.random().toString(36).slice(2)}`, resourceId: resId, projectId: projId, percentage: num }];
     });
+  }, [scenarioMode, allocations]);
+
+  const updateAllocationsAdvanced = useCallback((resId: string, projId: string, newSlices: Allocation[]) => {
+    const setTarget = scenarioMode
+      ? (fn: (a: Allocation[]) => Allocation[]) => setScenarioAllocations(prev => fn(prev ?? allocations))
+      : (fn: (a: Allocation[]) => Allocation[]) => setAllocations(fn);
+
+    setTarget(prev => {
+      const filtered = prev.filter(a => !(a.resourceId === resId && a.projectId === projId));
+      return [...filtered, ...newSlices];
+    });
+    setActiveAllocationModal(null);
   }, [scenarioMode, allocations]);
 
   /* ── scenario helpers ───────────────────────────────────── */
@@ -567,7 +582,7 @@ const App: React.FC = () => {
               allocations={allocations}
               scenarioMode={scenarioMode}
               scenarioAllocations={scenarioAllocations}
-              onUpdate={updateAllocation}
+              onUpdateAdvanced={(r, p) => setActiveAllocationModal({ resId: r, projId: p })}
               onExportCSV={exportCSV}
             />
           )}
@@ -633,6 +648,15 @@ const App: React.FC = () => {
       }
 
       {/* ── MODALS ───────────────────────────────────── */}
+      {activeAllocationModal && (
+        <AllocationModal
+          resource={resources.find(r => r.id === activeAllocationModal.resId)!}
+          project={projects.find(p => p.id === activeAllocationModal.projId)!}
+          allocations={(scenarioMode && scenarioAllocations ? scenarioAllocations : allocations).filter(a => a.resourceId === activeAllocationModal.resId && a.projectId === activeAllocationModal.projId)}
+          onSave={(slices) => updateAllocationsAdvanced(activeAllocationModal.resId, activeAllocationModal.projId, slices)}
+          onClose={() => setActiveAllocationModal(null)}
+        />
+      )}
       {
         modal.type === 'addResource' && (
           <ResourceModal teams={TEAMS} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
@@ -646,6 +670,11 @@ const App: React.FC = () => {
       {
         modal.type === 'addProject' && (
           <ProjectModal onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
+        )
+      }
+      {
+        modal.type === 'syncJira' && (
+          <JiraImportModal onClose={() => setModal({ type: 'none' })} />
         )
       }
       {

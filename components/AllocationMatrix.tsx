@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 
@@ -8,7 +7,7 @@ interface Props {
     allocations: Allocation[];
     scenarioMode: boolean;
     scenarioAllocations: Allocation[] | null;
-    onUpdate: (resId: string, projId: string, val: string) => void;
+    onUpdateAdvanced: (resId: string, projId: string) => void;
     onExportCSV: () => void;
 }
 
@@ -36,40 +35,72 @@ function utilBg(pct: number) {
     return 'transparent';
 }
 
+// Check if an allocation falls within the selected month (YYYY-MM)
+function isAllocActiveInMonth(a: Allocation, yyyyMm: string) {
+    if (!yyyyMm) return true; // All Time
+
+    // Convert YYYY-MM to the first and last day of that month
+    const [year, month] = yyyyMm.split('-');
+    const filterStart = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const filterEnd = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+
+    const aStart = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
+    const aEnd = a.endDate ? new Date(a.endDate) : new Date('2099-12-31');
+
+    return aStart <= filterEnd && aEnd >= filterStart;
+}
+
 export const AllocationMatrix: React.FC<Props> = ({
-    resources, projects, allocations, scenarioMode, scenarioAllocations, onUpdate, onExportCSV
+    resources, projects, allocations, scenarioMode, scenarioAllocations, onUpdateAdvanced, onExportCSV
 }) => {
     const [filterProjId, setFilterProjId] = useState('');
+    const [filterMonth, setFilterMonth] = useState(''); // YYYY-MM
+
     const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
 
     const filteredProjects = filterProjId ? projects.filter(p => p.id === filterProjId) : projects;
 
     function getResourceUtil(resId: string) {
-        return liveAlloc.filter(a => a.resourceId === resId).reduce((s, a) => s + a.percentage, 0);
+        return liveAlloc
+            .filter(a => a.resourceId === resId && isAllocActiveInMonth(a, filterMonth))
+            .reduce((s, a) => s + a.percentage, 0);
     }
 
-    function getAlloc(resId: string, projId: string) {
-        return liveAlloc.find(a => a.resourceId === resId && a.projectId === projId)?.percentage || 0;
+    function getAllocForCell(resId: string, projId: string) {
+        const allocs = liveAlloc.filter(a => a.resourceId === resId && a.projectId === projId && isAllocActiveInMonth(a, filterMonth));
+        if (allocs.length === 0) return { pct: 0, multiple: false };
+        if (allocs.length === 1) return { pct: allocs[0].percentage, multiple: false };
+
+        // Sum overlapping slices for the month
+        const sum = allocs.reduce((s, a) => s + a.percentage, 0);
+        return { pct: sum, multiple: true };
     }
 
     return (
         <div className="panel page-enter" style={{ overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header">
                 <div>
-                    <div className="panel-title">Allocation Matrix</div>
-                    <div className="panel-subtitle">Each cell = % of resource dedicated to that project. Click a cell to edit.</div>
+                    <div className="panel-title">Allocation Matrix Timeline</div>
+                    <div className="panel-subtitle">Filter by month to see forecasted utilization. Click a cell to assign dates.</div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                        type="month"
+                        value={filterMonth}
+                        onChange={e => setFilterMonth(e.target.value)}
+                        className="form-input"
+                        style={{ width: 140, fontSize: 13, height: 34, padding: '0 10px' }}
+                    />
                     <select
                         value={filterProjId}
                         onChange={e => setFilterProjId(e.target.value)}
                         className="form-select"
-                        style={{ width: 'auto', fontSize: 12 }}
+                        style={{ width: 'auto', fontSize: 12, height: 34 }}
                     >
                         <option value="">All Projects</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
-                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={onExportCSV}>⬇ Export CSV</button>
+                    <button className="btn btn-secondary" style={{ fontSize: 12, height: 34 }} onClick={onExportCSV}>⬇ Export CSV</button>
                 </div>
             </div>
 
@@ -142,18 +173,23 @@ export const AllocationMatrix: React.FC<Props> = ({
                                     </td>
                                     {/* Per-project cells */}
                                     {filteredProjects.map(proj => {
-                                        const pct = getAlloc(res.id, proj.id);
+                                        const { pct, multiple } = getAllocForCell(res.id, proj.id);
                                         return (
                                             <td key={proj.id} style={{ textAlign: 'center' }}>
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    max={100}
-                                                    value={pct || ''}
-                                                    placeholder="0"
-                                                    onChange={e => onUpdate(res.id, proj.id, e.target.value)}
-                                                    className={`matrix-cell-input ${statusClass(pct)}`}
-                                                />
+                                                <button
+                                                    onClick={() => !scenarioMode && onUpdateAdvanced(res.id, proj.id)}
+                                                    style={{
+                                                        width: 50, height: 32, borderRadius: 6, border: '1px solid #e2e8f0',
+                                                        background: pct > 0 ? '#eff6ff' : '#fff',
+                                                        color: pct > 0 ? '#1e40af' : '#94a3b8',
+                                                        fontWeight: pct > 0 ? 700 : 500,
+                                                        cursor: scenarioMode ? 'not-allowed' : 'pointer',
+                                                        fontSize: 14
+                                                    }}
+                                                    title={multiple ? "Multiple time slices exist in this month. Click to edit." : "Click to edit allocation"}
+                                                >
+                                                    {pct > 0 ? `${pct}%` : '-'}
+                                                </button>
                                             </td>
                                         );
                                     })}

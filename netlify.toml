@@ -21,6 +21,20 @@
   status = 200
   force = true
   
+# Route /api/ai/* to ai Function
+[[redirects]]
+  from = "/api/ai/*"
+  to = "/.netlify/functions/ai/:splat"
+  status = 200
+  force = true
+  
+# Route /api/jira/* to jira Function
+[[redirects]]
+  from = "/api/jira/*"
+  to = "/.netlify/functions/jira/:splat"
+  status = 200
+  force = true
+
 # SPA fallback — all other routes serve index.html
 [[redirects]]
   from = "/*"

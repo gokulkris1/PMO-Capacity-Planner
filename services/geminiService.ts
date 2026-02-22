@@ -69,66 +69,36 @@ export const getCapacityInsights = async (
   allocations: Allocation[],
   userPrompt: string
 ): Promise<string> => {
-  if (!OPENAI_API_KEY) {
-    // Fallback: give a real answer based on the actual data (no API needed)
-    const overAlloc = resources.filter(r =>
-      allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0) > 100
-    );
-    const underUtil = resources.filter(r => {
-      const total = allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0);
-      return total > 0 && total < 60;
-    });
-    const unassigned = resources.filter(r =>
-      allocations.filter(a => a.resourceId === r.id).length === 0
-    );
+  const token = localStorage.getItem('pcp_token');
 
-    const lines: string[] = [`**Analysis: "${userPrompt}"**\n`];
-
-    if (overAlloc.length) {
-      lines.push(`⚠️ **Over-allocated (>100%):** ${overAlloc.map(r => {
-        const total = allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0);
-        return `${r.name} (${total}%)`;
-      }).join(', ')} — recommend reducing their project load or adding headcount.`);
-    } else {
-      lines.push(`✅ No over-allocations. Team is within safe capacity limits.`);
-    }
-    if (underUtil.length) lines.push(`💡 **Available capacity:** ${underUtil.map(r => r.name).join(', ')} are under 60% — consider assigning them to new initiatives.`);
-    if (unassigned.length) lines.push(`👤 **Unassigned:** ${unassigned.map(r => r.name).join(', ')} — fully available for new project work.`);
-    if (resources.length === 0) lines.push(`📋 Add your team resources first to get AI capacity insights.`);
-
-    lines.push(`\n_Set VITE_OPENAI_API_KEY in Netlify env vars to enable full conversational AI._`);
-    return new Promise(resolve => setTimeout(() => resolve(lines.join('\n')), 400));
+  if (!token) {
+    return "You must be logged in to use the AI Advisor.";
   }
 
   try {
     const systemPrompt = buildSystemPrompt(resources, projects, allocations);
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/ai', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: 600,
-        temperature: 0.4,
-      }),
+      body: JSON.stringify({ systemPrompt, userPrompt })
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.error?.message || `OpenAI error ${res.status}`);
+      if (data.response && data.response.includes('disabled')) {
+        return data.response;
+      }
+      throw new Error(data.error || 'Failed to generate AI insights');
     }
 
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "I couldn't generate insights at this moment.";
-  } catch (error: any) {
-    console.error('AI Error:', error.message);
-    return `⚠️ AI error: ${error.message}. Check that VITE_OPENAI_API_KEY is set correctly.`;
+    return data.response;
+  } catch (err: any) {
+    console.error('AI Service Error:', err);
+    return `⚠️ Error generating AI insights: ${err.message}. Please try again later.`;
   }
 };
