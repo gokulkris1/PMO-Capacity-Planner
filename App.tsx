@@ -21,10 +21,12 @@ import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
-import { Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom';
 import { exportExecSummaryPDF } from './utils/pdfExport';
 import { AdminPanel } from './components/AdminPanel';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
+import { SettingsHub } from './components/SettingsHub';
+import { DirectoryProfile } from './components/DirectoryProfile';
 
 const APP_VERSION = '1.0.0';
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'public';
@@ -79,6 +81,7 @@ type ModalState =
 const AppShell: React.FC = () => {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout, isLoading } = useAuth();
   // Guests see demo data; logged-in users get their own scoped workspace
   const storageKey = useCallback((key: string) =>
@@ -103,12 +106,14 @@ const AppShell: React.FC = () => {
   /* tenant state */
   const [workspaceName, setWorkspaceName] = useState<string>('Default Workspace');
   const [orgName, setOrgName] = useState<string>('My Organization');
+  const [workspaceLogo, setWorkspaceLogo] = useState<string | null>(null);
 
   /* scenario state */
   const [scenarioMode, setScenarioMode] = useState(false);
   const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(null);
 
   /* AI state */
+  const [showAiChat, setShowAiChat] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -167,6 +172,17 @@ const AppShell: React.FC = () => {
 
           if (data.orgName) setOrgName(data.orgName);
           if (data.workspaceName) setWorkspaceName(data.workspaceName);
+          if (data.logoUrl) setWorkspaceLogo(data.logoUrl);
+
+          if (data.primaryColor) {
+            document.documentElement.style.setProperty('--color-primary', data.primaryColor);
+            // Derive a glow color natively
+            document.documentElement.style.setProperty('--color-primary-glow', `${data.primaryColor}66`);
+          } else {
+            document.documentElement.style.removeProperty('--color-primary');
+            document.documentElement.style.removeProperty('--color-primary-glow');
+          }
+
           initialLoadDone.current = true;
         })
         .catch(err => {
@@ -382,10 +398,16 @@ const AppShell: React.FC = () => {
       <aside className="sidebar">
         {/* Logo */}
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">📊</div>
-          <div>
-            <div className="sidebar-logo-text">PMO Planner</div>
-            <div className="sidebar-logo-sub">Capacity Management</div>
+          <div className="sidebar-logo-icon" style={{ padding: workspaceLogo ? 4 : 0, background: workspaceLogo ? '#fff' : undefined }}>
+            {workspaceLogo ? (
+              <img src={workspaceLogo} alt="Org Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 6 }} />
+            ) : (
+              '🪐'
+            )}
+          </div>
+          <div style={{ overflow: 'hidden' }}>
+            <div className="sidebar-logo-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Orbit Space</div>
+            <div className="sidebar-logo-sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{orgName}</div>
           </div>
         </div>
 
@@ -537,45 +559,14 @@ const AppShell: React.FC = () => {
             <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'importCSV' }))}>
               <span style={{ fontSize: 15 }}>⬆️</span><span>Import CSV {!user && '🔒'}</span>
             </button>
-            <button className="nav-item" onClick={() => authGate(() => {
-              if (window.confirm('Reset all data to demo defaults?')) {
-                localStorage.clear();
-                setResources(MOCK_RESOURCES);
-                setProjects(MOCK_PROJECTS);
-                setAllocations(MOCK_ALLOCATIONS);
-                discardScenario();
-              }
-            })}>
-              <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo {!user && '🔒'}</span>
-            </button>
-            {user && (
-              <button className="nav-item" onClick={async () => {
-                try {
-                  const res = await fetch('/api/auth/2fa/toggle', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('pmo_token')}` }
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    alert(`Two-Factor Authentication is now ${data.two_factor_enabled ? 'ENABLED' : 'DISABLED'}.`);
-                  } else {
-                    alert(data.error || 'Failed to update 2FA setting.');
-                  }
-                } catch (e) {
-                  alert('Network or server error updating 2FA.');
-                }
-              }}>
-                <span style={{ fontSize: 15 }}>🛡️</span><span style={{ color: '#10b981' }}>Toggle 2FA</span>
-              </button>
-            )}
           </div>
 
-          {/* Superuser Console — SUPERUSER role only */}
+          {/* Superuser Workspace Settings — SUPERUSER role only */}
           {user?.role === 'SUPERUSER' && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-              <button className="nav-item" onClick={() => setShowSuperAdmin(true)}
+              <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/settings`)}
                 style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}>
-                <span style={{ fontSize: 15 }}>🦸</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Superuser Console</span>
+                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Tenant Settings</span>
               </button>
             </div>
           )}
@@ -589,6 +580,13 @@ const AppShell: React.FC = () => {
             </div>
           )}
 
+          {/* Profile Directory */}
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/directory`)}>
+              <span style={{ fontSize: 15 }}>🪪</span><span style={{ fontWeight: 600 }}>Profile Directory</span>
+            </button>
+          </div>
+
           {/* Take a Tour */}
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
             <button className="nav-item" onClick={() => setShowTour(true)}>
@@ -597,7 +595,7 @@ const AppShell: React.FC = () => {
           </div>
         </nav>
 
-        {/* Sidebar Footer: Branding, Support, AI widget + version */}
+        {/* Sidebar Footer: Branding and version only */}
         <div className="sidebar-footer">
           <div className="branding" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
@@ -610,39 +608,6 @@ const AppShell: React.FC = () => {
               ) : (
                 <span style={{ color: '#6366f1' }}>Internal Mode</span>
               )}
-            </div>
-          </div>
-
-          {APP_MODE === 'public' && (
-            <button onClick={() => {
-              window.location.href = `mailto:support@pmoplanner.com?subject=Support%20Request`;
-            }} className="btn btn-secondary" style={{ width: '100%', marginBottom: 16, padding: '8px 12px', fontSize: 13, background: 'transparent', border: '1px solid #e2e8f0', color: '#64748b' }}>
-              Get Support
-            </button>
-          )}
-
-          <div className="ai-widget">
-            <div className="ai-widget-header">
-              <div className="ai-pulse" />
-              <span className="ai-widget-label">AI Advisor</span>
-              {!user && <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>🔒 login to use</span>}
-            </div>
-            <div className="ai-widget-desc">Ask about capacity, risks, or reallocation ideas.</div>
-            <div className="ai-input-wrap">
-              <input
-                className="ai-input"
-                placeholder={user ? 'Ask about your team...' : 'Log in to ask AI...'}
-                disabled={!user}
-                onKeyDown={e => {
-                  if (!user) { setModal({ type: 'login' }); return; }
-                  if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
-                    handleAiAsk((e.target as HTMLInputElement).value);
-                    (e.target as HTMLInputElement).value = '';
-                    setActiveTab('what-if');
-                  }
-                }}
-              />
-              <button className="ai-send-btn">→</button>
             </div>
           </div>
           {/* Version number */}
@@ -699,78 +664,86 @@ const AppShell: React.FC = () => {
 
         {/* Page body */}
         <div className="page-body">
-          {activeTab === 'dashboard' && (
-            <Dashboard
-              resources={resources}
-              projects={projects}
-              allocations={allocations}
-              scenarioAllocations={scenarioAllocations}
-              onTabChange={t => setActiveTab(t as ViewTab)}
-              teams={TEAMS}
-            />
-          )}
+          {location.pathname.endsWith('/settings') ? (
+            <SettingsHub />
+          ) : location.pathname.endsWith('/directory') ? (
+            <DirectoryProfile />
+          ) : (
+            <>
+              {activeTab === 'dashboard' && (
+                <Dashboard
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  scenarioAllocations={scenarioAllocations}
+                  onTabChange={t => setActiveTab(t as ViewTab)}
+                  teams={TEAMS}
+                />
+              )}
 
-          {activeTab === 'allocations' && (
-            <AllocationMatrix
-              resources={resources}
-              projects={projects}
-              allocations={allocations}
-              scenarioMode={scenarioMode}
-              scenarioAllocations={scenarioAllocations}
-              onUpdateAdvanced={(r, p) => authGate(() => setActiveAllocationModal({ resId: r, projId: p }), true)}
-              onExportCSV={exportCSV}
-            />
-          )}
+              {activeTab === 'allocations' && (
+                <AllocationMatrix
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  scenarioMode={scenarioMode}
+                  scenarioAllocations={scenarioAllocations}
+                  onUpdateAdvanced={(r, p) => authGate(() => setActiveAllocationModal({ resId: r, projId: p }), true)}
+                  onExportCSV={exportCSV}
+                />
+              )}
 
-          {activeTab === 'by-tribe' && (
-            <TribeView resources={resources} projects={projects} allocations={allocations} scenarioAllocations={scenarioMode ? scenarioAllocations : null} onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)} />
-          )}
+              {activeTab === 'by-tribe' && (
+                <TribeView resources={resources} projects={projects} allocations={allocations} scenarioAllocations={scenarioMode ? scenarioAllocations : null} onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)} />
+              )}
 
-          {activeTab === 'by-project' && (
-            <ProjectView
-              resources={resources}
-              projects={projects}
-              allocations={allocations}
-              scenarioAllocations={scenarioAllocations}
-              onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
-            />
-          )}
+              {activeTab === 'by-project' && (
+                <ProjectView
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  scenarioAllocations={scenarioAllocations}
+                  onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
+                />
+              )}
 
-          {activeTab === 'by-resource' && (
-            <ResourceView
-              resources={resources}
-              projects={projects}
-              allocations={allocations}
-              scenarioAllocations={scenarioAllocations}
-              onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)}
-            />
-          )}
+              {activeTab === 'by-resource' && (
+                <ResourceView
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  scenarioAllocations={scenarioAllocations}
+                  onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)}
+                />
+              )}
 
-          {activeTab === 'by-team' && (
-            <TeamView
-              resources={resources}
-              projects={projects}
-              allocations={allocations}
-              teams={TEAMS}
-              scenarioAllocations={scenarioAllocations}
-            />
-          )}
+              {activeTab === 'by-team' && (
+                <TeamView
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  teams={TEAMS}
+                  scenarioAllocations={scenarioAllocations}
+                />
+              )}
 
-          {activeTab === 'what-if' && (
-            <WhatIfPanel
-              resources={resources}
-              projects={projects}
-              baseAllocations={allocations}
-              scenarioAllocations={scenarioAllocations}
-              scenarioMode={scenarioMode}
-              onEnter={enterScenario}
-              onApply={applyScenario}
-              onDiscard={discardScenario}
-              onUpdate={updateAllocation}
-              aiResponse={aiResponse}
-              isAiLoading={isAiLoading}
-              onAiAsk={handleAiAsk}
-            />
+              {activeTab === 'what-if' && (
+                <WhatIfPanel
+                  resources={resources}
+                  projects={projects}
+                  baseAllocations={allocations}
+                  scenarioAllocations={scenarioAllocations}
+                  scenarioMode={scenarioMode}
+                  onEnter={enterScenario}
+                  onApply={applyScenario}
+                  onDiscard={discardScenario}
+                  onUpdate={updateAllocation}
+                  aiResponse={aiResponse}
+                  isAiLoading={isAiLoading}
+                  onAiAsk={handleAiAsk}
+                />
+              )}
+            </>
           )}
         </div>
       </main>
@@ -893,6 +866,56 @@ const AppShell: React.FC = () => {
       {showSuperAdmin && (
         <SuperAdminPanel onClose={() => setShowSuperAdmin(false)} />
       )}
+
+      {/* ── Orbit Floating AI Assistant ── */}
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
+        {showAiChat && (
+          <div className="glass-panel" style={{ width: 340, height: 400, borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.5)' }}>
+            <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>🤖</span>
+                <span style={{ fontWeight: 600, color: '#1e293b' }}>Orbit AI</span>
+              </div>
+              <button onClick={() => setShowAiChat(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}>✕</button>
+            </div>
+            <div style={{ flex: 1, padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {!user && <div style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 20 }}>🔒 Log in to use Orbit AI.</div>}
+              {aiResponse ? (
+                <div style={{ background: 'rgba(255,255,255,0.8)', padding: 12, borderRadius: 12, fontSize: 13, border: '1px solid rgba(99,102,241,0.2)', color: '#334155' }}>
+                  {aiResponse}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 20 }}>
+                  Ask about team capacity, pipeline risks, or smart reallocations.
+                </div>
+              )}
+              {isAiLoading && <div style={{ fontSize: 13, color: '#6366f1', textAlign: 'center' }}>Thinking... 💫</div>}
+            </div>
+            <div style={{ padding: 12, background: 'rgba(255,255,255,0.6)', borderTop: '1px solid rgba(255,255,255,0.3)', display: 'flex', gap: 8 }}>
+              <input
+                className="ai-input"
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 99, border: '1px solid rgba(255,255,255,0.8)', background: 'rgba(255,255,255,0.5)', outline: 'none', fontSize: 13 }}
+                placeholder={user ? "Message Orbit..." : "Log in to chat..."}
+                disabled={!user || isAiLoading}
+                onKeyDown={e => {
+                  if (!user) { setModal({ type: 'login' }); return; }
+                  if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                    handleAiAsk((e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).value = '';
+                    setActiveTab('what-if');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setShowAiChat(!showAiChat)}
+          style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-primary), #6366f1)', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px var(--color-primary-glow)', transition: 'transform 0.2s', transform: showAiChat ? 'scale(0.9)' : 'scale(1)' }}
+        >
+          {showAiChat ? '✕' : '✨'}
+        </button>
+      </div>
     </div >
   );
 };
@@ -917,20 +940,38 @@ const Landing: React.FC = () => {
   }, [user, navigate]);
 
   return (
-    <div style={{ padding: 40, textAlign: 'center', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: 48, marginBottom: 16 }}>PMO Capacity Planner</h1>
-      <p style={{ fontSize: 18, color: '#64748b' }}>Enterprise resource management made intelligent.</p>
-      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 32 }}>
-        <button onClick={() => navigate('/create')} className="btn btn-primary" style={{ padding: '12px 24px', fontSize: 16 }}>Create Workspace</button>
-        <button onClick={() => setShowLogin(true)} className="btn btn-secondary" style={{ padding: '12px 24px', fontSize: 16 }}>Login</button>
+    <div style={{ position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+      {/* Background Animated Orbs */}
+      <div className="orb orb-primary"></div>
+      <div className="orb orb-secondary"></div>
+
+      {/* Main Hero Container */}
+      <div className="glass-panel" style={{ position: 'relative', zIndex: 10, padding: '60px 80px', borderRadius: '32px', textAlign: 'center', maxWidth: 800, width: '90%' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', color: 'white', fontSize: 32, marginBottom: 24, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
+          🪐
+        </div>
+        <h1 className="orbit-hero-title">Orbit Space</h1>
+        <p style={{ fontSize: 20, color: '#475569', fontWeight: 500, maxWidth: 500, margin: '0 auto 40px' }}>
+          Visual resource orchestration and team capacity management for modern PMOs.
+        </p>
+
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+          <button onClick={() => navigate('/create')} className="btn btn-primary" style={{ padding: '14px 32px', fontSize: 16, borderRadius: 99, fontWeight: 600, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
+            Start Free Trial
+          </button>
+          <button onClick={() => setShowLogin(true)} className="glass-card" style={{ padding: '14px 32px', fontSize: 16, borderRadius: 99, fontWeight: 600, color: '#334155', border: '1px solid rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+            Sign In
+          </button>
+        </div>
       </div>
 
+      {/* Login Modal */}
       {showLogin && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10, 15, 30, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="glass-panel" style={{ position: 'relative', width: '100%', maxWidth: 420, borderRadius: 24, overflow: 'hidden' }}>
             <button
               onClick={() => setShowLogin(false)}
-              style={{ position: 'absolute', top: -12, right: -12, width: 32, height: 32, borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', fontSize: 16, cursor: 'pointer', zIndex: 10 }}
+              style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.5)', border: 'none', color: '#475569', fontSize: 16, cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(8px)' }}
             >
               ✕
             </button>
@@ -947,6 +988,7 @@ const CreateOrg: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [orgName, setOrgName] = useState('');
+  const [website, setWebsite] = useState('');
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
@@ -954,13 +996,32 @@ const CreateOrg: React.FC = () => {
     e.preventDefault();
     if (!orgName.trim() || !user) return;
     setLoading(true);
+
+    let extractedTheme: { logo_url?: string, primary_color?: string } = {};
+
     try {
+      if (website.trim()) {
+        const themeRes = await fetch('/api/theme_extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: website })
+        });
+        if (themeRes.ok) {
+          extractedTheme = await themeRes.json();
+        }
+      }
+
       const token = localStorage.getItem('pcp_token');
       const res = await fetch('/api/org_create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orgName })
+        body: JSON.stringify({
+          orgName,
+          logoUrl: extractedTheme.logo_url,
+          primaryColor: extractedTheme.primary_color
+        })
       });
+
       const data = await res.json();
       if (res.ok && data.orgSlug) {
         navigate(`/o/${data.orgSlug}`);
@@ -1001,22 +1062,38 @@ const CreateOrg: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 40, maxWidth: 400, margin: '0 auto', textAlign: 'center', marginTop: '15vh' }}>
-      <h1 style={{ fontSize: 32, marginBottom: 8 }}>Create Workspace</h1>
-      <p style={{ color: '#64748b', marginBottom: 24, fontSize: 14 }}>Provide a name for your B2B organization. This permanently reserves a dedicated tenant space.</p>
+    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+      <form onSubmit={handleCreate} className="glass-panel" style={{ width: '100%', maxWidth: 460, padding: 40, borderRadius: 24, textAlign: 'left' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 16, background: 'linear-gradient(135deg, var(--color-primary, #6366f1), #4f46e5)', color: 'white', fontSize: 24, marginBottom: 20, boxShadow: '0 8px 16px rgba(99,102,241,0.3)' }}>
+          🪐
+        </div>
+        <h2 style={{ fontSize: 24, marginBottom: 8, fontWeight: 700, color: '#1e293b' }}>Create Enterprise Tenant</h2>
+        <p style={{ color: '#64748b', marginBottom: 24, fontSize: 13 }}>Provision your dedicated Orbit Space and customize your brand.</p>
 
-      <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="e.g. Acme Corporation"
-          value={orgName}
-          onChange={e => setOrgName(e.target.value)}
-          autoFocus
-          required
-        />
-        <button type="submit" className="btn btn-primary" disabled={loading || !orgName.trim()}>
-          {loading ? 'Provisioning...' : 'Create Tenant'}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#475569' }}>Organization Name *</label>
+          <input
+            type="text" required autoFocus
+            value={orgName} onChange={e => setOrgName(e.target.value)}
+            placeholder="e.g. Acme Corp"
+            style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #cbd5e1', outline: 'none', fontSize: 14 }}
+            disabled={loading}
+          />
+        </div>
+
+        <div style={{ marginBottom: 32 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#475569' }}>Company Website</label>
+          <input
+            type="text"
+            value={website} onChange={e => setWebsite(e.target.value)}
+            placeholder="e.g. apple.com (Extracts colors/logos)"
+            style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #cbd5e1', outline: 'none', fontSize: 14 }}
+            disabled={loading}
+          />
+        </div>
+
+        <button type="submit" className="btn btn-primary" disabled={loading || !orgName.trim()} style={{ width: '100%', padding: 14, fontSize: 16, borderRadius: 12, fontWeight: 600, boxShadow: '0 8px 16px var(--color-primary-glow, rgba(99,102,241,0.3))' }}>
+          {loading ? 'Provisioning Orbit Space...' : 'Initialize Workspace'}
         </button>
       </form>
     </div>
@@ -1031,6 +1108,7 @@ const App: React.FC = () => {
       <Route path="/create" element={<CreateOrg />} />
       <Route path="/o/:orgSlug" element={<AppShell />} />
       <Route path="/o/:orgSlug/settings" element={<AppShell />} />
+      <Route path="/o/:orgSlug/directory" element={<AppShell />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

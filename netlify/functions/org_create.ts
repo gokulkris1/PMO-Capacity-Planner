@@ -41,7 +41,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     try {
-        const { orgName } = JSON.parse(event.body || '{}');
+        const { orgName, logoUrl, primaryColor } = JSON.parse(event.body || '{}');
         if (!orgName || typeof orgName !== 'string') return fail('Organization name required');
 
         const sql = getDb();
@@ -49,8 +49,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // 1. Create Organization
         const [org] = await sql`
-            INSERT INTO organizations (id, name, slug) 
-            VALUES (gen_random_uuid(), ${orgName}, ${orgSlug}) 
+            INSERT INTO organizations (id, name, slug, logo_url, primary_color) 
+            VALUES (gen_random_uuid(), ${orgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null}) 
             RETURNING id, slug
         `;
 

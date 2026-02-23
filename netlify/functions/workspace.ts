@@ -44,19 +44,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
         try {
             // Get user's org and workspace, explicitly validating the slug
             let wsRows = await sql`
-                SELECT w.id, w.name as ws_name, o.name as org_name, o.slug 
+                SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
                 FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
                 JOIN organizations o ON o.id = w.org_id
                 WHERE u.id = ${userId} AND o.slug = ${orgSlug}
                 LIMIT 1
             `;
-            let wsId, wsName, orgName;
+            let wsId, wsName, orgName, logoUrl, primaryColor;
 
             if (wsRows.length > 0) {
                 wsId = wsRows[0].id;
                 wsName = wsRows[0].ws_name;
                 orgName = wsRows[0].org_name;
+                logoUrl = wsRows[0].logo_url;
+                primaryColor = wsRows[0].primary_color;
             } else {
                 return fail('Unauthorized for this organization', 403);
             }
@@ -82,7 +84,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 startDate: a.start_date, endDate: a.end_date
             }));
 
-            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc, orgName, workspaceName: wsName });
+            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc, orgName, workspaceName: wsName, logoUrl, primaryColor });
         } catch (e: any) {
             console.error(e);
             return fail('Failed to fetch workspace: ' + e.message, 500);
