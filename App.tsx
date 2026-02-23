@@ -160,20 +160,10 @@ const AppShell: React.FC = () => {
         .then(data => {
           const hasDbData = (data.resources && data.resources.length > 0) || (data.projects && data.projects.length > 0);
 
-          if (!hasDbData && localStorage.getItem('pcp_resources')) {
-            // Zero-loss migration: User just signed up, pushing their local guest session to Postgres
-            const rs = JSON.parse(localStorage.getItem('pcp_resources') || '[]');
-            const ps = JSON.parse(localStorage.getItem('pcp_projects') || '[]');
-            const al = JSON.parse(localStorage.getItem('pcp_allocations') || '[]');
-            setResources(rs);
-            setProjects(ps);
-            setAllocations(al);
-          } else {
-            // Routine login: pull latest from PostgreSQL
-            if (data.resources) setResources(data.resources);
-            if (data.projects) setProjects(data.projects);
-            if (data.allocations) setAllocations(data.allocations);
-          }
+          // Routine login: pull latest from PostgreSQL
+          if (data.resources) setResources(data.resources);
+          if (data.projects) setProjects(data.projects);
+          if (data.allocations) setAllocations(data.allocations);
 
           if (data.orgName) setOrgName(data.orgName);
           if (data.workspaceName) setWorkspaceName(data.workspaceName);

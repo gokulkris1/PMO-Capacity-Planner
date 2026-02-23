@@ -103,7 +103,7 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
     const lastY = (doc as any).lastAutoTable.finalY + 20;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("6-Month Resource Availability Forecast", 14, lastY);
+    doc.text("6-Month Resource Utilization Pipeline", 14, lastY);
 
     const dummyForecast = buildTimeForecast([], [], 6);
     const monthLabels = dummyForecast.map(f => f.label);
@@ -111,8 +111,7 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
     const forecastData = resources.map(res => {
         const resAllocs = allocations.filter(a => a.resourceId === res.id);
         const forecast = buildTimeForecast(resAllocs, projects, 6);
-        // Add an asterisk if they have 0 allocation for a month (Available)
-        return [res.name, ...forecast.map(f => f.percentage === 0 ? '0% (Avail)' : `${f.percentage}%`)];
+        return [res.name, ...forecast.map(f => f.percentage === 0 ? 'Available' : `${f.percentage}%`)];
     });
 
     autoTable(doc, {

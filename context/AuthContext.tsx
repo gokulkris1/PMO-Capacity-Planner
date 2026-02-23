@@ -49,6 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         localStorage.removeItem('pcp_token');
         localStorage.removeItem('pcp_user');
+        localStorage.removeItem('pcp_resources');
+        localStorage.removeItem('pcp_projects');
+        localStorage.removeItem('pcp_allocations');
     };
 
     return (

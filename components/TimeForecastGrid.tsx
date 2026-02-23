@@ -19,7 +19,7 @@ export const TimeForecastGrid: React.FC<Props> = ({ resource, projects, allocati
         <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                    Availability Forecast
+                    Utilization Pipeline
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                     <button
