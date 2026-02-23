@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { buildTimeForecast } from './timeGrid';
 
 export const exportExecSummaryPDF = (resources: Resource[], projects: Project[], allocations: Allocation[]) => {
     const doc = new jsPDF();
@@ -96,6 +97,31 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
         headStyles: { fillColor: [59, 130, 246] }, // Blue header
         theme: 'striped',
         styles: { fontSize: 9 },
+    });
+
+    // --- 6-Month Availability Forecast ---
+    const lastY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("6-Month Resource Availability Forecast", 14, lastY);
+
+    const dummyForecast = buildTimeForecast([], 6);
+    const monthLabels = dummyForecast.map(f => f.label);
+
+    const forecastData = resources.map(res => {
+        const resAllocs = allocations.filter(a => a.resourceId === res.id);
+        const forecast = buildTimeForecast(resAllocs, 6);
+        // Add an asterisk if they have 0 allocation for a month (Available)
+        return [res.name, ...forecast.map(f => f.percentage === 0 ? '0% (Avail)' : `${f.percentage}%`)];
+    });
+
+    autoTable(doc, {
+        startY: lastY + 6,
+        head: [['Resource', ...monthLabels]],
+        body: forecastData,
+        headStyles: { fillColor: [16, 185, 129] }, // Emerald header
+        theme: 'grid',
+        styles: { fontSize: 8 },
     });
 
     // --- Footer ---

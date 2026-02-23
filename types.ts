@@ -27,6 +27,7 @@ export type ViewTab =
   | 'by-project'
   | 'by-resource'
   | 'by-team'
+  | 'by-tribe'
   | 'what-if';
 
 export interface Team {

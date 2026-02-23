@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { TimeForecastGrid } from './TimeForecastGrid';
 
 interface Props {
     resources: Resource[];
@@ -164,7 +165,13 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                                     <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, a.percentage)}%`, background: project.color || '#6366f1', opacity: .7, borderRadius: 99 }} />
                                                 </div>
                                             </div>
-                                            <span className={statusBadgeClass(statusS)} style={{ alignSelf: 'flex-start' }}>{statusS}</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                                <span className={statusBadgeClass(statusS)}>{statusS}</span>
+                                            </div>
+
+                                            <div style={{ marginTop: 8 }}>
+                                                <TimeForecastGrid resource={res} allocations={liveAlloc.filter(x => x.resourceId === res.id)} />
+                                            </div>
                                         </div>
                                     );
                                 })}

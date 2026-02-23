@@ -161,8 +161,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onC
                     </div>
                     <div className="form-row">
                         <div className="form-group">
-                            <label className="form-label">Client / Owner</label>
-                            <input className="form-input" value={form.clientName || ''} onChange={e => set('clientName', e.target.value)} placeholder="Client name" />
+                            <label className="form-label">Tribe / Client / Owner</label>
+                            <input className="form-input" value={form.clientName || ''} onChange={e => set('clientName', e.target.value)} placeholder="e.g. Consumer Tribe" />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Budget ($)</label>

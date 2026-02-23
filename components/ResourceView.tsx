@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { TimeForecastGrid } from './TimeForecastGrid';
 
 interface Props {
     resources: Resource[];
@@ -114,6 +115,10 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                                 No active project allocations – resource is available.
                             </div>
                         )}
+
+                        <div style={{ padding: '0 24px 24px' }}>
+                            <TimeForecastGrid resource={res} allocations={liveAlloc.filter(a => a.resourceId === res.id)} />
+                        </div>
                     </div>
                 );
             })}

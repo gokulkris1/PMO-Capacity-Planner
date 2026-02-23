@@ -11,6 +11,7 @@ import { AllocationMatrix } from './components/AllocationMatrix';
 import { ProjectView } from './components/ProjectView';
 import { ResourceView } from './components/ResourceView';
 import { TeamView } from './components/TeamView';
+import { TribeView } from './components/TribeView';
 import { WhatIfPanel } from './components/WhatIfPanel';
 import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { AllocationModal } from './components/AllocationModal';
@@ -53,6 +54,7 @@ function utilColor(pct: number) {
 const NAV_ITEMS: { id: ViewTab; label: string; icon: string; section?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊', section: 'Overview' },
   { id: 'allocations', label: 'Allocation Matrix', icon: '⊞', section: 'Views' },
+  { id: 'by-tribe', label: 'By Tribe', icon: '⛺' },
   { id: 'by-project', label: 'By Project', icon: '🚀' },
   { id: 'by-resource', label: 'By Individual', icon: '👤' },
   { id: 'by-team', label: 'By Team', icon: '👥' },
@@ -362,6 +364,7 @@ const App: React.FC = () => {
   const PAGE_TITLES: Record<ViewTab, { title: string; subtitle: string }> = {
     'dashboard': { title: 'Dashboard', subtitle: 'Portfolio capacity overview' },
     'allocations': { title: 'Allocation Matrix', subtitle: 'Edit resource-to-project assignments' },
+    'by-tribe': { title: 'By Tribe', subtitle: 'Capacity utilization broken down by Tribe (Client/Owner)' },
     'by-project': { title: 'By Project', subtitle: 'Capacity committed per project' },
     'by-resource': { title: 'By Individual', subtitle: 'How each person is spread across projects' },
     'by-team': { title: 'By Team', subtitle: 'Team-level allocation heatmap' },
@@ -663,6 +666,10 @@ const App: React.FC = () => {
               onUpdateAdvanced={(r, p) => setActiveAllocationModal({ resId: r, projId: p })}
               onExportCSV={exportCSV}
             />
+          )}
+
+          {activeTab === 'by-tribe' && (
+            <TribeView resources={resources} projects={projects} allocations={allocations} scenarioAllocations={scenarioMode ? scenarioAllocations : null} />
           )}
 
           {activeTab === 'by-project' && (
