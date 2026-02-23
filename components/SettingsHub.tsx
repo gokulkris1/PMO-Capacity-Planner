@@ -50,6 +50,20 @@ export const SettingsHub: React.FC = () => {
         } catch (e: any) { alert('Error: ' + e.message); } finally { setSaving(null); }
     };
 
+    const deleteUser = async (userId: string) => {
+        if (!confirm('Are you sure you want to permanently remove this user?')) return;
+        setSaving(userId + 'delete');
+        try {
+            const res = await fetch(`/api/auth/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setUsers(prev => prev.filter(u => u.id !== userId));
+        } catch (e: any) { alert('Error: ' + e.message); } finally { setSaving(null); }
+    };
+
     const inviteUser = async () => {
         if (!inviteEmail.trim()) return;
         setInviting(true); setError(''); setInviteSuccess('');
@@ -82,9 +96,9 @@ export const SettingsHub: React.FC = () => {
                     <div className="glass-panel" style={{ padding: 24, borderRadius: 16, border: '1px solid #cbd5e1' }}>
                         <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 16 }}>Workspace Details</h3>
                         <p style={{ fontSize: 14, color: '#64748b' }}>Configure global workspace attributes. Orbit custom domains coming soon.</p>
-                        {currentUser?.role === 'SUPERUSER' && (
+                        {currentUser?.email === 'gokulkris1@gmail.com' && (
                             <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
-                                🦸 Superuser Access Active
+                                🦸 Global Superuser Active
                             </div>
                         )}
                     </div>
@@ -144,6 +158,9 @@ export const SettingsHub: React.FC = () => {
                                         <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Role</th>
                                         <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Plan Seats</th>
                                         <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Joined</th>
+                                        {currentUser?.role === 'SUPERUSER' && (
+                                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Actions</th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -155,7 +172,7 @@ export const SettingsHub: React.FC = () => {
                                             </td>
                                             <td style={{ padding: '16px' }}>
                                                 <select
-                                                    value={u.role} disabled={saving === u.id + 'role' || u.role === 'SUPERUSER'}
+                                                    value={u.role} disabled={saving === u.id + 'role' || u.id === currentUser?.id}
                                                     onChange={e => updateUser(u.id, 'role', e.target.value)}
                                                     style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: ROLE_COLORS[u.role] || '#475569', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
                                                 >
@@ -184,6 +201,17 @@ export const SettingsHub: React.FC = () => {
                                             <td style={{ padding: '16px', color: '#64748b' }}>
                                                 {new Date(u.created_at).toLocaleDateString()}
                                             </td>
+                                            {currentUser?.role === 'SUPERUSER' && (
+                                                <td style={{ padding: '16px' }}>
+                                                    <button
+                                                        disabled={u.id === currentUser?.id || saving === u.id + 'delete'}
+                                                        onClick={() => deleteUser(u.id)}
+                                                        style={{ padding: '6px 10px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: (u.id === currentUser?.id) ? 'not-allowed' : 'pointer', opacity: (u.id === currentUser?.id) ? 0.5 : 1 }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
