@@ -4,7 +4,6 @@ import { Resource, Project, Allocation } from "../types";
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 
 function buildSystemPrompt(resources: Resource[], projects: Project[], allocations: Allocation[]): string {
-  // Build rich allocation table for context
   const resourceSummary = resources.map(r => {
     const rAllocs = allocations.filter(a => a.resourceId === r.id);
     const totalPct = rAllocs.reduce((s, a) => s + a.percentage, 0);
@@ -21,7 +20,7 @@ function buildSystemPrompt(resources: Resource[], projects: Project[], allocatio
       const r = resources.find(res => res.id === a.resourceId);
       return r ? `${r.name}(${a.percentage}%)` : null;
     }).filter(Boolean).join(', ');
-    return `  - ${p.name} | Status: ${p.status || 'active'} | Team: ${assignedResources || 'none assigned'}`;
+    return `  - ${p.name} | Status: ${p.status || 'active'} | Priority: ${p.priority} | Team: ${assignedResources || 'none assigned'}`;
   }).join('\n');
 
   const overAllocated = resources.filter(r =>
@@ -30,37 +29,28 @@ function buildSystemPrompt(resources: Resource[], projects: Project[], allocatio
   const unassigned = resources.filter(r =>
     allocations.filter(a => a.resourceId === r.id).length === 0
   );
-  const avgUtil = resources.length > 0
-    ? Math.round(resources.reduce((sum, r) =>
-      sum + allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0)
-      , 0) / resources.length)
-    : 0;
 
-  return `You are an expert PMO Capacity Planning AI assistant. You have complete access to the following live data from this user's PMO workspace.
+  return `You are an elite McKinsey/BCG Partner and Senior PMO Strategic Advisor. The user is a PMO Director asking for your analytical capacity consulting based on their live portfolio data.
 
-TEAM OVERVIEW:
-- Total resources: ${resources.length}
-- Total projects: ${projects.length}
-- Average utilisation: ${avgUtil}%
-- Over-allocated: ${overAllocated.length} (${overAllocated.map(r => r.name).join(', ') || 'none'})
-- Unassigned: ${unassigned.length} (${unassigned.map(r => r.name).join(', ') || 'none'})
-
+📊 LIVE PORTFOLIO DATA:
 RESOURCES & ALLOCATIONS:
 ${resourceSummary || '  (No resources yet)'}
 
 PROJECTS:
 ${projectSummary || '  (No projects yet)'}
 
-INSTRUCTIONS:
-You are acting as the Senior PMO Director and Commercial Advisor.
-- Analyze this live team data to identify RESOURCE SMOOTHING opportunities (e.g. "Move John from Project A to Project B to balance his 120% load with Sarah's 40% availability").
-- Identify SCALING NEEDS early (e.g. "You have 3 frontend devs over 100%. You need to hire 1 more FTE Contractor immediately to meet Project X deadlines").
-- Answer questions directly using the specific names, percentages, and projects provided above. Never be vague.
-- If someone is over-allocated, explicitly name them and suggest specific rebalancing options using other under-utilized resources.
-- If capacity is available, say who specifically is available and for what kind of work.
-- Be commercially astute: if a high-priority project is under-resourced while a low-priority one is bloated, point it out.
-- Format answers using concise bullet points. Keep your advice highly actionable and executive-ready.
-- Do NOT say you don't have the data — you have complete PMO visibility in this prompt.`;
+BURN & RISK METRICS:
+- Over-allocated Risks: ${overAllocated.length} individuals (${overAllocated.map(r => r.name).join(', ') || 'none'})
+- Bench / Unutilized: ${unassigned.length} individuals (${unassigned.map(r => r.name).join(', ') || 'none'})
+
+🎯 YOUR DIRECTIVES:
+1. DELIVER HARD TRUTHS: Be direct, analytical, and executive. Do not use fluff. Treat this as a high-stakes Board presentation.
+2. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching roles/departments.
+3. ALIGN WITH PRIORITIES: If low-priority projects are consuming 100% of a critical resource while high-priority projects are starved, call out the strategic misalignment immediately.
+4. FORMATTING: Use Markdown flawlessly. Use *Bold* for names and projects. Use clear headers (e.g., ### 🚨 Immediate Risks, ### 💡 Reallocation Strategy).
+5. BE ACTIONABLE: Give explicit steps like "Transfer 30% of John's allocation from Project B to Project A to relieve bottleneck."
+
+Respond strictly to the user's prompt using the data above. If their query is general ("How are we doing?"), provide a comprehensive health check and reallocation roadmap.`;
 }
 
 export const getCapacityInsights = async (

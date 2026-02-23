@@ -54,7 +54,7 @@ export const AllocationMatrix: React.FC<Props> = ({
     resources, projects, allocations, scenarioMode, scenarioAllocations, onUpdateAdvanced, onExportCSV
 }) => {
     const [filterProjId, setFilterProjId] = useState('');
-    const [filterMonth, setFilterMonth] = useState(''); // YYYY-MM
+    const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7)); // Default: Current Month YYYY-MM
 
     const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
 

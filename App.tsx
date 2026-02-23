@@ -28,7 +28,17 @@ const APP_VERSION = '1.0.0';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function getUtil(allocs: Allocation[], resId: string) {
-  return allocs.filter(a => a.resourceId === resId).reduce((s, a) => s + a.percentage, 0);
+  const now = new Date();
+  return allocs
+    .filter(a => {
+      if (a.resourceId !== resId) return false;
+      if (!a.startDate && !a.endDate) return true;
+      const start = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
+      // Set end date boundary to 23:59:59 to include the whole day
+      const end = a.endDate ? new Date(a.endDate + 'T23:59:59') : new Date('2099-12-31T23:59:59');
+      return start <= now && end >= now;
+    })
+    .reduce((s, a) => s + a.percentage, 0);
 }
 
 function utilColor(pct: number) {
@@ -137,9 +147,23 @@ const App: React.FC = () => {
       })
         .then(res => res.json())
         .then(data => {
-          if (data.resources) setResources(data.resources);
-          if (data.projects) setProjects(data.projects);
-          if (data.allocations) setAllocations(data.allocations);
+          const hasDbData = (data.resources && data.resources.length > 0) || (data.projects && data.projects.length > 0);
+
+          if (!hasDbData && localStorage.getItem('pcp_resources')) {
+            // Zero-loss migration: User just signed up, pushing their local guest session to Postgres
+            const rs = JSON.parse(localStorage.getItem('pcp_resources') || '[]');
+            const ps = JSON.parse(localStorage.getItem('pcp_projects') || '[]');
+            const al = JSON.parse(localStorage.getItem('pcp_allocations') || '[]');
+            setResources(rs);
+            setProjects(ps);
+            setAllocations(al);
+          } else {
+            // Routine login: pull latest from PostgreSQL
+            if (data.resources) setResources(data.resources);
+            if (data.projects) setProjects(data.projects);
+            if (data.allocations) setAllocations(data.allocations);
+          }
+
           if (data.orgName) setOrgName(data.orgName);
           if (data.workspaceName) setWorkspaceName(data.workspaceName);
           initialLoadDone.current = true;
@@ -501,8 +525,8 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Admin Panel - PMO role */}
-          {user && ['PMO', 'SUPERUSER', 'ADMIN'].includes(user.role?.toUpperCase()) && (
+          {/* Admin Panel - PMO role only (Superusers use the dedicated console above) */}
+          {user && ['PMO', 'ADMIN'].includes(user.role?.toUpperCase()) && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <button className="nav-item" onClick={() => setShowAdmin(true)}>
                 <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#fbbf24', fontWeight: 600 }}>Admin Panel</span>
