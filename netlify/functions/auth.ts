@@ -128,7 +128,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const isSuperAdmin = SUPER_ADMIN_EMAIL && email.toLowerCase() === SUPER_ADMIN_EMAIL;
             const isFirst = count[0].n === 0;
             const role = isSuperAdmin ? 'SUPERUSER' : isFirst ? 'PMO' : 'VIEWER';
-            const plan = isSuperAdmin || isFirst ? 'MAX' : 'FREE';
+            const plan = isSuperAdmin ? 'MAX' : 'BASIC';
 
             const [user] = await sql`
         INSERT INTO users (email, password_hash, name, role, plan, org_id)
@@ -173,7 +173,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
 
             const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-            return ok({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan || 'FREE' } });
+            return ok({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan || 'BASIC' } });
         }
 
         // ── PASSWORD RESET ───────────────────────────────────────
@@ -256,7 +256,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // Give them a random password, they can reset it later (or login via future magic link)
             const randomPassword = Math.random().toString(36).slice(-10);
             const hash = await bcrypt.hash(randomPassword, 10);
-            const userPlan = caller.plan || 'FREE';
+            const userPlan = caller.plan || 'BASIC';
 
             const [newUser] = await sql`
                 INSERT INTO users (email, password_hash, name, role, plan, org_id)
@@ -272,18 +272,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const [stats] = await sql`
         SELECT
           COUNT(*)::int                                          AS total_users,
-          COUNT(*) FILTER (WHERE plan = 'FREE')::int           AS free_users,
-          COUNT(*) FILTER (WHERE plan = 'BASIC')::int          AS basic_users,
-          COUNT(*) FILTER (WHERE plan = 'PRO')::int            AS pro_users,
-          COUNT(*) FILTER (WHERE plan = 'MAX')::int            AS max_users,
-          COUNT(*) FILTER (WHERE role = 'SUPERUSER')::int      AS superusers,
-          COUNT(*) FILTER (WHERE role = 'PMO')::int            AS pmo_count,
+          COUNT(*) FILTER (WHERE plan = 'BASIC')::int            AS basic_users,
+          COUNT(*) FILTER (WHERE plan = 'PRO')::int              AS pro_users,
+          COUNT(*) FILTER (WHERE plan = 'MAX')::int              AS max_users,
+          COUNT(*) FILTER (WHERE role = 'SUPERUSER')::int        AS superusers,
+          COUNT(*) FILTER (WHERE role = 'PMO')::int              AS pmo_count,
           COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS new_this_week
         FROM users
       `;
             const mrr =
                 (stats.basic_users * 29) +
-                (stats.pro_users * 79) +
+                (stats.pro_users * 49) +
                 (stats.max_users * 199);
             return ok({ stats: { ...stats, mrr_eur: mrr } });
         }
@@ -294,7 +293,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const userId = subpath.split('/')[2];
             const { plan, role, name } = body;
 
-            const validPlans = ['FREE', 'BASIC', 'PRO', 'MAX'];
+            const validPlans = ['BASIC', 'PRO', 'MAX'];
             const validRoles = isSuperuser
                 ? ['SUPERUSER', 'PMO', 'PM', 'VIEWER']
                 : ['PMO', 'PM', 'VIEWER'];  // PMO cannot assign SUPERUSER role
@@ -318,7 +317,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // ── SUPERUSER: create a user directly ────────────────────
         if (subpath === '/admin/users' && event.httpMethod === 'POST') {
             if (!isSuperuser) return fail('Forbidden', 403);
-            const { email, password, name, role = 'VIEWER', plan = 'FREE' } = body;
+            const { email, password, name, role = 'VIEWER', plan = 'BASIC' } = body;
             if (!email || !password) return fail('Email and password required');
 
             const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;

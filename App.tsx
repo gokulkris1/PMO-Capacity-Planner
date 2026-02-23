@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import './index.css';
 
 import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus } from './types';
-import { MOCK_RESOURCES, MOCK_PROJECTS, MOCK_ALLOCATIONS, TEAMS } from './constants';
+import { MOCK_RESOURCES, MOCK_PROJECTS, MOCK_ALLOCATIONS, TEAMS, PLAN_LIMITS } from './constants';
 import { getCapacityInsights } from './services/geminiService';
 
 import { Dashboard } from './components/Dashboard';
@@ -487,8 +487,13 @@ const AppShell: React.FC = () => {
                 <button
                   className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
                   onClick={() => {
-                    if (item.id === 'what-if' && !scenarioMode) {
-                      enterScenario();
+                    const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                    if (item.id === 'what-if') {
+                      if (!limits.features.whatIfMode) {
+                        alert(`What-If Mode requires the PRO plan or higher. You are currently on ${user?.plan || 'BASIC'}.`);
+                        return;
+                      }
+                      if (!scenarioMode) enterScenario();
                     } else {
                       setActiveTab(item.id);
                       if (location.pathname.endsWith('/settings') || location.pathname.endsWith('/directory')) {
@@ -509,13 +514,12 @@ const AppShell: React.FC = () => {
 
           {/* Quick Add / Pricing */}
           <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-            {/* Pricing only visible in public SaaS mode */}
             {APP_MODE === 'public' && (
               <button
                 className="nav-item"
                 onClick={() => setShowPricing(true)}
                 style={{
-                  background: user?.plan && user.plan !== 'FREE'
+                  background: user?.plan && user.plan !== 'BASIC'
                     ? 'rgba(16,185,129,0.1)'
                     : 'rgba(99,102,241,0.1)',
                   borderRadius: 10, marginBottom: 6,
@@ -524,7 +528,7 @@ const AppShell: React.FC = () => {
               >
                 <span style={{ fontSize: 14 }}>💎</span>
                 <span style={{ fontWeight: 600, color: '#a5b4fc' }}>
-                  {user?.plan && user.plan !== 'FREE' ? `${user.plan} Plan` : 'View Pricing'}
+                  {user?.plan && user.plan !== 'BASIC' ? `${user.plan} Plan` : 'View Pricing'}
                 </span>
               </button>
             )}
@@ -552,10 +556,32 @@ const AppShell: React.FC = () => {
             )}
 
             <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
-            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
+            <button
+              className="nav-item"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (resources.length >= limits.maxResources) {
+                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxResources} resources. Please upgrade to add more.`);
+                  return;
+                }
+                authGate(() => setModal({ type: 'addResource' }));
+              }}
+              style={{ opacity: resources.length >= PLAN_LIMITS[user?.plan || 'BASIC'].maxResources ? 0.5 : 1 }}
+            >
               <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
             </button>
-            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addProject' }))}>
+            <button
+              className="nav-item"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (projects.length >= limits.maxProjects) {
+                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
+                  return;
+                }
+                authGate(() => setModal({ type: 'addProject' }));
+              }}
+              style={{ opacity: projects.length >= PLAN_LIMITS[user?.plan || 'BASIC'].maxProjects ? 0.5 : 1 }}
+            >
               <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
             </button>
           </div>
@@ -566,10 +592,32 @@ const AppShell: React.FC = () => {
             <button className="nav-item" onClick={() => exportExecSummaryPDF(resources, projects, liveAlloc)}>
               <span style={{ fontSize: 15 }}>📄</span><span>Exec Summary (PDF)</span>
             </button>
-            <button className="nav-item" onClick={exportCSV}>
+            <button
+              className="nav-item"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (!limits.features.importExport) {
+                  alert(`Export CSV requires the PRO plan. You are currently on ${user?.plan || 'BASIC'}.`);
+                  return;
+                }
+                exportCSV();
+              }}
+              style={{ opacity: !PLAN_LIMITS[user?.plan || 'BASIC'].features.importExport ? 0.5 : 1 }}
+            >
               <span style={{ fontSize: 15 }}>⬇️</span><span>Export CSV</span>
             </button>
-            <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'importCSV' }))}>
+            <button
+              className="nav-item"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (!limits.features.importExport) {
+                  alert(`Import CSV requires the PRO plan. You are currently on ${user?.plan || 'BASIC'}.`);
+                  return;
+                }
+                authGate(() => setModal({ type: 'importCSV' }));
+              }}
+              style={{ opacity: !PLAN_LIMITS[user?.plan || 'BASIC'].features.importExport ? 0.5 : 1 }}
+            >
               <span style={{ fontSize: 15 }}>⬆️</span><span>Import CSV {!user && '🔒'}</span>
             </button>
           </div>
@@ -663,10 +711,30 @@ const AppShell: React.FC = () => {
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
             )}
-            <button className="btn btn-primary" onClick={() => authGate(() => setModal({ type: 'addResource' }), true)}>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (resources.length >= limits.maxResources) {
+                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxResources} resources. Please upgrade to add more.`);
+                  return;
+                }
+                authGate(() => setModal({ type: 'addResource' }), true)
+              }}
+            >
               + Resource {!user && '🔒'}
             </button>
-            <button className="btn btn-secondary" onClick={() => authGate(() => setModal({ type: 'addProject' }), true)}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                if (projects.length >= limits.maxProjects) {
+                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
+                  return;
+                }
+                authGate(() => setModal({ type: 'addProject' }), true)
+              }}
+            >
               + Project {!user && '🔒'}
             </button>
           </div>

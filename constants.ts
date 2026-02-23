@@ -71,3 +71,42 @@ export const MOCK_ALLOCATIONS: Allocation[] = [
   { id: 'a21', resourceId: 'r10', projectId: 'p4', percentage: 40 },
   { id: 'a22', resourceId: 'r10', projectId: 'p5', percentage: 40 },
 ];
+
+export const PLAN_LIMITS: Record<string, any> = {
+  BASIC: {
+    maxAdmins: 1,
+    maxResources: 5,
+    maxProjects: 5,
+    maxViewers: 0,
+    features: {
+      aiTickets: 0,
+      whatIfMode: false,
+      importExport: false,
+      prioritySupport: false
+    }
+  },
+  PRO: {
+    maxAdmins: 2,
+    maxResources: 10,
+    maxProjects: 10,
+    maxViewers: 10,
+    features: {
+      aiTickets: 50,
+      whatIfMode: true,
+      importExport: true,
+      prioritySupport: false
+    }
+  },
+  MAX: {
+    maxAdmins: Infinity,
+    maxResources: Infinity,
+    maxProjects: Infinity,
+    maxViewers: Infinity,
+    features: {
+      aiTickets: Infinity,
+      whatIfMode: true,
+      importExport: true,
+      prioritySupport: true
+    }
+  }
+};

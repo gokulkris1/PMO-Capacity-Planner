@@ -17,45 +17,21 @@ interface Plan {
 
 const PLANS: Plan[] = [
     {
-        name: 'Free',
-        emoji: '👀',
-        price: 0,
-        period: '/forever',
-        tagline: 'Try it risk-free, no card needed',
-        color: '#64748b',
-        gradient: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
-        features: [
-            { text: '1 demo project (read-only)', included: true },
-            { text: 'Full dashboard & visualisations', included: true },
-            { text: 'Resource utilisation heatmap', included: true },
-            { text: 'Risk scanner', included: true },
-            { text: 'Export CSV', included: true },
-            { text: 'Create / edit projects', included: false },
-            { text: 'AI Advisor', included: false },
-            { text: 'What-If scenarios', included: false },
-            { text: 'CSV import', included: false },
-        ],
-        cta: 'Currently Active',
-        ctaStyle: { background: '#1e293b', border: '1.5px solid #334155', color: '#64748b', cursor: 'default' },
-    },
-    {
         name: 'Basic',
         emoji: '🚀',
         price: 29,
         period: '/month',
-        tagline: 'Perfect for a single project team',
+        tagline: '1 Month Free. Perfect for a single project team.',
         color: '#6366f1',
         gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
         features: [
-            { text: '1 active project', included: true },
+            { text: 'Up to 5 active projects', included: true },
             { text: 'Up to 5 resources', included: true },
-            { text: '1 team admin seat', included: true },
-            { text: '50 AI Advisor questions / month', included: true },
-            { text: 'CSV import & export', included: true },
-            { text: 'What-If scenarios', included: true },
-            { text: 'Email support', included: true },
-            { text: 'Multiple projects', included: false },
-            { text: 'Team collaboration seats', included: false },
+            { text: '1 admin seat', included: true },
+            { text: 'AI Advisor', included: false },
+            { text: 'What-If scenarios', included: false },
+            { text: 'CSV import & export', included: false },
+            { text: 'Priority support', included: false },
         ],
         cta: 'Start Basic',
         ctaStyle: { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', boxShadow: '0 4px 20px rgba(99,102,241,0.4)' },
@@ -63,7 +39,7 @@ const PLANS: Plan[] = [
     {
         name: 'Pro',
         emoji: '⚡',
-        price: 79,
+        price: 49,
         period: '/month',
         tagline: 'For growing teams managing a portfolio',
         color: '#f59e0b',
@@ -71,14 +47,12 @@ const PLANS: Plan[] = [
         badge: 'Most Popular',
         features: [
             { text: 'Up to 10 active projects', included: true },
-            { text: 'Up to 50 resources', included: true },
-            { text: '3 admin seats + unlimited viewers', included: true },
-            { text: '500 AI Advisor questions / month', included: true },
+            { text: 'Up to 10 resources', included: true },
+            { text: '2 admin seats + 10 viewers', included: true },
+            { text: '50 AI questions / month', included: true },
             { text: 'CSV import & export', included: true },
-            { text: 'What-If scenarios (unlimited)', included: true },
-            { text: 'Priority email support', included: true },
-            { text: 'Custom team structures', included: true },
-            { text: 'API access', included: false },
+            { text: 'What-If scenarios', included: true },
+            { text: 'Priority support', included: true },
         ],
         cta: 'Start Pro',
         ctaStyle: { background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#fff', boxShadow: '0 4px 20px rgba(245,158,11,0.4)' },
@@ -94,15 +68,13 @@ const PLANS: Plan[] = [
         features: [
             { text: 'Unlimited projects', included: true },
             { text: 'Unlimited resources', included: true },
-            { text: 'Unlimited admin & PM seats', included: true },
-            { text: '2,000 AI Advisor questions / month', included: true },
+            { text: 'Unlimited admin & viewer seats', included: true },
+            { text: 'Unlimited AI questions', included: true },
             { text: 'API access & webhooks', included: true },
-            { text: 'Custom onboarding session', included: true },
             { text: 'SLA & dedicated support', included: true },
             { text: 'SSO / SAML integration', included: true },
-            { text: 'White-label option', included: true },
         ],
-        cta: 'Contact Sales',
+        cta: 'Start Max',
         ctaStyle: { background: 'linear-gradient(135deg, #10b981, #0891b2)', color: '#fff', boxShadow: '0 4px 20px rgba(16,185,129,0.4)' },
     },
 ];
@@ -112,7 +84,7 @@ interface Props {
     currentPlan?: string;
 }
 
-export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) => {
+export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Basic' }) => {
     const { orgSlug } = useParams<{ orgSlug: string }>();
     const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
 
@@ -127,7 +99,7 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
     const [isCheckingOut, setIsCheckingOut] = useState<string | null>(null);
 
     const handleCheckout = async (plan: Plan) => {
-        if (plan.name === currentPlan || plan.name === 'Free') return;
+        if (plan.name.toUpperCase() === currentPlan.toUpperCase()) return;
 
         setIsCheckingOut(plan.name);
         try {
@@ -282,7 +254,7 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
                                 }}>
                                 {isCheckingOut === plan.name ? (
                                     <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                                ) : plan.name === currentPlan ? (
+                                ) : plan.name.toUpperCase() === currentPlan.toUpperCase() ? (
                                     '✓ Current Plan'
                                 ) : plan.cta}
                             </button>
@@ -320,7 +292,6 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
                     display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap',
                 }}>
                     {[
-                        { icon: '🔒', text: 'No credit card for Free' },
                         { icon: '↩️', text: 'Cancel anytime' },
                         { icon: '🇪🇺', text: 'GDPR compliant' },
                         { icon: '🛡️', text: 'Data encrypted in transit' },
