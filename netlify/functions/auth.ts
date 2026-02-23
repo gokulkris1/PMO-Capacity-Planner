@@ -130,20 +130,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const role = isSuperAdmin ? 'SUPERUSER' : isFirst ? 'PMO' : 'VIEWER';
             const plan = isSuperAdmin || isFirst ? 'MAX' : 'FREE';
 
-            const [org] = await sql`
-        INSERT INTO organizations (id, name) 
-        VALUES (gen_random_uuid(), ${name ? name + "'s Org" : email.split('@')[0] + "'s Org"}) 
-        RETURNING id
-      `;
-
-            await sql`
-        INSERT INTO workspaces (id, org_id, name) 
-        VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace')
-      `;
-
             const [user] = await sql`
         INSERT INTO users (email, password_hash, name, role, plan, org_id)
-        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, ${role}, ${plan}, ${org.id})
+        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, 'UNASSIGNED', ${plan}, NULL)
         RETURNING id, email, name, role, plan
       `;
 

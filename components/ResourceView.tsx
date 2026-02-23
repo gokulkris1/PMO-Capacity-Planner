@@ -125,7 +125,7 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                         )}
 
                         <div style={{ padding: '0 24px 24px' }}>
-                            <TimeForecastGrid resource={res} allocations={liveAlloc.filter(a => a.resourceId === res.id)} />
+                            <TimeForecastGrid resource={res} projects={projects} allocations={liveAlloc.filter(a => a.resourceId === res.id)} />
                         </div>
                     </div>
                 );

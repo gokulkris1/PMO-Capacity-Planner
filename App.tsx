@@ -424,7 +424,16 @@ const AppShell: React.FC = () => {
                   <div style={{ fontSize: 10, color: '#64748b' }}>{(user.plan || 'FREE')} plan</div>
                 </div>
               </div>
-              <button onClick={logout} title="Log out" style={{ background: 'none', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>Out</button>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                  window.location.href = '/'; // Hard redirect to clear all router artifacts
+                }}
+                title="Log out"
+                style={{ background: 'none', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                Out
+              </button>
             </div>
           ) : (
             <button

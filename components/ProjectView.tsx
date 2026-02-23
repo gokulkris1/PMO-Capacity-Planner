@@ -178,7 +178,7 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                             </div>
 
                                             <div style={{ marginTop: 8 }}>
-                                                <TimeForecastGrid resource={res} allocations={liveAlloc.filter(x => x.resourceId === res.id)} />
+                                                <TimeForecastGrid resource={res} projects={projects} allocations={liveAlloc.filter(x => x.resourceId === res.id)} />
                                             </div>
                                         </div>
                                     );

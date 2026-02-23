@@ -1,4 +1,4 @@
-import { Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Allocation, Project, getAllocationStatus, AllocationStatus } from '../types';
 
 export interface MonthForecast {
     label: string;      // e.g. "Jan", "Feb", "Mar 2026"
@@ -12,14 +12,17 @@ export interface MonthForecast {
  * Returns an array of the next `monthsCount` months, starting from the current month + monthOffset.
  * Computes the total utilization for the given allocations in each month.
  */
-export function buildTimeForecast(allocations: Allocation[], monthsCount: number = 6, monthOffset: number = 0): MonthForecast[] {
+export function buildTimeForecast(allocations: Allocation[], projects: Project[], monthsCount: number = 6, monthOffset: number = 0): MonthForecast[] {
     const forecast: MonthForecast[] = [];
     const now = new Date();
 
     // Normalize allocation dates
     const normalizedAllocs = allocations.map(a => {
-        const start = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
-        const end = a.endDate ? new Date(a.endDate + 'T23:59:59') : new Date('2099-12-31T23:59:59');
+        const proj = projects.find(p => p.id === a.projectId);
+        const effStart = a.startDate || proj?.startDate;
+        const effEnd = a.endDate || proj?.endDate;
+        const start = effStart ? new Date(effStart) : new Date('2000-01-01');
+        const end = effEnd ? new Date(effEnd + 'T23:59:59') : new Date('2099-12-31T23:59:59');
         return { ...a, start, end };
     });
 

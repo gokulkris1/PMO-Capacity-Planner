@@ -1,18 +1,19 @@
 import React from 'react';
-import { Resource, Allocation, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, AllocationStatus } from '../types';
 import { buildTimeForecast, forecastColor } from '../utils/timeGrid';
 
 interface Props {
     resource: Resource;
+    projects: Project[];
     allocations: Allocation[]; // These should be ONLY the allocations for this specific resource
     monthsCount?: number;
 }
 
-export const TimeForecastGrid: React.FC<Props> = ({ resource, allocations, monthsCount = 6 }) => {
+export const TimeForecastGrid: React.FC<Props> = ({ resource, projects, allocations, monthsCount = 6 }) => {
     const [monthOffset, setMonthOffset] = React.useState(0);
 
     // Generate the next N months of utilization for this resource
-    const forecast = buildTimeForecast(allocations, monthsCount, monthOffset);
+    const forecast = buildTimeForecast(allocations, projects, monthsCount, monthOffset);
 
     return (
         <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
