@@ -132,7 +132,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             const [user] = await sql`
         INSERT INTO users (email, password_hash, name, role, plan, org_id)
-        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, 'UNASSIGNED', ${plan}, NULL)
+        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, 'VIEWER', ${plan}, NULL)
         RETURNING id, email, name, role, plan
       `;
 

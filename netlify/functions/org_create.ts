@@ -62,7 +62,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // 3. Bind User to Organization
         await sql`
-            UPDATE users SET org_id = ${org.id}, role = 'superadmin' WHERE id = ${userId}
+            UPDATE users SET org_id = ${org.id}, role = 'SUPERUSER' WHERE id = ${userId}
         `;
 
         // 4. Retrieve Email
