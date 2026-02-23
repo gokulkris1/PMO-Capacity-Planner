@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
     team_id TEXT REFERENCES teams(id),
     capacity INTEGER NOT NULL,
     location TEXT,
@@ -22,6 +25,9 @@ CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     status TEXT NOT NULL,
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
     priority INTEGER,
     start_date DATE,
     end_date DATE,
@@ -32,6 +38,9 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Allocations (many‑to‑many between resources and projects)
 CREATE TABLE IF NOT EXISTS allocations (
     id SERIAL PRIMARY KEY,
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
     resource_id TEXT REFERENCES resources(id) ON DELETE CASCADE,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     allocation_percent INTEGER NOT NULL CHECK (allocation_percent >= 0 AND allocation_percent <= 100)

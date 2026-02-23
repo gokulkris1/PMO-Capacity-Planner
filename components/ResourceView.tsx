@@ -8,6 +8,7 @@ interface Props {
     projects: Project[];
     allocations: Allocation[];
     scenarioAllocations?: Allocation[] | null;
+    onEditResource?: (res: Resource) => void;
 }
 
 function utilColor(pct: number) {
@@ -18,7 +19,7 @@ function utilColor(pct: number) {
     return '#94a3b8';
 }
 
-export const ResourceView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations }) => {
+export const ResourceView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations, onEditResource }) => {
     const [search, setSearch] = useState('');
     const liveAlloc = scenarioAllocations ?? allocations;
 
@@ -62,7 +63,14 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                                 {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </div>
                             <div>
-                                <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 2 }}>{res.name}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                    <span style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>{res.name}</span>
+                                    {onEditResource && (
+                                        <button onClick={() => onEditResource(res)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, transition: 'opacity 0.2s', padding: 4 }} title="Edit Resource" onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                                            ✏️
+                                        </button>
+                                    )}
+                                </div>
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: 12, color: '#64748b' }}>{res.role}</span>
                                     <span style={{ color: '#cbd5e1' }}>·</span>

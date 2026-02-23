@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 interface Plan {
     name: string;
@@ -112,6 +113,7 @@ interface Props {
 }
 
 export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) => {
+    const { orgSlug } = useParams<{ orgSlug: string }>();
     const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
 
     const annualDiscount = 0.2; // 20% off annual
@@ -141,7 +143,7 @@ export const PricingPage: React.FC<Props> = ({ onClose, currentPlan = 'Free' }) 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ planTier: plan.name.toUpperCase() })
+                body: JSON.stringify({ plan: plan.name.toUpperCase(), orgSlug })
             });
 
             const data = await res.json();

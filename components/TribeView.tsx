@@ -7,6 +7,7 @@ interface Props {
     projects: Project[];
     allocations: Allocation[];
     scenarioAllocations?: Allocation[] | null;
+    onEditResource?: (res: Resource) => void;
 }
 
 function utilColor(pct: number) {
@@ -24,7 +25,7 @@ function statusBadgeClass(s: AllocationStatus) {
     return 'badge badge-under';
 }
 
-export const TribeView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations }) => {
+export const TribeView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations, onEditResource }) => {
     const liveAlloc = scenarioAllocations ?? allocations;
 
     // Extract unique Tribes (clientName) from projects
@@ -162,8 +163,13 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                                                     {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                                 </div>
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
-                                                        {res.name}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>{res.name}</span>
+                                                        {onEditResource && (
+                                                            <button onClick={() => onEditResource(res)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, transition: 'opacity 0.2s', padding: 2 }} title="Edit Resource" onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                                                                ✏️
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role} · {res.department}</div>
                                                 </div>

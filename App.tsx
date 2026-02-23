@@ -21,11 +21,13 @@ import { useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
+import { Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import { exportExecSummaryPDF } from './utils/pdfExport';
 import { AdminPanel } from './components/AdminPanel';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
 
 const APP_VERSION = '1.0.0';
+const APP_MODE = import.meta.env.VITE_APP_MODE || 'public';
 
 /* ── helpers ──────────────────────────────────────────────── */
 function getUtil(allocs: Allocation[], resId: string) {
@@ -74,7 +76,9 @@ type ModalState =
   | { type: 'login' };
 
 /* ─────────────────────────────────────────────────────────── */
-const App: React.FC = () => {
+const AppShell: React.FC = () => {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
+  const navigate = useNavigate();
   const { user, logout, isLoading } = useAuth();
   // Guests see demo data; logged-in users get their own scoped workspace
   const storageKey = useCallback((key: string) =>
@@ -108,10 +112,14 @@ const App: React.FC = () => {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  /* Auth-gate: queue an action and show login if not authenticated */
+  /* Auth-gate: queue an action and show login if not authenticated or prevent if unauthorized */
   const pendingActionRef = React.useRef<(() => void) | null>(null);
-  const authGate = useCallback((action: () => void) => {
+  const authGate = useCallback((action: () => void, requireWrite = false) => {
     if (user) {
+      if (requireWrite && user.role === 'VIEWER') {
+        alert('Access Denied: You have Viewer permissions for this workspace.');
+        return;
+      }
       action();
     } else {
       pendingActionRef.current = action;
@@ -144,7 +152,8 @@ const App: React.FC = () => {
       setAllocations([]);
 
       const token = localStorage.getItem('pcp_token');
-      fetch('/api/workspace', {
+      // Append orgSlug context to the workspace fetch
+      fetch(`/api/workspace?orgSlug=${orgSlug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -466,23 +475,47 @@ const App: React.FC = () => {
 
           {/* Quick Add / Pricing */}
           <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-            {/* Pricing always visible */}
-            <button
-              className="nav-item"
-              onClick={() => setShowPricing(true)}
-              style={{
-                background: user?.plan && user.plan !== 'FREE'
-                  ? 'rgba(16,185,129,0.1)'
-                  : 'rgba(99,102,241,0.1)',
-                borderRadius: 10, marginBottom: 6,
-                border: '1px solid rgba(99,102,241,0.2)',
-              }}
-            >
-              <span style={{ fontSize: 14 }}>💎</span>
-              <span style={{ fontWeight: 600, color: '#a5b4fc' }}>
-                {user?.plan && user.plan !== 'FREE' ? `${user.plan} Plan` : 'View Pricing'}
-              </span>
-            </button>
+            {/* Pricing only visible in public SaaS mode */}
+            {APP_MODE === 'public' && (
+              <button
+                className="nav-item"
+                onClick={() => setShowPricing(true)}
+                style={{
+                  background: user?.plan && user.plan !== 'FREE'
+                    ? 'rgba(16,185,129,0.1)'
+                    : 'rgba(99,102,241,0.1)',
+                  borderRadius: 10, marginBottom: 6,
+                  border: '1px solid rgba(99,102,241,0.2)',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>💎</span>
+                <span style={{ fontWeight: 600, color: '#a5b4fc' }}>
+                  {user?.plan && user.plan !== 'FREE' ? `${user.plan} Plan` : 'View Pricing'}
+                </span>
+              </button>
+            )}
+
+            {/* Install Sample Data for Internal modes */}
+            {APP_MODE === 'internal' && resources.length === 0 && projects.length === 0 && (
+              <button
+                className="nav-item"
+                onClick={() => {
+                  if (confirm('Install sample data? This will provision your workspace with demo data.')) {
+                    setResources(MOCK_RESOURCES);
+                    setProjects(MOCK_PROJECTS);
+                    setAllocations(MOCK_ALLOCATIONS);
+                  }
+                }}
+                style={{
+                  background: 'rgba(16,185,129,0.1)',
+                  borderRadius: 10, marginBottom: 6,
+                  border: '1px solid rgba(16,185,129,0.2)',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>💾</span>
+                <span style={{ fontWeight: 600, color: '#34d399' }}>Install Sample Data</span>
+              </button>
+            )}
 
             <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
             <button className="nav-item" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
@@ -565,8 +598,30 @@ const App: React.FC = () => {
           </div>
         </nav>
 
-        {/* Sidebar Footer: AI widget + version */}
+        {/* Sidebar Footer: Branding, Support, AI widget + version */}
         <div className="sidebar-footer">
+          <div className="branding" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+              {APP_MODE === 'public' ? (
+                <>
+                  Plan: <span style={{ color: user?.plan === 'PRO' ? '#10b981' : '#f59e0b' }}>
+                    {user?.plan || 'Free'}
+                  </span>
+                </>
+              ) : (
+                <span style={{ color: '#6366f1' }}>Internal Mode</span>
+              )}
+            </div>
+          </div>
+
+          {APP_MODE === 'public' && (
+            <button onClick={() => {
+              window.location.href = `mailto:support@pmoplanner.com?subject=Support%20Request`;
+            }} className="btn btn-secondary" style={{ width: '100%', marginBottom: 16, padding: '8px 12px', fontSize: 13, background: 'transparent', border: '1px solid #e2e8f0', color: '#64748b' }}>
+              Get Support
+            </button>
+          )}
+
           <div className="ai-widget">
             <div className="ai-widget-header">
               <div className="ai-pulse" />
@@ -622,10 +677,10 @@ const App: React.FC = () => {
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
             )}
-            <button className="btn btn-primary" onClick={() => authGate(() => setModal({ type: 'addResource' }))}>
+            <button className="btn btn-primary" onClick={() => authGate(() => setModal({ type: 'addResource' }), true)}>
               + Resource {!user && '🔒'}
             </button>
-            <button className="btn btn-secondary" onClick={() => authGate(() => setModal({ type: 'addProject' }))}>
+            <button className="btn btn-secondary" onClick={() => authGate(() => setModal({ type: 'addProject' }), true)}>
               + Project {!user && '🔒'}
             </button>
           </div>
@@ -663,13 +718,13 @@ const App: React.FC = () => {
               allocations={allocations}
               scenarioMode={scenarioMode}
               scenarioAllocations={scenarioAllocations}
-              onUpdateAdvanced={(r, p) => setActiveAllocationModal({ resId: r, projId: p })}
+              onUpdateAdvanced={(r, p) => authGate(() => setActiveAllocationModal({ resId: r, projId: p }), true)}
               onExportCSV={exportCSV}
             />
           )}
 
           {activeTab === 'by-tribe' && (
-            <TribeView resources={resources} projects={projects} allocations={allocations} scenarioAllocations={scenarioMode ? scenarioAllocations : null} />
+            <TribeView resources={resources} projects={projects} allocations={allocations} scenarioAllocations={scenarioMode ? scenarioAllocations : null} onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)} />
           )}
 
           {activeTab === 'by-project' && (
@@ -678,6 +733,7 @@ const App: React.FC = () => {
               projects={projects}
               allocations={allocations}
               scenarioAllocations={scenarioAllocations}
+              onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
             />
           )}
 
@@ -687,6 +743,7 @@ const App: React.FC = () => {
               projects={projects}
               allocations={allocations}
               scenarioAllocations={scenarioAllocations}
+              onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)}
             />
           )}
 
@@ -838,6 +895,145 @@ const App: React.FC = () => {
         <SuperAdminPanel onClose={() => setShowSuperAdmin(false)} />
       )}
     </div >
+  );
+};
+
+/* ── Landing Page (Root Route) ────────────────────────────── */
+const Landing: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const token = localStorage.getItem('pcp_token');
+      fetch('/api/workspace_lookup', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => {
+          if (d.orgSlug) navigate(`/o/${d.orgSlug}`);
+          else navigate('/create');
+        })
+        .catch(console.error);
+    }
+  }, [user, navigate]);
+
+  return (
+    <div style={{ padding: 40, textAlign: 'center', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <h1 style={{ fontSize: 48, marginBottom: 16 }}>PMO Capacity Planner</h1>
+      <p style={{ fontSize: 18, color: '#64748b' }}>Enterprise resource management made intelligent.</p>
+      <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 32 }}>
+        <button onClick={() => navigate('/create')} className="btn btn-primary" style={{ padding: '12px 24px', fontSize: 16 }}>Create Workspace</button>
+        <button onClick={() => setShowLogin(true)} className="btn btn-secondary" style={{ padding: '12px 24px', fontSize: 16 }}>Login</button>
+      </div>
+
+      {showLogin && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10, 15, 30, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
+            <button
+              onClick={() => setShowLogin(false)}
+              style={{ position: 'absolute', top: -12, right: -12, width: 32, height: 32, borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', fontSize: 16, cursor: 'pointer', zIndex: 10 }}
+            >
+              ✕
+            </button>
+            <Login onSuccess={() => setShowLogin(false)} force2fa={false} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Create Org Page ──────────────────────────────────────── */
+const CreateOrg: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [orgName, setOrgName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgName.trim() || !user) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('pcp_token');
+      const res = await fetch('/api/org_create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orgName })
+      });
+      const data = await res.json();
+      if (res.ok && data.orgSlug) {
+        navigate(`/o/${data.orgSlug}`);
+      } else {
+        alert(data.error || 'Failed to create organization');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enforce Login Wall
+  if (!user) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, height: '100vh', justifyContent: 'center' }}>
+        <h2>Authentication Required</h2>
+        <p style={{ color: '#64748b' }}>You must be logged in to provision a new B2B tenant.</p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={() => navigate('/')} className="btn btn-secondary">Go Home</button>
+          <button onClick={() => setShowLogin(true)} className="btn btn-primary">Sign In / Register</button>
+        </div>
+        {showLogin && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10, 15, 30, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
+              <button
+                onClick={() => setShowLogin(false)}
+                style={{ position: 'absolute', top: -12, right: -12, width: 32, height: 32, borderRadius: '50%', background: '#1e293b', border: '1px solid #334155', color: '#94a3b8', fontSize: 16, cursor: 'pointer', zIndex: 10 }}
+              >✕</button>
+              <Login onSuccess={() => setShowLogin(false)} force2fa={false} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 40, maxWidth: 400, margin: '0 auto', textAlign: 'center', marginTop: '15vh' }}>
+      <h1 style={{ fontSize: 32, marginBottom: 8 }}>Create Workspace</h1>
+      <p style={{ color: '#64748b', marginBottom: 24, fontSize: 14 }}>Provide a name for your B2B organization. This permanently reserves a dedicated tenant space.</p>
+
+      <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="e.g. Acme Corporation"
+          value={orgName}
+          onChange={e => setOrgName(e.target.value)}
+          autoFocus
+          required
+        />
+        <button type="submit" className="btn btn-primary" disabled={loading || !orgName.trim()}>
+          {loading ? 'Provisioning...' : 'Create Tenant'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+/* ── Router Export ────────────────────────────────────────── */
+const App: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/create" element={<CreateOrg />} />
+      <Route path="/o/:orgSlug" element={<AppShell />} />
+      <Route path="/o/:orgSlug/settings" element={<AppShell />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 

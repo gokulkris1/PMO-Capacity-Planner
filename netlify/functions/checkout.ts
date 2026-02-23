@@ -1,86 +1,93 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import Stripe from 'stripe';
-import jwt from 'jsonwebtoken';
 import { neon } from '@neondatabase/serverless';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' as any });
+import jwt from 'jsonwebtoken';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_dev_only';
-const sql = neon(process.env.NEON_DATABASE_URL || '');
 
 const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'OPTIONS, POST',
+    'Content-Type': 'application/json',
 };
 
-function ok(body: unknown) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
-function fail(msg: string, status = 400) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: msg }) }; }
+function fail(msg: string, status = 400) { return { statusCode: status, headers: CORS, body: JSON.stringify({ error: msg }) }; }
 
-// Price lookups (In reality, replace these with real Price IDs from your Stripe Dashboard)
-const PLAN_PRICES: Record<string, string> = {
-    'BASIC': process.env.STRIPE_PRICE_BASIC || 'price_basic_mock',
-    'PRO': process.env.STRIPE_PRICE_PRO || 'price_pro_mock',
-    'MAX': process.env.STRIPE_PRICE_MAX || 'price_max_mock',
+const getDb = () => neon(
+    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.NEON_DATABASE_URL || ''
+);
+
+// Price mapping 
+const PRICES: Record<string, string> = {
+    'PRO': process.env.STRIPE_PRICE_PRO || 'price_dummy_pro',
+    'MAX': process.env.STRIPE_PRICE_MAX || 'price_dummy_max',
 };
 
 export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
-    if (event.httpMethod !== 'POST') return fail('Method not allowed', 405);
+    if (event.httpMethod !== 'POST') return fail('Method Not Allowed', 405);
 
-    // Authenticate user
+    // 1. Authenticate user
     const authHeader = event.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) return fail('Unauthorized', 401);
     const token = authHeader.split(' ')[1];
 
     let userId: string;
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        userId = decoded.userId;
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+        userId = decoded.id;
     } catch {
         return fail('Invalid token', 401);
     }
 
     try {
-        const { planTier } = JSON.parse(event.body || '{}');
-        const priceId = PLAN_PRICES[planTier];
+        const { plan, orgSlug } = JSON.parse(event.body || '{}');
+        if (!plan || !PRICES[plan]) return fail('Invalid plan selected');
+        if (!orgSlug) return fail('orgSlug required');
 
-        if (!priceId) {
-            return fail('Invalid plan tier specified', 400);
-        }
+        // 2. Validate tenant access
+        const sql = getDb();
+        const rows = await sql`
+            SELECT u.email, u.org_id 
+            FROM users u
+            JOIN organizations o ON u.org_id = o.id
+            WHERE u.id = ${userId} AND o.slug = ${orgSlug}
+        `;
 
-        if (!process.env.STRIPE_SECRET_KEY) {
-            return fail('Stripe payments are not configured on this server.', 500);
-        }
+        if (rows.length === 0) return fail('Unauthorized for this tenant', 403);
+        const { email, org_id } = rows[0];
 
-        // Fetch User and Org info
-        const users = await sql`SELECT email, org_id FROM users WHERE id = ${userId} LIMIT 1`;
-        if (users.length === 0) return fail('User not found', 400);
-
-        const { email, org_id } = users[0];
-
-        // Create Stripe Checkout Session
+        // 3. Generate Stripe Checkout Session
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
+            billing_address_collection: 'auto',
             customer_email: email,
             line_items: [
                 {
-                    price: priceId,
+                    price: PRICES[plan],
                     quantity: 1,
                 },
             ],
             mode: 'subscription',
-            success_url: `${process.env.URL || 'http://localhost:3000'}?checkout=success`,
-            cancel_url: `${process.env.URL || 'http://localhost:3000'}?checkout=cancelled`,
+            success_url: `${process.env.URL || 'http://localhost:5173'}/o/${orgSlug}?upgrade=success`,
+            cancel_url: `${process.env.URL || 'http://localhost:5173'}/o/${orgSlug}?upgrade=cancelled`,
             metadata: {
                 userId,
                 orgId: org_id,
-                planTier
+                plan
             }
         });
 
-        return ok({ url: session.url });
+        return {
+            statusCode: 200,
+            headers: CORS,
+            body: JSON.stringify({ url: session.url })
+        };
     } catch (e: any) {
-        console.error('Stripe Checkout Error:', e);
+        console.error('Checkout error:', e);
         return fail('Failed to create checkout session: ' + e.message, 500);
     }
 };

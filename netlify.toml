@@ -42,6 +42,37 @@
   status = 200
   force = true
 
+# Phase 8/9 SaaS & Provisioning Routes
+[[redirects]]
+  from = "/api/org_create"
+  to = "/.netlify/functions/org_create"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/workspace_lookup"
+  to = "/.netlify/functions/workspace_lookup"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/checkout"
+  to = "/.netlify/functions/checkout"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/webhook"
+  to = "/.netlify/functions/webhook"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/email_receipt"
+  to = "/.netlify/functions/email_receipt"
+  status = 200
+  force = true
+
 # SPA fallback — all other routes serve index.html
 [[redirects]]
   from = "/*"

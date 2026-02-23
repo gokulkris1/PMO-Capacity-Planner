@@ -35,17 +35,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
         return fail('Invalid token', 401);
     }
 
+    const orgSlug = event.queryStringParameters?.orgSlug;
+    if (!orgSlug) return fail('Organization slug required', 400);
+
     const sql = getDb();
 
     if (event.httpMethod === 'GET') {
         try {
-            // Get user's org and workspace
+            // Get user's org and workspace, explicitly validating the slug
             let wsRows = await sql`
-                SELECT w.id, w.name as ws_name, o.name as org_name 
+                SELECT w.id, w.name as ws_name, o.name as org_name, o.slug 
                 FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
                 JOIN organizations o ON o.id = w.org_id
-                WHERE u.id = ${userId}
+                WHERE u.id = ${userId} AND o.slug = ${orgSlug}
                 LIMIT 1
             `;
             let wsId, wsName, orgName;
@@ -55,13 +58,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 wsName = wsRows[0].ws_name;
                 orgName = wsRows[0].org_name;
             } else {
-                // Legacy User Fallback (if they existed before Orgs)
-                const [org] = await sql`INSERT INTO organizations (id, name) VALUES (gen_random_uuid(), 'Legacy Org') RETURNING id, name`;
-                const [ws] = await sql`INSERT INTO workspaces (id, org_id, name) VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace') RETURNING id, name`;
-                await sql`UPDATE users SET org_id = ${org.id} WHERE id = ${userId}`;
-                wsId = ws.id;
-                wsName = ws.name;
-                orgName = org.name;
+                return fail('Unauthorized for this organization', 403);
             }
 
             const resources = await sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`;
@@ -97,17 +94,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const body = JSON.parse(event.body || '{}');
             const { resources = [], projects = [], allocations = [] } = body;
 
-            // Get user's Workspace ID and Plan
+            // Get user's Workspace ID and Plan, validating slug
             let wsRows = await sql`
-                SELECT w.id, u.plan FROM workspaces w
+                SELECT w.id, u.plan, w.org_id FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
-                WHERE u.id = ${userId}
+                JOIN organizations o ON o.id = w.org_id
+                WHERE u.id = ${userId} AND o.slug = ${orgSlug}
                 LIMIT 1
             `;
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
+            const orgId = wsRows.length > 0 ? wsRows[0].org_id : null;
             const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'FREE';
 
-            if (!wsId) return fail('No workspace found for user', 400);
+            if (!wsId || !orgId) return fail('Unauthorized for this workspace', 403);
 
             // ── FREEMIUM LIMIT ENFORCEMENT ──
             if (userPlan === 'FREE' || !userPlan) {
@@ -127,22 +126,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             if (resources.length > 0) {
                 await Promise.all(resources.map((r: any) => sql`
-          INSERT INTO resources (id, user_id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur)
-          VALUES (${r.id}, ${userId}, ${wsId}, ${r.name}, ${r.role || null}, ${r.type}, ${r.department || null}, ${r.teamId || null}, ${r.totalCapacity}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null})
+          INSERT INTO resources (id, user_id, workspace_id, org_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur)
+          VALUES (${r.id}, ${userId}, ${wsId}, ${orgId}, ${r.name}, ${r.role || null}, ${r.type}, ${r.department || null}, ${r.teamId || null}, ${r.totalCapacity}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null})
         `));
             }
 
             if (projects.length > 0) {
                 await Promise.all(projects.map((p: any) => sql`
-          INSERT INTO projects (id, user_id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-          VALUES (${p.id}, ${userId}, ${wsId}, ${p.name}, ${p.status}, ${p.priority}, ${p.description || null}, ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
+          INSERT INTO projects (id, user_id, workspace_id, org_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
+          VALUES (${p.id}, ${userId}, ${wsId}, ${orgId}, ${p.name}, ${p.status}, ${p.priority}, ${p.description || null}, ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
         `));
             }
 
             if (allocations.length > 0) {
                 await Promise.all(allocations.map((a: any) => sql`
-          INSERT INTO allocations (id, user_id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
-          VALUES (${a.id}, ${userId}, ${wsId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
+          INSERT INTO allocations (id, user_id, workspace_id, org_id, resource_id, project_id, percentage, start_date, end_date)
+          VALUES (${a.id}, ${userId}, ${wsId}, ${orgId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
         `));
             }
 

@@ -9,10 +9,10 @@ export interface MonthForecast {
 }
 
 /**
- * Returns an array of the next `monthsCount` months, starting from the current month.
+ * Returns an array of the next `monthsCount` months, starting from the current month + monthOffset.
  * Computes the total utilization for the given allocations in each month.
  */
-export function buildTimeForecast(allocations: Allocation[], monthsCount: number = 6): MonthForecast[] {
+export function buildTimeForecast(allocations: Allocation[], monthsCount: number = 6, monthOffset: number = 0): MonthForecast[] {
     const forecast: MonthForecast[] = [];
     const now = new Date();
 
@@ -24,8 +24,8 @@ export function buildTimeForecast(allocations: Allocation[], monthsCount: number
     });
 
     for (let i = 0; i < monthsCount; i++) {
-        // Calculate the target month
-        const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        // Calculate the target month based on today + offset + iterator
+        const targetDate = new Date(now.getFullYear(), now.getMonth() + monthOffset + i, 1);
         const y = targetDate.getFullYear();
         const m = targetDate.getMonth();
 

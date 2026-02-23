@@ -9,13 +9,42 @@ interface Props {
 }
 
 export const TimeForecastGrid: React.FC<Props> = ({ resource, allocations, monthsCount = 6 }) => {
+    const [monthOffset, setMonthOffset] = React.useState(0);
+
     // Generate the next N months of utilization for this resource
-    const forecast = buildTimeForecast(allocations, monthsCount);
+    const forecast = buildTimeForecast(allocations, monthsCount, monthOffset);
 
     return (
         <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-                Availability Forecast
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    Availability Forecast
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                        onClick={() => setMonthOffset(prev => prev - monthsCount)}
+                        style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, color: '#64748b' }}
+                        title="Previous Term"
+                    >
+                        &larr;
+                    </button>
+                    {monthOffset !== 0 && (
+                        <button
+                            onClick={() => setMonthOffset(0)}
+                            style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 11, fontWeight: 600, color: '#64748b' }}
+                            title="Reset to Present"
+                        >
+                            TODAY
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setMonthOffset(prev => prev + monthsCount)}
+                        style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, color: '#64748b' }}
+                        title="Next Term"
+                    >
+                        &rarr;
+                    </button>
+                </div>
             </div>
 
             <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>

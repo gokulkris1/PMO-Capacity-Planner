@@ -8,6 +8,7 @@ interface Props {
     projects: Project[];
     allocations: Allocation[];
     scenarioAllocations?: Allocation[] | null;
+    onEditProject?: (proj: Project) => void;
 }
 
 function utilColor(pct: number) {
@@ -25,7 +26,7 @@ function statusBadgeClass(s: AllocationStatus) {
     return 'badge badge-under';
 }
 
-export const ProjectView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations }) => {
+export const ProjectView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations, onEditProject }) => {
     const [selectedProj, setSelectedProj] = useState<string>(projects[0]?.id || '');
     const liveAlloc = scenarioAllocations ?? allocations;
 
@@ -83,8 +84,15 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                 🚀
                             </div>
                             <div>
-                                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{project.name}</div>
-                                <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{project.description}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                                    <span style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{project.name}</span>
+                                    {onEditProject && (
+                                        <button onClick={() => onEditProject(project)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, transition: 'opacity 0.2s', padding: 4 }} title="Edit Project" onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                                            ✏️
+                                        </button>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 12, color: '#64748b' }}>{project.description}</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Status</div>

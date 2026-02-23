@@ -1,53 +1,83 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import Stripe from 'stripe';
 import { neon } from '@neondatabase/serverless';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_dummy';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' as any });
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-const sql = neon(process.env.NEON_DATABASE_URL || '');
+const getDb = () => neon(
+    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.NEON_DATABASE_URL || ''
+);
 
 export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+    // 1. Stripe Webhooks must be POST requests
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Make a POST request' };
 
     const sig = event.headers['stripe-signature'];
-    if (!sig || !webhookSecret) {
-        return { statusCode: 400, body: 'Missing signature or webhook secret' };
-    }
+    if (!sig || !event.body) return { statusCode: 400, body: 'Missing signature or body' };
 
     let stripeEvent: Stripe.Event;
 
     try {
-        stripeEvent = stripe.webhooks.constructEvent(event.body || '', sig, webhookSecret);
+        // 2. Cryptographically verify the event originated from Stripe
+        stripeEvent = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
     } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
+        console.error(`Webhook Error: ${err.message}`);
         return { statusCode: 400, body: `Webhook Error: ${err.message}` };
     }
 
-    // Handle the checkout.session.completed event
+    // 3. Handle specific event types
     if (stripeEvent.type === 'checkout.session.completed') {
         const session = stripeEvent.data.object as Stripe.Checkout.Session;
 
-        // Retrieve custom metadata injected during checkout creation
-        const orgId = session.metadata?.orgId;
-        const planTier = session.metadata?.planTier;
+        // Retrieve custom metadata passed during Checkout creation
+        const { orgId, plan } = session.metadata || {};
 
-        if (orgId && planTier) {
+        if (orgId && plan) {
             try {
-                // Upgrade all users in this Organization to the new B2B Plan Tier
-                await sql`
+                const sql = getDb();
+                console.log(`[SUBSCRIPTION UPGRADE] Upgrading org ${orgId} to plan ${plan}`);
+
+                // 4. Upgrade every user attached to this Organization tenant to the new plan
+                const affectedUsers = await sql`
                     UPDATE users 
-                    SET plan = ${planTier} 
+                    SET plan = ${plan.toUpperCase()} 
                     WHERE org_id = ${orgId}
+                    RETURNING email
                 `;
-                console.log(`[Stripe Webhook] Successfully upgraded org ${orgId} to ${planTier}`);
+
+                // 5. Fire Upgrade Emails for affected admins/users
+                if (process.env.INTERNAL_API_SECRET) {
+                    try {
+                        const baseUrl = process.env.URL || 'http://localhost:5173';
+                        for (const u of affectedUsers) {
+                            if (!u.email) continue;
+                            await fetch(`${baseUrl}/api/email_receipt`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`
+                                },
+                                body: JSON.stringify({
+                                    type: 'UPGRADE',
+                                    email: u.email,
+                                    plan: plan.toUpperCase()
+                                })
+                            });
+                        }
+                    } catch (emailErr) {
+                        console.error('Non-blocking Upgrade Email Error:', emailErr);
+                    }
+                }
             } catch (dbErr) {
-                console.error(`[Stripe Webhook] Database error updating tier for org ${orgId}:`, dbErr);
-                return { statusCode: 500, body: 'Database update failed' };
+                console.error('Failed to update Postgres upon Stripe success', dbErr);
+                // Return 500 so Stripe automatically retries this webhook delivery
+                return { statusCode: 500, body: 'Database Update Failure' };
             }
-        } else {
-            console.warn('[Stripe Webhook] Missing orgId or planTier in session metadata');
         }
     }
 
+    // Acknowledge receipt of the event
     return { statusCode: 200, body: JSON.stringify({ received: true }) };
 };
