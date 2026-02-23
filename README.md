@@ -1,104 +1,74 @@
-# PMO Capacity Planner
+# PMO Capacity Planner (v1.0 SaaS Edition) 🚀
 
-A comprehensive, enterprise-grade resource management and capacity planning dashboard designed for PMOs, Delivery Managers, and Team Leads. The platform enables organizations to forecast capacity, allocate personnel, optimize utilization rates, and generate C-Suite executive summaries.
+The **PMO Capacity Planner** is an enterprise-grade, Multi-Tenant SaaS platform built to intelligently manage organizational resources, visualize cross-project allocations, and predict future capacity constraints utilizing AI and real-time interactive matrices.
 
-## 🚀 Key Features
+![App Screenshot](./public/screenshot.png)
 
-### 1. Advanced Resource & Project Management
-- **Interactive Matrix View**: A powerful allocation matrix allowing precise percentage allocations of resources across multiple projects.
-- **Dynamic Dashboards**: Real-time roll-ups of committed FTEs, estimated monthly costs, and availability metrics.
-- **"What-If" Scenario Engine**: A dedicated sandbox mode to safely simulate team reallocations and project shifts without affecting live production data.
+## 🌟 Core Capabilities & Features
 
-### 2. Enterprise-Grade Architecture
-- **Multi-Tenant Postgres Sync**: Built on a highly-scalable Neon PostgreSQL serverless architecture. Your entire PMO workspace (`resources`, `projects`, `allocations`) is decoupled from local storage and continuously synced to the cloud via debounced background processes.
-- **Role-Based Access Control (RBAC)**: Secure multi-tier access supporting **SUPERUSER**, **PMO** (Admin), **PM** (Editor), and **VIEWER** (Read-only) roles.
-- **Superuser Console**: A dedicated backend-powered dashboard for super admins to monitor platform MRR, manage organizations, grant licenses, and audit usage.
+### 1. 🏢 Multi-Tenant SaaS Environments
+- **Dedicated Workspaces:** Each registered organization gets an isolated cryptographic container defined by a unique `orgSlug` and secured via `org_id` context routing.
+- **Role-Based Access Control (RBAC):** Strict front-end and back-end gating. Viewers cannot mutate data; SuperAdmins manage billing and global settings.
+- **Freemium Limits Engine:** Cloud-enforced quotas rejecting allocations beyond the active Stripe Tier limits (`Basic`, `Pro`, `Max`).
 
-### 3. AI PMO Director (OpenAI)
-- **Context-Aware Analytics**: Powered by OpenAI's `gpt-4o-mini`, the AI Advisor analyzes your live matrix (resources, utilizations, project commits) to act as a proactive Senior PMO Director.
-- **Resource Smoothing**: Automatically identifies over-allocated personnel and suggests specific, named reallocations from your under-utilized pool.
-- **Scaling Forecaster**: Highlights when your aggregate utilization necessitates hiring contractors to hit specific project timelines.
+### 2. 📅 Interactive Allocation Matrix & Time Forecasting
+- **Visual Capacity Grid:** Instantly identifiable RGB status badges (Red = Over, Yellow = High, Green = Optimal).
+- **6-Month Rolling Forecasts:** Predictive resource timeline highlighting critical drops in utilization mapping out to future quarters.
+- **Tribe & Client Grouping:** Deep dive grouping functionality allowing management to analyze bandwidth exclusively for a specific business vertical or client.
 
-### 4. Board-Ready Reporting
-- **Executive Summary PDF**: Native, one-click PDF generation utilizing `jsPDF` and `jspdf-autotable`.
-- Instantly packages Portfolio Metrics (FTEs, Run Rate Cost), an Over-Allocation Risk Scanner, and a Project Capacity Breakdown into a branded, beautiful one-pager for stakeholders.
+### 3. 🛡️ Advanced Security & Identity
+- **Two-Factor Authentication (2FA):** Opt-in 6-digit email OTP enforcement injected cleanly into the login verification lifecycle.
+- **Post-Exploitation Prevention:** Rate limited Auth routes, BCrypt hashed passwords, short-lived JSON Web Tokens (JWT).
+- **Stripe & Resend Integration:** Webhook driven Postgres tier upgrades connected firmly to Stripe Checkout. Automated transactional HTML receipts triggered upon provisioning.
 
-### 5. Seamless Authentication
-- **Secure JWT Flow**: Email and password authentication secured by `bcrypt` and JWT.
-- **Email Verification**: One-Time Password (OTP) validation strictly via email on signup (powered by Resend) to eliminate spam while preserving a frictionless B2B login experience.
+### 4. 🔬 Scenario Planning & AI Guidance
+- **What-If "Sandbox" Mode:** Toggle a temporary state to drag, drop, and edit allocations without affecting live production data.
+- **AI Analytics Sidebar:** Conversational LLM assistant natively hooked to your specific Workspace capacity matrix to provide real-time leveling advice and risk assessments.
 
----
+## 🛠️ Tech Stack Architecture
 
-## 🛠 Tech Stack
+- **Frontend:** React 18, Vite, TypeScript, React Router Dom, Vanilla CSS Framework.
+- **Backend:** Netlify Edge Serverless Functions (`auth`, `workspace`, `webhook`, `org_create`, `email_receipt`).
+- **Database:** Neon serverless PostgreSQL (JSON Web Token verified Row-Level queries).
+- **Integrations:** Stripe (Billing), Resend (Transactional Email), OpenAI/Gemini (Intelligence).
 
-The PMO Capacity Planner follows a modern, decoupled serverless architecture optimized for Netlify:
+## 🚀 Getting Started (Ways of Working)
 
-### Frontend
-- **Framework**: React 18 & Vite
-- **Language**: TypeScript
-- **Styling**: Vanilla CSS with CSS Variables for theme control (no heavy frameworks).
-- **PDF Generation**: `jspdf` & `jspdf-autotable`
+### Prerequisites
 
-### Backend (Serverless)
-- **Infrastructure**: Netlify Functions (`@netlify/functions`)
-- **Database**: Neon PostgreSQL Serverless (`@neondatabase/serverless`) executing raw SQL tagged templates.
-- **Authentication**: `jsonwebtoken` and `bcryptjs`
-- **Email Provider**: Resend API
-- **AI Integration**: OpenAI REST API (Standard HTTP layer to minimize bundle size).
+You need `Node.js` (v18+) and a configured `Neon` Postgres Database instance. Ensure the following `.env` is populated:
 
----
+```env
+NEON_DATABASE_URL=postgres://user:password@hostname/dbname
+JWT_SECRET=your_super_secret_jwt_key
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+OPENAI_API_KEY=sk-...
+VITE_APP_MODE=public # Set to 'internal' for local sample data injection bypassing Stripe limits
+```
 
-## ⚙️ Environment Variables
+### Local Development
 
-To run the application, configure your environment variables in Netlify (or a local `.env` file):
+This project utilizes `concurrently` to multiplex the Vite frontend and local Node.js serverless proxy.
 
-| Key | Description | Required? |
-|-----|-------------|-----------|
-| `JWT_SECRET` | A secure, random string used to sign authentication tokens. | **Yes** |
-| `NEON_DATABASE_URL` | The Neon connection string (`postgres://...`). | **Yes** |
-| `SUPER_ADMIN_EMAIL` | The email address that is automatically granted the `SUPERUSER` system role upon login. | **Yes** |
-| `VITE_OPENAI_API_KEY` | Your OpenAI secret key (`sk-...`) for the AI Advisor. | **Yes** |
-| `RESEND_API_KEY` | Your Resend API key for OTP signup verification. | Optional* |
+```bash
+# Install dependencies
+npm install
 
-*\*If `RESEND_API_KEY` is omitted, the Netlify Function falls back to "dev mode" and will return the OTP directly in the API response payload.*
+# Run backend migrations (only needed once)
+npm run migrate
 
----
+# Start the full stack locally
+npm run dev:all
+```
+The application will boot at `http://localhost:5173`.
 
-## 💻 Local Development
+## 🚢 Deployment
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+The repository relies on a unified Netlify continuous deployment bridge. Pushing to `main` automatically fires `npm run build`, bundling the Vite front end and deploying the nested `netlify/functions` directory as API endpoints conforming to the `netlify.toml` redirect proxies.
 
-2. **Configure your `.env` file** in the root directory using the keys listed above.
-
-3. **Start the environment:**
-   We use `netlify-cli` to accurately mirror the production serverless routing and function execution:
-   ```bash
-   # Install the Netlify CLI globally if you haven't already
-   npm install -g netlify-cli
-
-   # Run the unified dev server (Frontend Vite + Backend Netlify Functions)
-   netlify dev
-   ```
-
-4. **Access the App:** Open `http://localhost:8888`. Unauthenticated users will see the public "Demo Mode" with mock data.
-
----
-
-## 🚀 Deployment (Netlify)
-
-This project is optimized for a unified deployment on **Netlify** (both the React frontend and the serverless API).
-
-1. Push your repository to GitHub.
-2. In Netlify, select **Add new site** -> **Import an existing project**.
-3. Choose your GitHub repository.
-4. **Build Settings** (Automatically detected via `netlify.toml`):
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-   - **Functions directory**: `netlify/functions`
-5. Add your environment variables under **Site Settings -> Environment Variables**.
-6. Click **Deploy Site**.
-
-*Routing for the SPA (`/*`) and API Functions (`/api/*`) are handled automatically by the included `netlify.toml`.*
+## 📈 Roadmap (v1.1 Branch)
+- Jira & Azure DevOps active sync integrations.
+- Granular daily allocation precision (currently Monthly fractional %).
+- Financial burn-rate overlays intersecting with capacity levels.
