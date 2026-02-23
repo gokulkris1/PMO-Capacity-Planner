@@ -112,6 +112,16 @@ const AppShell: React.FC = () => {
   const [scenarioMode, setScenarioMode] = useState(false);
   const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(null);
 
+  /* Theme state */
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('orbitTheme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-theme', themeMode === 'dark');
+    localStorage.setItem('orbitTheme', themeMode);
+  }, [themeMode]);
+
   /* AI state */
   const [showAiChat, setShowAiChat] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -481,6 +491,9 @@ const AppShell: React.FC = () => {
                       enterScenario();
                     } else {
                       setActiveTab(item.id);
+                      if (location.pathname.endsWith('/settings') || location.pathname.endsWith('/directory')) {
+                        navigate(`/o/${orgSlug}`);
+                      }
                     }
                   }}
                 >
@@ -566,7 +579,7 @@ const AppShell: React.FC = () => {
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/settings`)}
                 style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}>
-                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Tenant Settings</span>
+                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Workspace Admin</span>
               </button>
             </div>
           )}
@@ -580,10 +593,10 @@ const AppShell: React.FC = () => {
             </div>
           )}
 
-          {/* Profile Directory */}
+          {/* Workspace Directory */}
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
             <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/directory`)}>
-              <span style={{ fontSize: 15 }}>🪪</span><span style={{ fontWeight: 600 }}>Profile Directory</span>
+              <span style={{ fontSize: 15 }}>🪪</span><span style={{ fontWeight: 600 }}>Workspace Directory</span>
             </button>
           </div>
 
@@ -609,6 +622,15 @@ const AppShell: React.FC = () => {
                 <span style={{ color: '#6366f1' }}>Internal Mode</span>
               )}
             </div>
+          </div>
+          {/* Theme Toggle */}
+          <div style={{ textAlign: 'center', padding: '8px 0', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: 8 }}>
+            <button
+              onClick={() => setThemeMode(prev => prev === 'light' ? 'dark' : 'light')}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', fontWeight: 600 }}
+            >
+              {themeMode === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+            </button>
           </div>
           {/* Version number */}
           <div style={{ textAlign: 'center', fontSize: 10, color: '#334155', padding: '6px 0 2px', letterSpacing: '0.04em' }}>

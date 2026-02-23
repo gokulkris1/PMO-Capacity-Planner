@@ -62,6 +62,22 @@
   --shadow-glow: 0 0 0 3px rgba(99, 102, 241, .25);
 }
 
+body.dark-theme {
+  --n-50: #0f172a;
+  --n-100: #1e293b;
+  --n-200: #334155;
+  --n-300: #475569;
+  --n-400: #64748b;
+  --n-500: #94a3b8;
+  --n-600: #cbd5e1;
+  --n-700: #e2e8f0;
+  --n-800: #f1f5f9;
+  --n-900: #f8fafc;
+  --color-bg-mesh: radial-gradient(at 0% 0%, #0f172a 0px, transparent 50%),
+    radial-gradient(at 100% 0%, #131c2d 0px, transparent 50%),
+    radial-gradient(at 100% 100%, #1e293b 0px, transparent 50%);
+}
+
 *,
 *::before,
 *::after {

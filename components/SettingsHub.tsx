@@ -72,15 +72,15 @@ export const SettingsHub: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
                 <span style={{ fontSize: 32 }}>⚙️</span>
                 <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>Workspace Settings</h2>
-                    <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Manage your B2B tenant, billing, and teams</p>
+                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>Workspace Admin Settings</h2>
+                    <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Manage your B2B workspace, billing, and teams</p>
                 </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24, alignItems: 'start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     <div className="glass-panel" style={{ padding: 24, borderRadius: 16, border: '1px solid #cbd5e1' }}>
-                        <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 16 }}>Tenant Details</h3>
+                        <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 16 }}>Workspace Details</h3>
                         <p style={{ fontSize: 14, color: '#64748b' }}>Configure global workspace attributes. Orbit custom domains coming soon.</p>
                         {currentUser?.role === 'SUPERUSER' && (
                             <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>

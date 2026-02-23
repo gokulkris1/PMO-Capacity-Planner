@@ -60,14 +60,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
             VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace')
         `;
 
-        // 3. Bind User to Organization
-        await sql`
-            UPDATE users SET org_id = ${org.id}, role = 'SUPERUSER' WHERE id = ${userId}
-        `;
-
-        // 4. Retrieve Email
+        // 3. Retrieve Email
         const emailRows = await sql`SELECT email FROM users WHERE id = ${userId}`;
         const userEmail = emailRows.length > 0 ? emailRows[0].email : null;
+
+        // 4. Bind User to Organization
+        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'PMO';
+        await sql`
+            UPDATE users SET org_id = ${org.id}, role = ${assignedRole} WHERE id = ${userId}
+        `;
 
         // 5. Fire Welcome Email
         if (process.env.INTERNAL_API_SECRET && userEmail) {
