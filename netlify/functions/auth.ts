@@ -2,6 +2,10 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { Resend } from 'resend';
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'PMO Planner <noreply@pmo-planner.com>';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_prod';
 // Set SUPER_ADMIN_EMAIL in Netlify env vars → that user always gets SUPERUSER role
@@ -36,6 +40,63 @@ type JWTPayload = { id: string; email: string; role: string };
 function verifyToken(authHeader: string): JWTPayload {
     if (!authHeader?.startsWith('Bearer ')) throw new Error('Unauthorized');
     return jwt.verify(authHeader.slice(7), JWT_SECRET) as JWTPayload;
+}
+
+function generateOTP(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendAuthOtp(sql: any, email: string, context: '2fa' | 'reset') {
+    const cleanEmail = email.toLowerCase().trim();
+    const otp = generateOTP();
+    const expires = Date.now() + 15 * 60 * 1000;
+
+    await sql`
+        INSERT INTO otps (email, otp, expires_at, attempts) 
+        VALUES (${cleanEmail}, ${otp}, ${expires}, 0)
+        ON CONFLICT (email) 
+        DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, attempts = 0
+    `;
+
+    if (!RESEND_API_KEY) {
+        console.log(`[DEV ${context}] OTP for ${cleanEmail}: ${otp}`);
+        return otp;
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+    const subject = context === 'reset' ? 'Reset your PMO Planner password' : 'Your PMO Planner login code';
+    const msg = context === 'reset' ? 'Use this code to reset your password:' : 'Use this code to securely log in:';
+
+    await resend.emails.send({
+        from: FROM_EMAIL,
+        to: cleanEmail,
+        subject,
+        html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
+            <h1 style="font-size:22px;margin:0 0 8px;color:#f1f5f9">${subject}</h1>
+            <p style="color:#94a3b8;margin:0 0 24px">${msg}</p>
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
+            <span style="font-size:36px;font-weight:900;letter-spacing:12px;color:#818cf8">${otp}</span>
+            </div>
+            <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes.</p>
+        </div>`
+    });
+}
+
+async function verifyAuthOtp(sql: any, email: string, otp: string) {
+    const cleanEmail = email.toLowerCase().trim();
+    const records = await sql`SELECT * FROM otps WHERE email = ${cleanEmail}`;
+    if (records.length === 0) throw new Error('No verification code found. Request a new one.');
+    const stored = records[0];
+    if (Date.now() > Number(stored.expires_at)) {
+        await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+        throw new Error('Code expired. Request a new one.');
+    }
+    if (stored.otp !== otp.trim()) {
+        await sql`UPDATE otps SET attempts = attempts + 1 WHERE email = ${cleanEmail}`;
+        throw new Error('Incorrect verification code.');
+    }
+    await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -102,6 +163,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const match = await bcrypt.compare(password, user.password_hash);
             if (!match) return fail('Invalid email or password', 401);
 
+            if (user.two_factor_enabled) {
+                if (!body.otp) {
+                    await sendAuthOtp(sql, user.email, '2fa');
+                    return ok({ require2FA: true, email: user.email });
+                }
+                try {
+                    await verifyAuthOtp(sql, user.email, body.otp);
+                } catch (e: any) {
+                    return fail(e.message, 400);
+                }
+            }
+
             // Auto-upgrade SUPER_ADMIN_EMAIL to SUPERUSER/MAX if not already
             const isSuperAdmin = SUPER_ADMIN_EMAIL && email.toLowerCase() === SUPER_ADMIN_EMAIL;
             if (isSuperAdmin && user.role !== 'SUPERUSER') {
@@ -114,6 +187,31 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return ok({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, plan: user.plan || 'FREE' } });
         }
 
+        // ── PASSWORD RESET ───────────────────────────────────────
+        if (subpath === '/reset/send-otp' && event.httpMethod === 'POST') {
+            const { email } = body;
+            if (!email) return fail('Email required');
+            const records = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase().trim()}`;
+            if (records.length > 0) {
+                await sendAuthOtp(sql, email, 'reset');
+            }
+            // Always return success to prevent email enumeration attacks
+            return ok({ sent: true });
+        }
+
+        if (subpath === '/reset/confirm' && event.httpMethod === 'POST') {
+            const { email, otp, newPassword } = body;
+            if (!email || !otp || !newPassword) return fail('All fields required');
+            try {
+                await verifyAuthOtp(sql, email, otp);
+                const hash = await bcrypt.hash(newPassword, 10);
+                await sql`UPDATE users SET password_hash = ${hash} WHERE email = ${email.toLowerCase().trim()}`;
+                return ok({ success: true });
+            } catch (e: any) {
+                return fail(e.message, 400);
+            }
+        }
+
         // ── PROTECTED: require auth below ─────────────────────────
         let actor: JWTPayload;
         try {
@@ -123,6 +221,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
         const isSuperuser = actor.role === 'SUPERUSER';
         const isPMO = actor.role === 'PMO' || isSuperuser;
+
+        // ── 2FA TOGGLE ────────────────────────────────────────────
+        if (subpath === '/2fa/toggle' && event.httpMethod === 'POST') {
+            const [updated] = await sql`
+                UPDATE users SET two_factor_enabled = NOT COALESCE(two_factor_enabled, false)
+                WHERE id = ${actor.id} RETURNING two_factor_enabled
+            `;
+            return ok({ two_factor_enabled: updated?.two_factor_enabled });
+        }
 
         // ── ADMIN: list all users ─────────────────────────────────
         if (subpath === '/users' && event.httpMethod === 'GET') {

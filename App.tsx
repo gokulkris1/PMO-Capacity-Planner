@@ -513,6 +513,26 @@ const App: React.FC = () => {
             })}>
               <span style={{ fontSize: 15 }}>🔄</span><span>Reset to Demo {!user && '🔒'}</span>
             </button>
+            {user && (
+              <button className="nav-item" onClick={async () => {
+                try {
+                  const res = await fetch('/api/auth/2fa/toggle', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('pmo_token')}` }
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert(`Two-Factor Authentication is now ${data.two_factor_enabled ? 'ENABLED' : 'DISABLED'}.`);
+                  } else {
+                    alert(data.error || 'Failed to update 2FA setting.');
+                  }
+                } catch (e) {
+                  alert('Network or server error updating 2FA.');
+                }
+              }}>
+                <span style={{ fontSize: 15 }}>🛡️</span><span style={{ color: '#10b981' }}>Toggle 2FA</span>
+              </button>
+            )}
           </div>
 
           {/* Superuser Console — SUPERUSER role only */}

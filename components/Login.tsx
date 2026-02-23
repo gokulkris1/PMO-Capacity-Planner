@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Check, Mail, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
-type Step = 'form' | 'verify';
+type Step = 'form' | 'verify' | 'forgot' | 'reset' | '2fa';
 
 export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
     const { login } = useAuth();
@@ -53,6 +53,11 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+            if (data.require2FA) {
+                setStep('2fa');
+                return;
+            }
 
             if (isRegistering) {
                 setPendingToken(data.token);
@@ -105,6 +110,66 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
         try { await sendOtp(email); }
         catch (err: any) { setError(err.message); }
         setResending(false);
+    };
+
+    const handle2FASubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(''); setLoading(true);
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, otp }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Authentication failed');
+            login(data.token, data.user);
+            onSuccess?.();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(''); setLoading(true);
+        try {
+            const res = await fetch('/api/auth/reset/send-otp', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to start reset process');
+            setStep('reset');
+            setOtp('');
+            setPassword('');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResetSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(''); setLoading(true);
+        try {
+            const res = await fetch('/api/auth/reset/confirm', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, otp, newPassword: password }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to update password');
+            setStep('form');
+            setPassword('');
+            setOtp('');
+            setError('Password successfully reset! Please log in.');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Premium Container
@@ -208,6 +273,90 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                     >
                         {resending ? 'Transmitting...' : "Didn't receive it? Click to resend"}
                     </button>
+                    <button type="button" onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14 }}>
+                        Back to Login
+                    </button>
+                </form>
+            </div>
+        );
+    }
+
+    if (step === '2fa') {
+        return (
+            <div style={containerStyle}>
+                <div style={glowStyle} />
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: 36 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+                        <ShieldCheck size={32} color="#818cf8" strokeWidth={1.5} />
+                    </div>
+                    <h2 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>Two-Factor Auth</h2>
+                    <p style={{ margin: 0, fontSize: 14, color: '#94a3b8', lineHeight: 1.6 }}>
+                        Enter the verification code sent to <br /><strong style={{ color: '#e2e8f0', fontWeight: 600 }}>{email}</strong>
+                    </p>
+                </div>
+                {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 24, color: '#fca5a5', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 4, height: 4, borderRadius: '50%', background: '#f87171' }} />{error}</div>}
+
+                <form onSubmit={handle2FASubmit} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="0 0 0 0 0 0" maxLength={6} required autoFocus
+                        style={{ width: '100%', padding: '18px 0', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.5)', color: '#fff', fontSize: 32, letterSpacing: '0.4em', textAlign: 'center', fontWeight: 600, outline: 'none' }} />
+                    <button type="submit" disabled={loading || otp.length < 6} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'wait' : 'pointer' }}>
+                        {loading ? 'Authenticating...' : 'Submit Code'}
+                    </button>
+                    <button type="button" onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14 }}>
+                        Back to Login
+                    </button>
+                </form>
+            </div>
+        );
+    }
+
+    if (step === 'forgot') {
+        return (
+            <div style={containerStyle}>
+                <div style={glowStyle} />
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: 36 }}>
+                    <h2 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 800, color: '#fff' }}>Reset Password</h2>
+                    <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>Enter your email to receive a recovery code.</p>
+                </div>
+                {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 24, color: '#fca5a5', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>{error}</div>}
+
+                <form onSubmit={handleForgotSubmit} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: 14, top: 15, color: '#64748b' }}><Mail size={18} /></div>
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" required style={inputStyle} />
+                    </div>
+                    <button type="submit" disabled={loading} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'wait' : 'pointer', marginTop: 10 }}>
+                        {loading ? 'Sending...' : 'Send Magic Code'}
+                    </button>
+                    <button type="button" onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14 }}>
+                        Back to Login
+                    </button>
+                </form>
+            </div>
+        );
+    }
+
+    if (step === 'reset') {
+        return (
+            <div style={containerStyle}>
+                <div style={glowStyle} />
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: 36 }}>
+                    <h2 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 800, color: '#fff' }}>Set New Password</h2>
+                    <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>We successfully emailed a 6-digit code to <strong>{email}</strong>.</p>
+                </div>
+                {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 24, color: '#fca5a5', fontSize: 13 }}>{error}</div>}
+                <form onSubmit={handleResetSubmit} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit reset code" maxLength={6} required style={inputStyle} />
+                    <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: 14, top: 15, color: '#64748b' }}><Lock size={18} /></div>
+                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New strong password" required minLength={8} style={inputStyle} />
+                    </div>
+                    <button type="submit" disabled={loading || otp.length !== 6 || password.length < 8} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'wait' : 'pointer', marginTop: 10 }}>
+                        {loading ? 'Updating...' : 'Save New Password'}
+                    </button>
+                    <button type="button" onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 14 }}>
+                        Cancel & Login
+                    </button>
                 </form>
             </div>
         );
@@ -277,6 +426,13 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
                         onBlur={e => Object.assign(e.target.style, inputStyle)}
                     />
                 </div>
+                {!isRegistering && (
+                    <div style={{ textAlign: 'right', marginTop: -8 }}>
+                        <button type="button" onClick={() => { setStep('forgot'); setError(''); }} style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+                            Forgot password?
+                        </button>
+                    </div>
+                )}
 
                 {isRegistering && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '4px 0 8px' }}>
