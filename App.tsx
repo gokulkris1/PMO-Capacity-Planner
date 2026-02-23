@@ -502,7 +502,7 @@ const App: React.FC = () => {
           )}
 
           {/* Admin Panel - PMO role */}
-          {(user?.role === 'PMO') && (
+          {user && ['PMO', 'SUPERUSER', 'ADMIN'].includes(user.role?.toUpperCase()) && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <button className="nav-item" onClick={() => setShowAdmin(true)}>
                 <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#fbbf24', fontWeight: 600 }}>Admin Panel</span>
