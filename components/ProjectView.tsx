@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
 
@@ -8,7 +7,9 @@ interface Props {
     projects: Project[];
     allocations: Allocation[];
     scenarioAllocations?: Allocation[] | null;
+    onAddProject?: () => void;
     onEditProject?: (proj: Project) => void;
+    onDeleteProject?: (proj: Project) => void;
 }
 
 function utilColor(pct: number) {
@@ -26,16 +27,31 @@ function statusBadgeClass(s: AllocationStatus) {
     return 'badge badge-under';
 }
 
-export const ProjectView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations, onEditProject }) => {
+export const ProjectView: React.FC<Props> = ({
+    resources,
+    projects,
+    allocations,
+    scenarioAllocations,
+    onAddProject,
+    onEditProject,
+    onDeleteProject,
+}) => {
     const [selectedProj, setSelectedProj] = useState<string>(projects[0]?.id || '');
     const liveAlloc = scenarioAllocations ?? allocations;
 
+    useEffect(() => {
+        if (!projects.length) {
+            setSelectedProj('');
+            return;
+        }
+        if (!projects.some(p => p.id === selectedProj)) {
+            setSelectedProj(projects[0].id);
+        }
+    }, [projects, selectedProj]);
+
     const project = projects.find(p => p.id === selectedProj);
     const projAllocs = liveAlloc.filter(a => a.projectId === selectedProj);
-
     const totalFte = projAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
-
-    // Assume 20 working days per month for cost estimate
     const totalMonthlyCost = projAllocs.reduce((s, a) => {
         const res = resources.find(r => r.id === a.resourceId);
         const rate = res?.dailyRate || 0;
@@ -44,40 +60,51 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
 
     function getProjStatusBadge(status: string) {
         const map: Record<string, string> = {
-            Active: 'badge badge-active', Planning: 'badge badge-planning',
-            'On Hold': 'badge badge-hold', Completed: 'badge badge-completed',
+            Active: 'badge badge-active',
+            Planning: 'badge badge-planning',
+            'On Hold': 'badge badge-hold',
+            Completed: 'badge badge-completed',
         };
         return map[status] || 'badge badge-hold';
     }
 
     return (
         <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* Project selector row */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {projects.map(p => (
-                    <button
-                        key={p.id}
-                        onClick={() => setSelectedProj(p.id)}
-                        style={{
-                            padding: '8px 16px',
-                            borderRadius: 99,
-                            border: `2px solid ${selectedProj === p.id ? (p.color || '#6366f1') : 'transparent'}`,
-                            background: selectedProj === p.id ? (p.color || '#6366f1') : '#fff',
-                            color: selectedProj === p.id ? '#fff' : '#475569',
-                            fontWeight: 600, fontSize: 13,
-                            cursor: 'pointer',
-                            boxShadow: selectedProj === p.id ? '0 4px 12px rgba(0,0,0,.15)' : '0 1px 3px rgba(0,0,0,.06)',
-                            transition: 'all .2s',
-                        }}
-                    >
-                        {p.name}
-                    </button>
-                ))}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: 1 }}>
+                    {projects.map(p => (
+                        <button
+                            key={p.id}
+                            onClick={() => setSelectedProj(p.id)}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: 99,
+                                border: `2px solid ${selectedProj === p.id ? (p.color || '#6366f1') : 'transparent'}`,
+                                background: selectedProj === p.id ? (p.color || '#6366f1') : '#fff',
+                                color: selectedProj === p.id ? '#fff' : '#475569',
+                                fontWeight: 600,
+                                fontSize: 13,
+                                cursor: 'pointer',
+                                boxShadow: selectedProj === p.id ? '0 4px 12px rgba(0,0,0,.15)' : '0 1px 3px rgba(0,0,0,.06)',
+                                transition: 'all .2s',
+                            }}
+                        >
+                            {p.name}
+                        </button>
+                    ))}
+                </div>
+                {onAddProject && <button className="btn btn-primary" onClick={onAddProject}>+ Add Project</button>}
             </div>
+
+            {!projects.length && (
+                <div className="empty-state">
+                    <h3>No projects yet</h3>
+                    <p>Create a project to start allocating capacity.</p>
+                </div>
+            )}
 
             {project && (
                 <>
-                    {/* Project header card */}
                     <div className="panel">
                         <div className="panel-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr', gap: 24, alignItems: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: project.color || '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
@@ -86,13 +113,12 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                                     <span style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{project.name}</span>
-                                    {onEditProject && (
-                                        <button onClick={() => onEditProject(project)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, transition: 'opacity 0.2s', padding: 4 }} title="Edit Project" onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
-                                            ✏️
-                                        </button>
-                                    )}
                                 </div>
                                 <div style={{ fontSize: 12, color: '#64748b' }}>{project.description}</div>
+                                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                    {onEditProject && <button className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onEditProject(project)}>Edit</button>}
+                                    {onDeleteProject && <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onDeleteProject(project)}>Delete</button>}
+                                </div>
                             </div>
                             <div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Status</div>
@@ -112,17 +138,16 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                             <div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Timeline</div>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
-                                    {project.startDate && project.endDate ? `${project.startDate} → ${project.endDate}` : 'TBD'}
+                                    {project.startDate && project.endDate ? `${project.startDate} -> ${project.endDate}` : 'TBD'}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Resource allocation for this project */}
                     <div className="panel">
                         <div className="panel-header">
                             <div>
-                                <div className="panel-title">Capacity Allocated – {project.name}</div>
+                                <div className="panel-title">Capacity Allocated - {project.name}</div>
                                 <div className="panel-subtitle">{projAllocs.length} resources committed</div>
                             </div>
                         </div>
@@ -140,8 +165,13 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                     const statusS = getAllocationStatus(totalUtil);
                                     return (
                                         <div key={a.id} style={{
-                                            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                                            padding: '16px', display: 'flex', flexDirection: 'column', gap: 10,
+                                            background: '#fff',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: 12,
+                                            padding: '16px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 10,
                                             boxShadow: '0 1px 4px rgba(0,0,0,.05)',
                                             borderLeft: `3px solid ${project.color || '#6366f1'}`,
                                         }}>
@@ -158,12 +188,18 @@ export const ProjectView: React.FC<Props> = ({ resources, projects, allocations,
                                                         {res.dailyRate ? <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500, marginLeft: 6 }}>€{res.dailyRate}/day</span> : ''}
                                                     </div>
                                                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role} · {res.department}</div>
+                                                    {(res.skills || []).length > 0 && (
+                                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                                                            {res.skills!.slice(0, 3).map(skill => (
+                                                                <span key={skill} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 999, background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>{skill}</span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div style={{ fontSize: 18, fontWeight: 800, color: project.color || '#6366f1' }}>
                                                     {a.percentage}%
                                                 </div>
                                             </div>
-                                            {/* Bar showing this project's share vs total */}
                                             <div>
                                                 <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
                                                     {a.percentage}% to {project.name} · <span style={{ color: utilColor(totalUtil), fontWeight: 700 }}>{totalUtil}% total load</span>

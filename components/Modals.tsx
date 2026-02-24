@@ -16,6 +16,9 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
         name: '', role: '', department: '', type: ResourceType.PERMANENT, totalCapacity: 100, location: '', email: '',
         ...(initial || {}),
     });
+    const [teamMode, setTeamMode] = useState<'preset' | 'custom'>(() => initial?.teamId ? 'preset' : (initial?.teamName ? 'custom' : 'preset'));
+    const [customTeam, setCustomTeam] = useState(initial?.teamId ? '' : (initial?.teamName || ''));
+    const [skillsText, setSkillsText] = useState((initial?.skills || []).join(', '));
 
     const set = (k: keyof Resource, v: any) => setForm(f => ({ ...f, [k]: v }));
 
@@ -27,7 +30,20 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                     className="modal-body-scroll"
                     onSubmit={e => {
                         e.preventDefault();
-                        if (form.name?.trim()) onSave(form);
+                        if (!form.name?.trim()) return;
+                        const parsedSkills = skillsText
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(Boolean);
+                        const normalizedTeamName = teamMode === 'custom'
+                            ? customTeam.trim()
+                            : (teams.find(t => t.id === form.teamId)?.name || undefined);
+                        onSave({
+                            ...form,
+                            teamId: teamMode === 'preset' ? (form.teamId || undefined) : undefined,
+                            teamName: normalizedTeamName || undefined,
+                            skills: parsedSkills,
+                        });
                     }}
                 >
                     <div className="form-row">
@@ -47,10 +63,32 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                         </div>
                         <div className="form-group">
                             <label className="form-label">Team</label>
-                            <select className="form-select" value={form.teamId || ''} onChange={e => set('teamId', e.target.value)}>
+                            <select
+                                className="form-select"
+                                value={teamMode === 'custom' ? '__custom__' : (form.teamId || '')}
+                                onChange={e => {
+                                    if (e.target.value === '__custom__') {
+                                        setTeamMode('custom');
+                                        set('teamId', undefined);
+                                        return;
+                                    }
+                                    setTeamMode('preset');
+                                    set('teamId', e.target.value || undefined);
+                                }}
+                            >
                                 <option value="">None</option>
                                 {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                <option value="__custom__">Custom team...</option>
                             </select>
+                            {teamMode === 'custom' && (
+                                <input
+                                    className="form-input"
+                                    style={{ marginTop: 8 }}
+                                    value={customTeam}
+                                    onChange={e => setCustomTeam(e.target.value)}
+                                    placeholder="Enter custom team name"
+                                />
+                            )}
                         </div>
                     </div>
                     <div className="form-row-3">
@@ -78,6 +116,16 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                     <div className="form-group">
                         <label className="form-label">Email</label>
                         <input className="form-input" type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} placeholder="name@company.com" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Skills</label>
+                        <input
+                            className="form-input"
+                            value={skillsText}
+                            onChange={e => setSkillsText(e.target.value)}
+                            placeholder="e.g. React, Planning, Jira, Stakeholder Management"
+                        />
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Comma-separated skills</div>
                     </div>
                     <div className="modal-footer" style={{ marginTop: 20 }}>
                         <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
