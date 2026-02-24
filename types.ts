@@ -26,6 +26,7 @@ export type ViewTab =
   | 'allocations'
   | 'by-project'
   | 'by-resource'
+  | 'by-skills'
   | 'by-team'
   | 'by-tribe'
   | 'what-if';
@@ -43,6 +44,8 @@ export interface Resource {
   type: ResourceType;
   department: string;
   teamId?: string;
+  teamName?: string;
+  skills?: string[];
   totalCapacity: number; // usually 100
   avatarInitials?: string;
   email?: string;

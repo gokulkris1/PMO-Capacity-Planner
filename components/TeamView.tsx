@@ -21,14 +21,33 @@ function heatColor(pct: number): { bg: string; text: string } {
 export const TeamView: React.FC<Props> = ({ resources, projects, allocations, teams, scenarioAllocations }) => {
     const liveAlloc = scenarioAllocations ?? allocations;
 
-    // Group resources by team
+    const canonicalTeamIds = new Set(teams.map(t => t.id));
+
+    // Group resources by configured teams
     const teamGroups = teams.map(team => {
         const members = resources.filter(r => r.teamId === team.id);
         return { team, members };
     }).filter(g => g.members.length > 0);
 
+    // Custom team names saved directly on the resource
+    const customTeamNames = Array.from(new Set(
+        resources
+            .filter(r => (!r.teamId || !canonicalTeamIds.has(r.teamId)) && r.teamName?.trim())
+            .map(r => r.teamName!.trim())
+    )).sort((a, b) => a.localeCompare(b));
+
+    customTeamNames.forEach((name, idx) => {
+        const members = resources.filter(r => (!r.teamId || !canonicalTeamIds.has(r.teamId)) && (r.teamName || '').trim() === name);
+        if (members.length > 0) {
+            teamGroups.push({
+                team: { id: `custom-${idx}-${name}`, name, color: '#8b5cf6' },
+                members,
+            });
+        }
+    });
+
     // Resources without a team
-    const unassigned = resources.filter(r => !r.teamId);
+    const unassigned = resources.filter(r => !r.teamId && !r.teamName?.trim());
     if (unassigned.length > 0) {
         teamGroups.push({ team: { id: '_', name: 'Unassigned', color: '#94a3b8' }, members: unassigned });
     }

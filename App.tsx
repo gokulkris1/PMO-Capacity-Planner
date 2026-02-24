@@ -10,6 +10,7 @@ import { Dashboard } from './components/Dashboard';
 import { AllocationMatrix } from './components/AllocationMatrix';
 import { ProjectView } from './components/ProjectView';
 import { ResourceView } from './components/ResourceView';
+import { SkillsView } from './components/SkillsView';
 import { TeamView } from './components/TeamView';
 import { TribeView } from './components/TribeView';
 import { WhatIfPanel } from './components/WhatIfPanel';
@@ -61,6 +62,7 @@ const NAV_ITEMS: { id: ViewTab; label: string; icon: string; section?: string }[
   { id: 'by-tribe', label: 'By Tribe', icon: '⛺' },
   { id: 'by-project', label: 'By Project', icon: '🚀' },
   { id: 'by-resource', label: 'By Individual', icon: '👤' },
+  { id: 'by-skills', label: 'By Skills', icon: '🧩' },
   { id: 'by-team', label: 'By Team', icon: '👥' },
   { id: 'what-if', label: 'What-If Scenarios', icon: '🔬', section: 'Planning' },
 ];
@@ -258,6 +260,22 @@ const AppShell: React.FC = () => {
     resources.filter(r => getUtil(liveAlloc, r.id) > 100).length
     , [resources, liveAlloc]);
 
+  const effectiveTeams = useMemo(() => {
+    const base = [...TEAMS];
+    const seen = new Set(base.map(t => t.name.toLowerCase()));
+    resources.forEach((r, idx) => {
+      const name = r.teamName?.trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      seen.add(name.toLowerCase());
+      base.push({
+        id: r.teamId || `custom-team-${idx}-${name.toLowerCase().replace(/\s+/g, '-')}`,
+        name,
+        color: '#8b5cf6',
+      });
+    });
+    return base;
+  }, [resources]);
+
   /* ── AI handler ─────────────────────────────────────────── */
   const handleAiAsk = useCallback(async (prompt: string) => {
     setIsAiLoading(true);
@@ -392,6 +410,7 @@ const AppShell: React.FC = () => {
     'by-tribe': { title: 'By Tribe', subtitle: 'Capacity utilization broken down by Tribe (Client/Owner)' },
     'by-project': { title: 'By Project', subtitle: 'Capacity committed per project' },
     'by-resource': { title: 'By Individual', subtitle: 'How each person is spread across projects' },
+    'by-skills': { title: 'By Skills', subtitle: 'Group resources by skills and spot utilization by capability' },
     'by-team': { title: 'By Team', subtitle: 'Team-level allocation heatmap' },
     'what-if': { title: 'What-If Scenarios', subtitle: 'Explore hypothetical reallocation scenarios' },
   };
@@ -555,34 +574,28 @@ const AppShell: React.FC = () => {
               </button>
             )}
 
-            <div className="nav-section-label">Quick Add {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
+            <div className="nav-section-label">Manage {!user && <span style={{ fontSize: 10, opacity: .6 }}>🔒</span>}</div>
             <button
               className="nav-item"
               onClick={() => {
-                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
-                if (resources.length >= limits.maxResources) {
-                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxResources} resources. Please upgrade to add more.`);
-                  return;
+                setActiveTab('by-resource');
+                if (location.pathname.endsWith('/settings') || location.pathname.endsWith('/directory')) {
+                  navigate(`/o/${orgSlug}`);
                 }
-                authGate(() => setModal({ type: 'addResource' }));
               }}
-              style={{ opacity: resources.length >= PLAN_LIMITS[user?.plan || 'BASIC'].maxResources ? 0.5 : 1 }}
             >
-              <span style={{ fontSize: 15 }}>👤</span><span>Add Resource</span>
+              <span style={{ fontSize: 15 }}>👤</span><span>Manage Resources</span>
             </button>
             <button
               className="nav-item"
               onClick={() => {
-                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
-                if (projects.length >= limits.maxProjects) {
-                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
-                  return;
+                setActiveTab('by-project');
+                if (location.pathname.endsWith('/settings') || location.pathname.endsWith('/directory')) {
+                  navigate(`/o/${orgSlug}`);
                 }
-                authGate(() => setModal({ type: 'addProject' }));
               }}
-              style={{ opacity: projects.length >= PLAN_LIMITS[user?.plan || 'BASIC'].maxProjects ? 0.5 : 1 }}
             >
-              <span style={{ fontSize: 15 }}>🚀</span><span>Add Project</span>
+              <span style={{ fontSize: 15 }}>🚀</span><span>Manage Projects</span>
             </button>
           </div>
 
@@ -767,7 +780,7 @@ const AppShell: React.FC = () => {
                   allocations={allocations}
                   scenarioAllocations={scenarioAllocations}
                   onTabChange={t => setActiveTab(t as ViewTab)}
-                  teams={TEAMS}
+                  teams={effectiveTeams}
                 />
               )}
 
@@ -793,7 +806,9 @@ const AppShell: React.FC = () => {
                   projects={projects}
                   allocations={allocations}
                   scenarioAllocations={scenarioAllocations}
+                  onAddProject={() => authGate(() => setModal({ type: 'addProject' }), true)}
                   onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
+                  onDeleteProject={(proj) => authGate(() => setModal({ type: 'deleteProject', project: proj }), true)}
                 />
               )}
 
@@ -803,6 +818,18 @@ const AppShell: React.FC = () => {
                   projects={projects}
                   allocations={allocations}
                   scenarioAllocations={scenarioAllocations}
+                  onAddResource={() => authGate(() => setModal({ type: 'addResource' }), true)}
+                  onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)}
+                  onDeleteResource={(res) => authGate(() => setModal({ type: 'deleteResource', resource: res }), true)}
+                />
+              )}
+
+              {activeTab === 'by-skills' && (
+                <SkillsView
+                  resources={resources}
+                  projects={projects}
+                  allocations={allocations}
+                  scenarioAllocations={scenarioMode ? scenarioAllocations : null}
                   onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)}
                 />
               )}
@@ -812,7 +839,7 @@ const AppShell: React.FC = () => {
                   resources={resources}
                   projects={projects}
                   allocations={allocations}
-                  teams={TEAMS}
+                  teams={effectiveTeams}
                   scenarioAllocations={scenarioAllocations}
                 />
               )}
@@ -863,12 +890,12 @@ const AppShell: React.FC = () => {
       )}
       {
         modal.type === 'addResource' && (
-          <ResourceModal teams={TEAMS} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+          <ResourceModal teams={effectiveTeams} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {
         modal.type === 'editResource' && (
-          <ResourceModal teams={TEAMS} initial={modal.resource} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+          <ResourceModal teams={effectiveTeams} initial={modal.resource} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {

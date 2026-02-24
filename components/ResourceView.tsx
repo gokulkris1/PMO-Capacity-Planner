@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
@@ -8,7 +7,9 @@ interface Props {
     projects: Project[];
     allocations: Allocation[];
     scenarioAllocations?: Allocation[] | null;
+    onAddResource?: () => void;
     onEditResource?: (res: Resource) => void;
+    onDeleteResource?: (res: Resource) => void;
 }
 
 function utilColor(pct: number) {
@@ -19,31 +20,47 @@ function utilColor(pct: number) {
     return '#94a3b8';
 }
 
-export const ResourceView: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations, onEditResource }) => {
+export const ResourceView: React.FC<Props> = ({
+    resources,
+    projects,
+    allocations,
+    scenarioAllocations,
+    onAddResource,
+    onEditResource,
+    onDeleteResource,
+}) => {
     const [search, setSearch] = useState('');
     const liveAlloc = scenarioAllocations ?? allocations;
 
-    const filtered = resources.filter(r => r.name.toLowerCase().includes(search.toLowerCase()) || r.role.toLowerCase().includes(search.toLowerCase()));
+    const filtered = resources.filter(r => {
+        const q = search.toLowerCase();
+        return (
+            r.name.toLowerCase().includes(q) ||
+            r.role.toLowerCase().includes(q) ||
+            (r.skills || []).some(s => s.toLowerCase().includes(q))
+        );
+    });
 
     return (
         <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Search */}
-            <div style={{ position: 'relative', maxWidth: 320 }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 }}>🔍</span>
-                <input
-                    type="text"
-                    placeholder="Search by name or role..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="form-input"
-                    style={{ paddingLeft: 34 }}
-                />
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ position: 'relative', maxWidth: 360, flex: '1 1 280px' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 14 }}>🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Search by name, role, or skill..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="form-input"
+                        style={{ paddingLeft: 34 }}
+                    />
+                </div>
+                {onAddResource && <button className="btn btn-primary" onClick={onAddResource}>+ Add Resource</button>}
             </div>
 
             {filtered.map(res => {
                 const resAllocs = liveAlloc.filter(a => a.resourceId === res.id && a.percentage > 0);
                 const totalUtil = resAllocs.reduce((s, a) => s + a.percentage, 0);
-                const status = getAllocationStatus(totalUtil);
 
                 const typeMap: Record<string, string> = {
                     Permanent: 'badge badge-perm',
@@ -53,7 +70,6 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
 
                 return (
                     <div key={res.id} className="panel" style={{ borderLeft: `4px solid ${utilColor(totalUtil)}` }}>
-                        {/* Header */}
                         <div className="panel-body" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 20, alignItems: 'center' }}>
                             <div className="avatar" style={{
                                 width: 48, height: 48, fontSize: 16,
@@ -75,11 +91,26 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                                     <span style={{ fontSize: 12, color: '#64748b' }}>{res.role}</span>
                                     <span style={{ color: '#cbd5e1' }}>·</span>
                                     <span style={{ fontSize: 12, color: '#64748b' }}>{res.department}</span>
-                                    {res.location && <><span style={{ color: '#cbd5e1' }}>·</span><span style={{ fontSize: 12, color: '#94a3b8' }}>📍 {res.location}</span></>}
+                                    {(res.teamName || res.teamId) && (
+                                        <>
+                                            <span style={{ color: '#cbd5e1' }}>·</span>
+                                            <span style={{ fontSize: 12, color: '#64748b' }}>👥 {res.teamName || res.teamId}</span>
+                                        </>
+                                    )}
+                                    {res.location && (
+                                        <>
+                                            <span style={{ color: '#cbd5e1' }}>·</span>
+                                            <span style={{ fontSize: 12, color: '#94a3b8' }}>📍 {res.location}</span>
+                                        </>
+                                    )}
                                     <span className={typeMap[res.type] || 'badge badge-perm'}>{res.type}</span>
+                                    {(res.skills || []).slice(0, 4).map(skill => (
+                                        <span key={skill} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: '#eef2ff', color: '#4338ca', fontWeight: 600 }}>
+                                            {skill}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
-                            {/* Total util */}
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: 28, fontWeight: 800, color: utilColor(totalUtil), lineHeight: 1 }}>{totalUtil}%</div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Total allocated</div>
@@ -89,7 +120,11 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                             </div>
                         </div>
 
-                        {/* Project breakdown */}
+                        <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 24px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            {onEditResource && <button className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onEditResource(res)}>Edit</button>}
+                            {onDeleteResource && <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onDeleteResource(res)}>Delete</button>}
+                        </div>
+
                         {resAllocs.length > 0 ? (
                             <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
@@ -114,13 +149,13 @@ export const ResourceView: React.FC<Props> = ({ resources, projects, allocations
                                 })}
                                 {totalUtil > 100 && (
                                     <div style={{ marginTop: 4, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#b91c1c', fontWeight: 600 }}>
-                                        ⚠️ Over-allocated by {totalUtil - 100}% – review assignments
+                                        ⚠️ Over-allocated by {totalUtil - 100}% - review assignments
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 24px', fontSize: 13, color: '#94a3b8' }}>
-                                No active project allocations – resource is available.
+                                No active project allocations - resource is available.
                             </div>
                         )}
 
