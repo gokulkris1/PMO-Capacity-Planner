@@ -20,7 +20,7 @@ export const SettingsHub: React.FC = () => {
 
     // Invite state
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'PMO' | 'PM' | 'VIEWER'>('VIEWER');
+    const [inviteRole, setInviteRole] = useState<'ADMIN' | 'USER'>('USER');
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState('');
 
@@ -38,6 +38,7 @@ export const SettingsHub: React.FC = () => {
 
     const updateUser = async (userId: string, field: 'plan' | 'role', value: string) => {
         setSaving(userId + field);
+        setError('');
         try {
             const res = await fetch(`/api/auth/users/${userId}`, {
                 method: 'PUT',
@@ -47,12 +48,13 @@ export const SettingsHub: React.FC = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...data.user } : u));
-        } catch (e: any) { alert('Error: ' + e.message); } finally { setSaving(null); }
+        } catch (e: any) { setError('Error: ' + e.message); } finally { setSaving(null); }
     };
 
     const deleteUser = async (userId: string) => {
         if (!confirm('Are you sure you want to permanently remove this user?')) return;
         setSaving(userId + 'delete');
+        setError('');
         try {
             const res = await fetch(`/api/auth/admin/users/${userId}`, {
                 method: 'DELETE',
@@ -61,7 +63,7 @@ export const SettingsHub: React.FC = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setUsers(prev => prev.filter(u => u.id !== userId));
-        } catch (e: any) { alert('Error: ' + e.message); } finally { setSaving(null); }
+        } catch (e: any) { setError('Error: ' + e.message); } finally { setSaving(null); }
     };
 
     const inviteUser = async () => {
@@ -126,9 +128,8 @@ export const SettingsHub: React.FC = () => {
                                 value={inviteRole} onChange={e => setInviteRole(e.target.value as any)}
                                 style={{ padding: '8px 24px 8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: 13, cursor: 'pointer', appearance: 'none', background: '#fff' }}
                             >
-                                <option value="VIEWER">Viewer</option>
-                                <option value="PM">Editor (PM)</option>
-                                <option value="PMO">Admin (PMO)</option>
+                                <option value="USER">User</option>
+                                <option value="ADMIN">Admin</option>
                             </select>
                             <button onClick={inviteUser} disabled={inviting || !inviteEmail} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
                                 {inviting ? '...' : '+ Invite'}
@@ -177,25 +178,23 @@ export const SettingsHub: React.FC = () => {
                                                     style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: ROLE_COLORS[u.role] || '#475569', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
                                                 >
                                                     <option value="SUPERUSER" disabled>Superuser</option>
-                                                    <option value="PMO">Admin</option>
-                                                    <option value="PM">Editor</option>
-                                                    <option value="VIEWER">Viewer</option>
+                                                    <option value="ADMIN">Admin</option>
+                                                    <option value="USER">User</option>
                                                 </select>
                                             </td>
                                             <td style={{ padding: '16px' }}>
                                                 {currentUser?.role === 'SUPERUSER' ? (
                                                     <select
-                                                        value={u.plan || 'FREE'} disabled={saving === u.id + 'plan'}
+                                                        value={u.plan || 'BASIC'} disabled={saving === u.id + 'plan'}
                                                         onChange={e => updateUser(u.id, 'plan', e.target.value)}
-                                                        style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: PLAN_COLORS[u.plan || 'FREE'], padding: '6px 10px', fontSize: 12, fontWeight: 700, outline: 'none' }}
+                                                        style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: PLAN_COLORS[u.plan || 'BASIC'], padding: '6px 10px', fontSize: 12, fontWeight: 700, outline: 'none' }}
                                                     >
-                                                        <option value="FREE">Free</option>
                                                         <option value="BASIC">Basic</option>
                                                         <option value="PRO">Pro</option>
                                                         <option value="MAX">Max</option>
                                                     </select>
                                                 ) : (
-                                                    <span style={{ fontWeight: 700, color: PLAN_COLORS[u.plan || 'FREE'] }}>{u.plan || 'FREE'}</span>
+                                                    <span style={{ fontWeight: 700, color: PLAN_COLORS[u.plan || 'BASIC'] }}>{u.plan || 'BASIC'}</span>
                                                 )}
                                             </td>
                                             <td style={{ padding: '16px', color: '#64748b' }}>

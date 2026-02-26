@@ -106,18 +106,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
             `;
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
             const orgId = wsRows.length > 0 ? wsRows[0].org_id : null;
-            const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'FREE';
+            const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'BASIC';
 
             if (!wsId || !orgId) return fail('Unauthorized for this workspace', 403);
 
             // ── FREEMIUM LIMIT ENFORCEMENT ──
-            if (userPlan === 'FREE' || !userPlan) {
+            if (userPlan === 'BASIC' || !userPlan) {
                 if (resources.length > 5) {
                     return fail('Free Plan Limit Exceeded: Maximum 5 resources allowed. Please upgrade to Pro.', 403);
                 }
                 const ownProjects = projects.filter((p: any) => p.id !== 'demo');
-                if (ownProjects.length > 1) {
-                    return fail('Free Plan Limit Exceeded: Maximum 1 custom project allowed. Please upgrade to Pro.', 403);
+                if (ownProjects.length > 5) {
+                    return fail('Basic Plan Limit Exceeded: Maximum 5 custom projects allowed. Please upgrade to Pro.', 403);
                 }
             }
 

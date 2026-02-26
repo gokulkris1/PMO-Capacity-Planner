@@ -75,9 +75,8 @@ export const MOCK_ALLOCATIONS: Allocation[] = [
 export const PLAN_LIMITS: Record<string, any> = {
   BASIC: {
     maxAdmins: 1,
-    maxResources: 5,
+    maxUsers: 5,
     maxProjects: 5,
-    maxViewers: 0,
     features: {
       aiTickets: 0,
       whatIfMode: false,
@@ -86,10 +85,9 @@ export const PLAN_LIMITS: Record<string, any> = {
     }
   },
   PRO: {
-    maxAdmins: 2,
-    maxResources: 10,
+    maxAdmins: 1,
+    maxUsers: 20,
     maxProjects: 10,
-    maxViewers: 10,
     features: {
       aiTickets: 50,
       whatIfMode: true,
@@ -99,9 +97,8 @@ export const PLAN_LIMITS: Record<string, any> = {
   },
   MAX: {
     maxAdmins: Infinity,
-    maxResources: Infinity,
+    maxUsers: Infinity,
     maxProjects: Infinity,
-    maxViewers: Infinity,
     features: {
       aiTickets: Infinity,
       whatIfMode: true,

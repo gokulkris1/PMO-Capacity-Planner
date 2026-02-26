@@ -96,10 +96,10 @@ export const JiraImportModal: React.FC<JiraModalProps> = ({ onClose }) => {
                 ) : null}
 
                 <div className="modal-footer" style={{ marginTop: 24 }}>
-                    <button className="btn btn-secondary" onClick={onClose}>{result ? 'Close' : 'Cancel'}</button>
+                    <button className="btn btn-secondary" onClick={onClose} disabled={loading}>{result ? 'Close' : 'Cancel'}</button>
                     {!result && (
-                        <button className="btn btn-primary" onClick={handleSync} style={{ background: '#2684FF', borderColor: '#0052CC' }}>
-                            Sync Story Points
+                        <button className="btn btn-primary" onClick={handleSync} disabled={loading} style={{ background: '#2684FF', borderColor: '#0052CC', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                            {loading ? 'Syncing...' : 'Sync Story Points'}
                         </button>
                     )}
                 </div>

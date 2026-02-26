@@ -5,22 +5,20 @@ interface ManagedUser {
     id: string;
     email: string;
     name: string;
-    role: 'PMO' | 'PM' | 'VIEWER';
-    plan: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
+    role: 'ADMIN' | 'USER';
+    plan: 'BASIC' | 'PRO' | 'MAX';
     created_at: string;
 }
 
 const PLAN_COLORS: Record<string, string> = {
-    FREE: '#64748b',
     BASIC: '#6366f1',
     PRO: '#f59e0b',
     MAX: '#10b981',
 };
 
 const ROLE_COLORS: Record<string, string> = {
-    PMO: '#ef4444',
-    PM: '#f59e0b',
-    VIEWER: '#64748b',
+    ADMIN: '#ef4444',
+    USER: '#64748b',
 };
 
 export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -33,7 +31,7 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     // Invite state
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'PMO' | 'PM' | 'VIEWER'>('VIEWER');
+    const [inviteRole, setInviteRole] = useState<'ADMIN' | 'USER'>('USER');
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState('');
 
@@ -138,8 +136,8 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
                 {/* Stats */}
                 <div style={{ display: 'flex', gap: 12, padding: '16px 24px 0' }}>
-                    {(['FREE', 'BASIC', 'PRO', 'MAX'] as const).map(p => {
-                        const count = users.filter(u => (u.plan || 'FREE') === p).length;
+                    {(['BASIC', 'PRO', 'MAX'] as const).map(p => {
+                        const count = users.filter(u => (u.plan || 'BASIC') === p).length;
                         return (
                             <div key={p} style={{
                                 flex: 1, background: '#1e293b', borderRadius: 10, padding: '10px 14px',
@@ -185,9 +183,8 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                 fontSize: 12, padding: '0 8px', outline: 'none', cursor: 'pointer'
                             }}
                         >
-                            <option value="VIEWER">Viewer</option>
-                            <option value="PM">PM</option>
-                            <option value="PMO">Admin</option>
+                            <option value="USER">User</option>
+                            <option value="ADMIN">Admin</option>
                         </select>
                         <button
                             onClick={inviteUser}
@@ -244,35 +241,33 @@ export const AdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                         </td>
                                         <td style={{ padding: '12px 10px' }}>
                                             <select
-                                                value={u.role}
+                                                value={u.role || 'USER'}
                                                 disabled={saving === u.id + 'role'}
                                                 onChange={e => updateUser(u.id, 'role', e.target.value)}
                                                 style={{
                                                     background: '#1e293b', border: '1px solid #334155',
-                                                    borderRadius: 6, color: ROLE_COLORS[u.role], fontSize: 12,
+                                                    borderRadius: 6, color: ROLE_COLORS[u.role || 'USER'], fontSize: 12,
                                                     padding: '4px 8px', cursor: 'pointer', fontWeight: 600,
                                                 }}
                                             >
-                                                <option value="PMO">PMO (Admin)</option>
-                                                <option value="PM">PM (Editor)</option>
-                                                <option value="VIEWER">Viewer</option>
+                                                <option value="ADMIN">Admin</option>
+                                                <option value="USER">User</option>
                                             </select>
                                         </td>
                                         <td style={{ padding: '12px 10px' }}>
                                             <select
-                                                value={u.plan || 'FREE'}
+                                                value={u.plan || 'BASIC'}
                                                 disabled={saving === u.id + 'plan'}
                                                 onChange={e => updateUser(u.id, 'plan', e.target.value)}
                                                 style={{
                                                     background: '#1e293b', border: '1px solid #334155',
-                                                    borderRadius: 6, color: PLAN_COLORS[u.plan || 'FREE'], fontSize: 12,
+                                                    borderRadius: 6, color: PLAN_COLORS[u.plan || 'BASIC'], fontSize: 12,
                                                     padding: '4px 8px', cursor: 'pointer', fontWeight: 700,
                                                 }}
                                             >
-                                                <option value="FREE">Free</option>
-                                                <option value="BASIC">Basic (€29)</option>
-                                                <option value="PRO">Pro (€79)</option>
-                                                <option value="MAX">Max (€199)</option>
+                                                <option value="BASIC">Basic</option>
+                                                <option value="PRO">Pro</option>
+                                                <option value="MAX">Max</option>
                                             </select>
                                         </td>
                                         <td style={{ padding: '12px 10px' }}>

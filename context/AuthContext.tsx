@@ -4,8 +4,8 @@ export interface User {
     id: string;
     email: string;
     name?: string;
-    role: 'SUPERUSER' | 'PMO' | 'PM' | 'VIEWER';
-    plan?: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
+    role: 'SUPERUSER' | 'ADMIN' | 'USER';
+    plan?: 'BASIC' | 'PRO' | 'MAX';
 }
 
 interface AuthContextType {

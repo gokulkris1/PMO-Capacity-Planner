@@ -60,10 +60,9 @@ export const Login: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
             }
 
             if (isRegistering) {
-                setPendingToken(data.token);
-                setPendingUser(data.user);
-                await sendOtp(email);
-                setStep('verify');
+                // Instantly log the newly registered user in rather than holding them for OTP
+                login(data.token, data.user);
+                onSuccess?.();
             } else {
                 login(data.token, data.user);
                 onSuccess?.();

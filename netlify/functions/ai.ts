@@ -52,8 +52,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
             ai_queries_month = 0;
         }
 
-        const limits: Record<string, number> = { 'FREE': 10, 'BASIC': 25, 'PRO': 100, 'MAX': 999999 };
-        const userLimit = limits[plan || 'FREE'] || 10;
+        const limits: Record<string, number> = { 'BASIC': 25, 'PRO': 100, 'MAX': 999999 };
+        const userLimit = limits[plan || 'BASIC'] || 25;
 
         if (ai_queries_month >= userLimit) {
             return fail(`You have reached your limit of ${userLimit} AI queries this month. Please upgrade your plan.`, 429);

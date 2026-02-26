@@ -59,10 +59,10 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
 
-        // First user default to PMO, otherwise VIEWER
+        // First user default to ADMIN, otherwise USER
         const countRes = await pool.query('SELECT COUNT(*) FROM users');
         const isFirst = parseInt(countRes.rows[0].count) === 0;
-        const finalRole = isFirst ? 'PMO' : (role || 'VIEWER');
+        const finalRole = isFirst ? 'ADMIN' : (role || 'USER');
 
         const result = await pool.query(
             `INSERT INTO users (email, password_hash, name, role) 

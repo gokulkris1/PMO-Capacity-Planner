@@ -133,7 +133,7 @@ const AppShell: React.FC = () => {
   const pendingActionRef = React.useRef<(() => void) | null>(null);
   const authGate = useCallback((action: () => void, requireWrite = false) => {
     if (user) {
-      if (requireWrite && user.role === 'VIEWER') {
+      if (requireWrite && user.role === 'USER') {
         alert('Access Denied: You have Viewer permissions for this workspace.');
         return;
       }
@@ -334,8 +334,8 @@ const AppShell: React.FC = () => {
   /* ── resource CRUD ──────────────────────────────────────── */
   const saveResource = (data: Partial<Resource>) => {
     // Freemium limit: 5 resources max without a paid plan
-    const userPlan = user?.plan || 'FREE';
-    if (modal.type === 'addResource' && userPlan === 'FREE' && resources.length >= 5) {
+    const userPlan = user?.plan || 'BASIC';
+    if (modal.type === 'addResource' && userPlan === 'BASIC' && resources.length >= 5) {
       setModal({ type: 'none' });
       setTimeout(() => setShowPricing(true), 150);
       return;
@@ -357,9 +357,9 @@ const AppShell: React.FC = () => {
   /* ── project CRUD ───────────────────────────────────────── */
   const saveProject = (data: Partial<Project>) => {
     // Freemium limit: 1 project max without a paid plan
-    const userPlan = user?.plan || 'FREE';
+    const userPlan = user?.plan || 'BASIC';
     const ownProjects = projects.filter(p => p.id !== 'demo');
-    if (modal.type === 'addProject' && userPlan === 'FREE' && ownProjects.length >= 1) {
+    if (modal.type === 'addProject' && userPlan === 'BASIC' && ownProjects.length >= 1) {
       setModal({ type: 'none' });
       setTimeout(() => setShowPricing(true), 150);
       return;
@@ -462,7 +462,7 @@ const AppShell: React.FC = () => {
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>👤</div>
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</div>
-                  <div style={{ fontSize: 10, color: '#64748b' }}>{(user.plan || 'FREE')} plan</div>
+                  <div style={{ fontSize: 10, color: '#64748b' }}>{(user.plan || 'BASIC')} plan</div>
                 </div>
               </div>
               <button
@@ -645,7 +645,7 @@ const AppShell: React.FC = () => {
             </div>
           )}
 
-          {/* Admin Panel - PMO role only (Superusers use the dedicated console above) */}
+          {/* Admin Panel - ADMIN role only (Superusers use the dedicated console above) */}
           {user && ['PMO', 'ADMIN'].includes(user.role?.toUpperCase()) && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
               <button className="nav-item" onClick={() => setShowAdmin(true)}>
@@ -728,8 +728,8 @@ const AppShell: React.FC = () => {
               className="btn btn-primary"
               onClick={() => {
                 const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
-                if (resources.length >= limits.maxResources) {
-                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxResources} resources. Please upgrade to add more.`);
+                if (resources.length >= limits.maxUsers) {
+                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxUsers} resources. Please upgrade to add more.`);
                   return;
                 }
                 authGate(() => setModal({ type: 'addResource' }), true)
@@ -1048,9 +1048,23 @@ const Landing: React.FC = () => {
       const token = localStorage.getItem('pcp_token');
       fetch('/api/workspace_lookup', { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.json())
-        .then(d => {
-          if (d.orgSlug) navigate(`/o/${d.orgSlug}`);
-          else navigate('/create');
+        .then(async d => {
+          if (d.orgSlug) {
+            navigate(`/o/${d.orgSlug}`);
+          } else {
+            // Immediately provision a workspace to prevent jumping to the separate /create screen
+            try {
+              const res = await fetch('/api/org_create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ orgName: `${user.name || 'My'}'s Workspace` })
+              });
+              const data = await res.json();
+              if (res.ok && data.orgSlug) navigate(`/o/${data.orgSlug}`);
+            } catch (createErr) {
+              console.error('Auto-provisioning failed:', createErr);
+            }
+          }
         })
         .catch(console.error);
     }
@@ -1063,39 +1077,26 @@ const Landing: React.FC = () => {
       <div className="orb orb-secondary"></div>
 
       {/* Main Hero Container */}
-      <div className="glass-panel" style={{ position: 'relative', zIndex: 10, padding: '60px 80px', borderRadius: '32px', textAlign: 'center', maxWidth: 800, width: '90%' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', color: 'white', fontSize: 32, marginBottom: 24, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
-          🪐
-        </div>
-        <h1 className="orbit-hero-title">Orbit Space</h1>
-        <p style={{ fontSize: 20, color: '#475569', fontWeight: 500, maxWidth: 500, margin: '0 auto 40px' }}>
-          Visual resource orchestration and team capacity management for modern PMOs.
-        </p>
+      <div style={{ display: 'flex', gap: 40, alignItems: 'center', justifyContent: 'center', width: '90%', maxWidth: 1000, position: 'relative', zIndex: 10 }}>
 
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-          <button onClick={() => navigate('/create')} className="btn btn-primary" style={{ padding: '14px 32px', fontSize: 16, borderRadius: 99, fontWeight: 600, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
-            Start Free Trial
-          </button>
-          <button onClick={() => setShowLogin(true)} className="glass-card" style={{ padding: '14px 32px', fontSize: 16, borderRadius: 99, fontWeight: 600, color: '#334155', border: '1px solid rgba(255,255,255,0.6)', cursor: 'pointer' }}>
-            Sign In
-          </button>
+        <div className="glass-panel" style={{ flex: 1, padding: '60px 40px', borderRadius: '32px', textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', color: 'white', fontSize: 32, marginBottom: 24, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
+            🪐
+          </div>
+          <h1 className="orbit-hero-title" style={{ fontSize: 56, marginBottom: 16 }}>Orbit Space</h1>
+          <p style={{ fontSize: 20, color: '#475569', fontWeight: 500, lineHeight: 1.5, marginBottom: 0 }}>
+            Visual resource orchestration and team capacity management for modern PMOs.
+          </p>
         </div>
-      </div>
 
-      {/* Login Modal */}
-      {showLogin && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="glass-panel" style={{ position: 'relative', width: '100%', maxWidth: 420, borderRadius: 24, overflow: 'hidden' }}>
-            <button
-              onClick={() => setShowLogin(false)}
-              style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.5)', border: 'none', color: '#475569', fontSize: 16, cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(8px)' }}
-            >
-              ✕
-            </button>
-            <Login onSuccess={() => setShowLogin(false)} force2fa={false} />
+        {/* Embedded Login / Signup */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: '100%', maxWidth: 420 }}>
+            <Login />
           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 };

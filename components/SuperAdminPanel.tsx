@@ -3,19 +3,19 @@ import { useAuth } from '../context/AuthContext';
 
 interface PlatformUser {
     id: string; email: string; name: string;
-    role: 'SUPERUSER' | 'PMO' | 'PM' | 'VIEWER';
-    plan: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
+    role: 'SUPERUSER' | 'ADMIN' | 'USER';
+    plan: 'BASIC' | 'PRO' | 'MAX';
     created_at: string;
 }
 interface Stats {
-    total_users: number; free_users: number; basic_users: number;
+    total_users: number; basic_users: number;
     pro_users: number; max_users: number; new_this_week: number; mrr_eur: number;
 }
 
-const PLAN_COLOR: Record<string, string> = { FREE: '#64748b', BASIC: '#6366f1', PRO: '#f59e0b', MAX: '#10b981' };
-const ROLE_COLOR: Record<string, string> = { SUPERUSER: '#f43f5e', PMO: '#8b5cf6', PM: '#f59e0b', VIEWER: '#64748b' };
-const PLANS = ['FREE', 'BASIC', 'PRO', 'MAX'] as const;
-const ROLES = ['SUPERUSER', 'PMO', 'PM', 'VIEWER'] as const;
+const PLAN_COLOR: Record<string, string> = { BASIC: '#6366f1', PRO: '#f59e0b', MAX: '#10b981' };
+const ROLE_COLOR: Record<string, string> = { SUPERUSER: '#f43f5e', ADMIN: '#ef4444', USER: '#64748b' };
+const PLANS = ['BASIC', 'PRO', 'MAX'] as const;
+const ROLES = ['SUPERUSER', 'ADMIN', 'USER'] as const;
 
 /* ── small reusable select ── */
 const PlanSelect = ({ value, userId, onChange, saving }: {
@@ -60,7 +60,7 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const [deleting, setDeleting] = useState<string | null>(null);
 
     /* create-user form */
-    const [form, setForm] = useState({ email: '', password: '', name: '', role: 'VIEWER', plan: 'FREE' });
+    const [form, setForm] = useState({ email: '', password: '', name: '', role: 'USER', plan: 'BASIC' });
     const [creating, setCreating] = useState(false);
     const [createMsg, setCreateMsg] = useState('');
 
@@ -118,7 +118,7 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
             if (!r.ok) throw new Error(d.error);
             setUsers(prev => [d.user, ...prev]);
             setCreateMsg(`✅ Created: ${d.user.email} (${d.user.role} / ${d.user.plan})`);
-            setForm({ email: '', password: '', name: '', role: 'VIEWER', plan: 'FREE' });
+            setForm({ email: '', password: '', name: '', role: 'USER', plan: 'BASIC' });
         } catch (e: any) { setCreateMsg('❌ ' + e.message); }
         setCreating(false);
     };
@@ -177,7 +177,6 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                 {stats && (
                     <div style={{ display: 'flex', gap: 10, padding: '14px 24px 0', flexWrap: 'wrap' }}>
                         <StatCard label="Total Users" value={stats.total_users} />
-                        <StatCard label="Free" value={stats.free_users} color={PLAN_COLOR.FREE} />
                         <StatCard label="Basic" value={stats.basic_users} color={PLAN_COLOR.BASIC} />
                         <StatCard label="Pro" value={stats.pro_users} color={PLAN_COLOR.PRO} />
                         <StatCard label="Max" value={stats.max_users} color={PLAN_COLOR.MAX} />
@@ -249,15 +248,15 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                                                     {new Date(u.created_at).toLocaleDateString('en-GB')}
                                                 </td>
                                                 <td style={{ padding: '11px 10px' }}>
-                                                    <RoleSelect value={u.role} userId={u.id} onChange={updateUser} saving={saving} />
+                                                    <RoleSelect value={u.role || 'USER'} userId={u.id} onChange={updateUser} saving={saving} />
                                                 </td>
                                                 <td style={{ padding: '11px 10px' }}>
-                                                    <PlanSelect value={u.plan || 'FREE'} userId={u.id} onChange={updateUser} saving={saving} />
+                                                    <PlanSelect value={u.plan || 'BASIC'} userId={u.id} onChange={updateUser} saving={saving} />
                                                 </td>
                                                 {/* Quick license buttons */}
                                                 <td style={{ padding: '11px 10px' }}>
                                                     <div style={{ display: 'flex', gap: 4 }}>
-                                                        {(['FREE', 'BASIC', 'PRO', 'MAX'] as const).map(p => (
+                                                        {(['BASIC', 'PRO', 'MAX'] as const).map(p => (
                                                             <button key={p} onClick={() => updateUser(u.id, 'plan', p)}
                                                                 disabled={u.plan === p || saving?.startsWith(u.id)}
                                                                 style={{

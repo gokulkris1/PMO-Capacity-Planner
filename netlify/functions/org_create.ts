@@ -65,7 +65,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const userEmail = emailRows.length > 0 ? emailRows[0].email : null;
 
         // 4. Bind User to Organization
-        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'PMO';
+        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'ADMIN';
         await sql`
             UPDATE users SET org_id = ${org.id}, role = ${assignedRole} WHERE id = ${userId}
         `;

@@ -6,8 +6,11 @@ export const DirectoryProfile: React.FC = () => {
     const [name, setName] = useState(user?.name || '');
     const [password, setPassword] = useState('');
 
+    const [success, setSuccess] = useState('');
+
     const handleSave = () => {
-        alert("Profile updated successfully!"); // In a full implementation, this hits an API
+        setSuccess("Profile updated successfully!"); // In a full implementation, this hits an API
+        setTimeout(() => setSuccess(''), 3000);
     };
 
     return (
@@ -40,7 +43,7 @@ export const DirectoryProfile: React.FC = () => {
 
                         <div style={{ width: '100%', textAlign: 'left', fontSize: 14, color: '#475569' }}>
                             <div style={{ marginBottom: 12 }}><strong>Email:</strong> {user?.email || 'user@example.com'}</div>
-                            <div style={{ marginBottom: 12 }}><strong>Plan Tier:</strong> {user?.plan || 'FREE'}</div>
+                            <div style={{ marginBottom: 12 }}><strong>Plan Tier:</strong> {user?.plan || 'BASIC'}</div>
                         </div>
                     </div>
 
@@ -65,6 +68,11 @@ export const DirectoryProfile: React.FC = () => {
                             />
                         </div>
 
+                        {success && (
+                            <div style={{ marginBottom: 16, padding: '10px 14px', background: '#ecfdf5', color: '#047857', borderRadius: 8, fontSize: 13, border: '1px solid #10b981' }}>
+                                ✓ {success}
+                            </div>
+                        )}
                         <button onClick={handleSave} className="nav-item" style={{ width: '100%', justifyContent: 'center', background: '#eef2ff', color: '#4f46e5', fontWeight: 600, border: '1px solid #c7d2fe', borderRadius: 8 }}>
                             Save Changes
                         </button>
