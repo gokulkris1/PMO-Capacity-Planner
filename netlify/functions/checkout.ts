@@ -3,7 +3,8 @@ import Stripe from 'stripe';
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_for_dev_only';
+const JWT_SECRET = process.env.JWT_SECRET as string;
+if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
 
 const CORS = {
     'Access-Control-Allow-Origin': '*',

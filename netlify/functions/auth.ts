@@ -7,7 +7,8 @@ import { Resend } from 'resend';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'PMO Planner <noreply@pmo-planner.com>';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_prod';
+const JWT_SECRET = process.env.JWT_SECRET as string;
+if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
 // Set SUPER_ADMIN_EMAIL in Netlify env vars → that user always gets SUPERUSER role
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase().trim();
 
