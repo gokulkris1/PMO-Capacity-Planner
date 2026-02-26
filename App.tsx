@@ -382,6 +382,57 @@ const AppShell: React.FC = () => {
     setAllocations(prev => prev.filter(a => a.projectId !== id));
   };
 
+  /* ── bulk import CSV modals ─────────────────────────────── */
+  const bulkSaveResources = (data: Partial<Resource>[]) => {
+    if (!data.length) return;
+    const userPlan = user?.plan || 'BASIC';
+    const limits = PLAN_LIMITS[userPlan];
+    if (resources.length + data.length > limits.maxUsers) {
+      alert(`Plan limit reached. Your ${userPlan} plan allows a maximum of ${limits.maxUsers} resources. Please upgrade to add more.`);
+      return;
+    }
+    const newResources = data.map((d, i) => ({
+      id: `r-${Date.now()}-${i}`,
+      name: d.name || 'Unnamed Resource',
+      role: d.role || '',
+      type: d.type || 'Permanent' as any,
+      department: d.department || '',
+      totalCapacity: d.totalCapacity ?? 100,
+      dailyRate: d.dailyRate,
+      location: d.location || '',
+      email: d.email || '',
+      skills: d.skills || [],
+      teamName: d.teamName || ''
+    }));
+    setResources(prev => [...newResources, ...prev]);
+    setModal({ type: 'none' });
+  };
+
+  const bulkSaveProjects = (data: Partial<Project>[]) => {
+    if (!data.length) return;
+    const userPlan = user?.plan || 'BASIC';
+    const limits = PLAN_LIMITS[userPlan];
+    const ownProjects = projects.filter(p => p.id !== 'demo');
+    if (ownProjects.length + data.length > limits.maxProjects) {
+      alert(`Plan limit reached. Your ${userPlan} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
+      return;
+    }
+    const newProjects = data.map((d, i) => ({
+      id: `p-${Date.now()}-${i}`,
+      name: d.name || 'Unnamed Project',
+      status: d.status || 'Planning' as any,
+      priority: d.priority || 'Medium',
+      description: d.description || '',
+      startDate: d.startDate || '',
+      endDate: d.endDate || '',
+      clientName: d.clientName || '',
+      budget: d.budget,
+      color: d.color || '#6366f1'
+    }));
+    setProjects(prev => [...newProjects, ...prev]);
+    setModal({ type: 'none' });
+  };
+
   /* ── bulk import ────────────────────────────────────────── */
   const handleBulkImport = (newRes: Resource[], newProj: Project[], newAlloc: Allocation[]) => {
     setResources(newRes);
@@ -905,17 +956,17 @@ const AppShell: React.FC = () => {
       )}
       {
         modal.type === 'addResource' && (
-          <ResourceModal teams={effectiveTeams} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+          <ResourceModal teams={effectiveTeams} onSave={saveResource} onBulkSave={bulkSaveResources} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {
         modal.type === 'editResource' && (
-          <ResourceModal teams={effectiveTeams} initial={modal.resource} onSave={saveResource} onClose={() => setModal({ type: 'none' })} />
+          <ResourceModal teams={effectiveTeams} initial={modal.resource} onSave={saveResource} onBulkSave={bulkSaveResources} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {
         modal.type === 'addProject' && (
-          <ProjectModal onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
+          <ProjectModal onSave={saveProject} onBulkSave={bulkSaveProjects} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {
@@ -925,7 +976,7 @@ const AppShell: React.FC = () => {
       }
       {
         modal.type === 'editProject' && (
-          <ProjectModal initial={modal.project} onSave={saveProject} onClose={() => setModal({ type: 'none' })} />
+          <ProjectModal initial={modal.project} onSave={saveProject} onBulkSave={bulkSaveProjects} onClose={() => setModal({ type: 'none' })} />
         )
       }
       {
