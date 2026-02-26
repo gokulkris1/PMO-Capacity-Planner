@@ -58,6 +58,8 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState<'users' | 'create'>('users');
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [editingUser, setEditingUser] = useState<PlatformUser | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', email: '', password: '' });
 
     /* create-user form */
     const [form, setForm] = useState({ email: '', password: '', name: '', role: 'USER', plan: 'BASIC' });
@@ -105,6 +107,32 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
             setUsers(prev => prev.filter(u => u.id !== userId));
         } catch (e: any) { alert('Error: ' + e.message); }
         setDeleting(null);
+        setDeleting(null);
+    };
+
+    const handleEditSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+        setSaving(editingUser.id + 'edit');
+        setErr('');
+        try {
+            const body: any = {};
+            if (editForm.name && editForm.name !== editingUser.name) body.name = editForm.name;
+            if (editForm.email && editForm.email !== editingUser.email) body.email = editForm.email;
+            if (editForm.password) body.password = editForm.password;
+
+            if (Object.keys(body).length > 0) {
+                const r = await fetch(`/api/auth/users/${editingUser.id}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHdr },
+                    body: JSON.stringify(body),
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error);
+                setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...d.user } : u));
+            }
+            setEditingUser(null);
+        } catch (e: any) { setErr('Edit failed: ' + e.message); }
+        setSaving(null);
     };
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -229,7 +257,7 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                                            {['User', 'Joined', 'Role', 'Plan', 'License', 'Delete'].map(h => (
+                                            {['User', 'Joined', 'Target Workspace', 'Role', 'Plan', 'License', 'Actions'].map(h => (
                                                 <th key={h} style={{
                                                     textAlign: 'left', padding: '8px 10px', color: '#64748b',
                                                     fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em'
@@ -246,6 +274,19 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                                                 </td>
                                                 <td style={{ padding: '11px 10px', color: '#64748b', fontSize: 12 }}>
                                                     {new Date(u.created_at).toLocaleDateString('en-GB')}
+                                                </td>
+                                                <td style={{ padding: '11px 10px' }}>
+                                                    {(u as any).org_slug ? (
+                                                        <a href={`/?org=${(u as any).org_slug}`}
+                                                            style={{
+                                                                display: 'inline-block', padding: '4px 8px', background: 'rgba(56,189,248,.1)',
+                                                                border: '1px solid rgba(56,189,248,.3)', borderRadius: 6, color: '#38bdf8',
+                                                                fontSize: 11, fontWeight: 700, textDecoration: 'none'
+                                                            }}
+                                                            title="Impersonate Workspace">
+                                                            👁️ {(u as any).org_slug}
+                                                        </a>
+                                                    ) : <span style={{ color: '#475569', fontSize: 11 }}>—</span>}
                                                 </td>
                                                 <td style={{ padding: '11px 10px' }}>
                                                     <RoleSelect value={u.role || 'USER'} userId={u.id} onChange={updateUser} saving={saving} />
@@ -271,15 +312,21 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '11px 10px' }}>
-                                                    <button onClick={() => deleteUser(u.id, u.email)}
-                                                        disabled={deleting === u.id || u.role === 'SUPERUSER'}
-                                                        style={{
-                                                            background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)',
-                                                            borderRadius: 6, color: '#ef4444', fontSize: 12, padding: '4px 10px',
-                                                            cursor: u.role === 'SUPERUSER' ? 'not-allowed' : 'pointer', opacity: u.role === 'SUPERUSER' ? .4 : 1
-                                                        }}>
-                                                        {deleting === u.id ? '…' : '🗑'}
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: 6 }}>
+                                                        <button onClick={() => { setEditingUser(u); setEditForm({ name: u.name || '', email: u.email, password: '' }); }}
+                                                            style={{ background: 'rgba(99,102,241,.1)', border: '1px solid rgba(99,102,241,.3)', borderRadius: 6, color: '#818cf8', fontSize: 12, padding: '4px 10px', cursor: 'pointer' }}>
+                                                            ✏️ Edit
+                                                        </button>
+                                                        <button onClick={() => deleteUser(u.id, u.email)}
+                                                            disabled={deleting === u.id || u.role === 'SUPERUSER'}
+                                                            style={{
+                                                                background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)',
+                                                                borderRadius: 6, color: '#ef4444', fontSize: 12, padding: '4px 10px',
+                                                                cursor: u.role === 'SUPERUSER' ? 'not-allowed' : 'pointer', opacity: u.role === 'SUPERUSER' ? .4 : 1
+                                                            }}>
+                                                            {deleting === u.id ? '…' : '🗑'}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -367,6 +414,39 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                     </div>
                 </div>
             </div>
+
+            {/* Edit User Modal */}
+            {editingUser && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)' }}
+                    onClick={e => { if (e.target === e.currentTarget) setEditingUser(null); }}>
+                    <div style={{ background: '#0a0f1e', padding: 24, borderRadius: 16, width: 400, border: '1px solid #1e293b' }}>
+                        <h3 style={{ color: '#f1f5f9', margin: '0 0 16px' }}>Edit User</h3>
+                        <form onSubmit={handleEditSave} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}>Name</label>
+                                <input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                                    style={{ width: '100%', padding: '10px', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#f1f5f9', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}>Email</label>
+                                <input value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} type="email" required
+                                    style={{ width: '100%', padding: '10px', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#f1f5f9', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}>New Password (leave blank to keep current)</label>
+                                <input value={editForm.password} onChange={e => setEditForm(p => ({ ...p, password: e.target.value }))} type="password" minLength={8}
+                                    style={{ width: '100%', padding: '10px', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#f1f5f9', boxSizing: 'border-box' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                                <button type="button" onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '10px', background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', cursor: 'pointer' }}>Cancel</button>
+                                <button type="submit" disabled={!!saving} style={{ flex: 1, padding: '10px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                                    {saving === editingUser.id + 'edit' ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

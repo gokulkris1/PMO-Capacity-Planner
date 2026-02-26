@@ -226,17 +226,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (!isAdmin) return fail('Forbidden', 403);
 
             if (isSuperuser) {
-                const users = await sql`SELECT id, email, name, role, plan, created_at, org_id FROM users ORDER BY created_at DESC`;
+                const users = await sql`
+                    SELECT u.id, u.email, u.name, u.role, u.plan, u.created_at, u.org_id, o.slug as org_slug 
+                    FROM users u
+                    LEFT JOIN organizations o ON u.org_id = o.id
+                    ORDER BY u.created_at DESC
+                `;
                 return ok({ users });
             } else {
                 const [caller] = await sql`SELECT org_id FROM users WHERE id = ${actor.id}`;
                 if (!caller?.org_id) return fail('No Organization found for this user', 400);
 
                 const users = await sql`
-                    SELECT id, email, name, role, plan, created_at 
-                    FROM users 
-                    WHERE org_id = ${caller.org_id}
-                    ORDER BY created_at DESC
+                    SELECT u.id, u.email, u.name, u.role, u.plan, u.created_at, o.slug as org_slug 
+                    FROM users u
+                    LEFT JOIN organizations o ON u.org_id = o.id
+                    WHERE u.org_id = ${caller.org_id}
+                    ORDER BY u.created_at DESC
                 `;
                 return ok({ users });
             }
@@ -292,27 +298,57 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (subpath.match(/^\/users\/[^/]+$/) && event.httpMethod === 'PUT') {
             if (!isAdmin) return fail('Forbidden', 403);
             const userId = subpath.split('/')[2];
-            const { plan, role, name } = body;
+            let { plan, role, name, email, password } = body;
 
-            const validPlans = ['BASIC', 'PRO', 'MAX'];
-            const validRoles = isSuperuser
-                ? ['SUPERUSER', 'ADMIN', 'USER']
-                : ['ADMIN', 'USER'];  // ADMIN cannot assign SUPERUSER role
+            // Optional overrides
+            const updates: string[] = [];
+            const values: any[] = [];
+            let i = 1;
 
-            if (plan && !validPlans.includes(plan)) return fail('Invalid plan');
-            if (role && !validRoles.includes(role)) return fail('Invalid role');
+            if (plan) {
+                const validPlans = ['BASIC', 'PRO', 'MAX'];
+                if (validPlans.includes(plan)) {
+                    updates.push(`plan = $${i++}`);
+                    values.push(plan);
+                }
+            }
+            if (role) {
+                const validRoles = isSuperuser
+                    ? ['SUPERUSER', 'ADMIN', 'USER']
+                    : ['ADMIN', 'USER'];
+                if (validRoles.includes(role)) {
+                    updates.push(`role = $${i++}`);
+                    values.push(role);
+                }
+            }
+            if (name !== undefined) {
+                updates.push(`name = $${i++}`);
+                values.push(name);
+            }
+            if (isSuperuser && email) {
+                updates.push(`email = $${i++}`);
+                values.push(email.toLowerCase().trim());
+            }
+            if (isSuperuser && password) {
+                const hash = await bcrypt.hash(password, 10);
+                updates.push(`password_hash = $${i++}`);
+                values.push(hash);
+            }
 
-            const [updated] = await sql`
-        UPDATE users
-        SET
-          plan = COALESCE(${plan || null}, plan),
-          role = COALESCE(${role || null}, role),
-          name = COALESCE(${name || null}, name)
-        WHERE id = ${userId}
-        RETURNING id, email, name, role, plan
-      `;
-            if (!updated) return fail('User not found', 404);
-            return ok({ user: updated });
+            if (updates.length > 0) {
+                values.push(userId);
+                const queryStr = `UPDATE users SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, email, name, role, plan`;
+
+                try {
+                    // Type hack to bypass the strict tagged template typing for dynamic queries in Neon serverless
+                    const [updated] = await (sql as any)(queryStr, values);
+                    if (!updated) return fail('User not found', 404);
+                    return ok({ success: true, user: updated });
+                } catch (e: any) {
+                    return fail('Update failed: ' + e.message, 500);
+                }
+            }
+            return ok({ success: true });
         }
 
         // ── SUPERUSER: create a user directly ────────────────────

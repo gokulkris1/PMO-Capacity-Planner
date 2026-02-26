@@ -29,9 +29,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const token = authHeader.split(' ')[1];
 
     let userId: string;
+    let userRole = 'USER';
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string, role?: string };
         userId = decoded.id;
+        userRole = decoded.role || 'USER';
     } catch {
         return fail('Invalid token', 401);
     }
@@ -43,15 +45,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (!orgSlug) return fail('Organization slug required', 400);
         try {
             // Get user's org and workspace, explicitly validating the slug
-            // Note: We match w.org_id = u.org_id so ANY user in that org can load the workspace, not just the creator.
-            let wsRows = await sql`
-                SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
-                FROM workspaces w
-                JOIN users u ON u.org_id = w.org_id
-                JOIN organizations o ON o.id = w.org_id
-                WHERE u.id = ${userId} AND o.slug = ${orgSlug}
-                LIMIT 1
-            `;
+            // Superusers bypass the org restriction check completely.
+            let wsRows;
+            if (userRole === 'SUPERUSER') {
+                wsRows = await sql`
+                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
+                    FROM workspaces w
+                    JOIN organizations o ON o.id = w.org_id
+                    WHERE o.slug = ${orgSlug}
+                    LIMIT 1
+                `;
+            } else {
+                wsRows = await sql`
+                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
+                    FROM workspaces w
+                    JOIN users u ON u.org_id = w.org_id
+                    JOIN organizations o ON o.id = w.org_id
+                    WHERE u.id = ${userId} AND o.slug = ${orgSlug}
+                    LIMIT 1
+                `;
+            }
+
             let wsId, wsName, orgName, logoUrl, primaryColor;
 
             if (wsRows.length > 0) {
@@ -61,7 +75,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 logoUrl = wsRows[0].logo_url;
                 primaryColor = wsRows[0].primary_color;
             } else {
-                return fail('Unauthorized for this organization', 403);
+                return fail('Unauthorized for this organization limit', 403);
             }
 
             const resources = await sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`;
@@ -98,13 +112,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { resources = [], projects = [], allocations = [] } = body;
 
             // Get user's Workspace ID and Plan securely via userId ONLY. NEVER trust client inputs.
-            // Matching purely on org_id so any admin in the org can save.
-            let wsRows = await sql`
-                SELECT w.id, u.plan, w.org_id FROM workspaces w
-                JOIN users u ON u.org_id = w.org_id
-                WHERE u.id = ${userId}
-                LIMIT 1
-            `;
+            // Match purely on org_id so any admin in the org can save.
+            let wsRows;
+            if (userRole === 'SUPERUSER' && orgSlug) {
+                // Superuser saving into a specific tenant workspace
+                wsRows = await sql`
+                    SELECT w.id, 'MAX' as plan, w.org_id FROM workspaces w
+                    JOIN organizations o ON o.id = w.org_id
+                    WHERE o.slug = ${orgSlug}
+                    LIMIT 1
+                `;
+            } else {
+                // Normal user saving into their bound organization
+                wsRows = await sql`
+                    SELECT w.id, u.plan, w.org_id FROM workspaces w
+                    JOIN users u ON u.org_id = w.org_id
+                    WHERE u.id = ${userId}
+                    LIMIT 1
+                `;
+            }
+
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
             const orgId = wsRows.length > 0 ? wsRows[0].org_id : null;
             const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'BASIC';

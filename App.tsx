@@ -169,8 +169,14 @@ const AppShell: React.FC = () => {
       setAllocations([]);
 
       const token = localStorage.getItem('pcp_token');
+
+      // Look for a Superuser override in the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const overrideOrg = urlParams.get('org');
+
       // Append orgSlug context to the workspace fetch
-      fetch(`/api/workspace?orgSlug=${orgSlug}`, {
+      const targetSlug = overrideOrg ? encodeURIComponent(overrideOrg) : orgSlug;
+      fetch(`/api/workspace?orgSlug=${targetSlug}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -232,7 +238,12 @@ const AppShell: React.FC = () => {
       syncTimeoutRef.current = setTimeout(() => {
         const token = localStorage.getItem('pcp_token');
         if (!token) return;
-        fetch('/api/workspace', {
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const overrideOrg = urlParams.get('org');
+        const saveUrl = overrideOrg ? `/api/workspace?orgSlug=${encodeURIComponent(overrideOrg)}` : '/api/workspace';
+
+        fetch(saveUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ resources, projects, allocations })
