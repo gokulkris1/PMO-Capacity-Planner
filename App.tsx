@@ -298,9 +298,12 @@ const AppShell: React.FC = () => {
     setTarget(prev => {
       const existing = prev.find(a => a.resourceId === resId && a.projectId === projId);
       if (existing) {
-        return num === 0
-          ? prev.filter(a => !(a.resourceId === resId && a.projectId === projId))
-          : prev.map(a => a.resourceId === resId && a.projectId === projId ? { ...a, percentage: num } : a);
+        if (num === 0) return prev.filter(a => !(a.resourceId === resId && a.projectId === projId));
+        return prev.map(a =>
+          (a.resourceId === resId && a.projectId === projId)
+            ? { ...a, percentage: num }
+            : a
+        );
       }
       if (num === 0) return prev;
       return [...prev, { id: `a-${Date.now()}-${Math.random().toString(36).slice(2)}`, resourceId: resId, projectId: projId, percentage: num }];

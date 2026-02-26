@@ -48,10 +48,15 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
         const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
         preview.forEach((row, i) => {
-            // Expected columns based on export: Resource, Role, Department, Project, Project Status, Allocation %
-            const resName = row['Resource']?.trim();
-            const projName = row['Project']?.trim();
-            const percentStr = row['Allocation %']?.trim();
+            // Flexible column matching to handle Excel whitespace
+            const getCol = (keyMatches: string[]) => {
+                const foundKey = Object.keys(row).find(k => keyMatches.includes(k.trim().toLowerCase()));
+                return foundKey ? row[foundKey]?.trim() : '';
+            };
+
+            const resName = getCol(['resource', 'resource name']);
+            const projName = getCol(['project', 'project name']);
+            const percentStr = getCol(['allocation %', 'allocation', 'percentage']);
 
             if (!resName || !projName || !percentStr) return; // Skip invalid rows
 
@@ -61,12 +66,15 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
             // Find or create resource
             let res = newResources.find(r => r.name.toLowerCase() === resName.toLowerCase());
             if (!res) {
+                const rtSource = getCol(['type', 'resource type']);
+                const derivedType = Object.values(ResourceType).find(t => t.toLowerCase() === rtSource.toLowerCase()) || ResourceType.PERMANENT;
+
                 res = {
                     id: generateId('r'),
                     name: resName,
-                    role: row['Role'] || 'Team Member',
-                    department: row['Department'] || 'General',
-                    type: ResourceType.PERMANENT,
+                    role: getCol(['role']) || 'Team Member',
+                    department: getCol(['department']) || 'General',
+                    type: derivedType,
                     totalCapacity: 100
                 };
                 newResources.push(res);
@@ -75,10 +83,13 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
             // Find or create project
             let proj = newProjects.find(p => p.name.toLowerCase() === projName.toLowerCase());
             if (!proj) {
+                const stSource = getCol(['project status', 'status']);
+                const derivedStatus = Object.values(ProjectStatus).find(s => s.toLowerCase() === stSource.toLowerCase()) || ProjectStatus.PLANNING;
+
                 proj = {
                     id: generateId('p'),
                     name: projName,
-                    status: (row['Project Status'] as ProjectStatus) || ProjectStatus.PLANNING,
+                    status: derivedStatus,
                     priority: 'Medium',
                     description: 'Imported from CSV'
                 };

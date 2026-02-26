@@ -43,6 +43,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (!orgSlug) return fail('Organization slug required', 400);
         try {
             // Get user's org and workspace, explicitly validating the slug
+            // Note: We match w.org_id = u.org_id so ANY user in that org can load the workspace, not just the creator.
             let wsRows = await sql`
                 SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
                 FROM workspaces w
@@ -97,6 +98,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { resources = [], projects = [], allocations = [] } = body;
 
             // Get user's Workspace ID and Plan securely via userId ONLY. NEVER trust client inputs.
+            // Matching purely on org_id so any admin in the org can save.
             let wsRows = await sql`
                 SELECT w.id, u.plan, w.org_id FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
@@ -142,7 +144,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (allocations.length > 0) {
                 await Promise.all(allocations.map((a: any) => sql`
           INSERT INTO allocations (id, user_id, workspace_id, org_id, resource_id, project_id, percentage, start_date, end_date)
-          VALUES (${a.id}, ${userId}, ${wsId}, ${orgId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
+          VALUES (${a.id}, ${userId}, ${wsId}, ${orgId}, ${a.resourceId}, ${a.projectId}, ${Number(a.percentage) || 0}, ${a.startDate || null}, ${a.endDate || null})
         `));
             }
 

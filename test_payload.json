@@ -1,0 +1,11 @@
+{
+  "resources": [
+    { "id": "r-1", "name": "Tom", "role": "PM", "type": "Permanent", "totalCapacity": 100 }
+  ],
+  "projects": [
+    { "id": "p-1", "name": "Eagle", "status": "Planning", "priority": "Medium" }
+  ],
+  "allocations": [
+    { "id": "a-1", "resourceId": "r-1", "projectId": "p-1", "percentage": 50 }
+  ]
+}
