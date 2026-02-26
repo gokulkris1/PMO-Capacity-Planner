@@ -127,12 +127,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const count = await sql`SELECT COUNT(*)::int AS n FROM users`;
             const isSuperAdmin = SUPER_ADMIN_EMAIL && email.toLowerCase() === SUPER_ADMIN_EMAIL;
             const isFirst = count[0].n === 0;
-            const role = isSuperAdmin ? 'SUPERUSER' : isFirst ? 'PMO' : 'VIEWER';
+            const role = isSuperAdmin ? 'SUPERUSER' : isFirst ? 'ADMIN' : 'USER';
             const plan = isSuperAdmin ? 'MAX' : 'BASIC';
 
             const [user] = await sql`
         INSERT INTO users (email, password_hash, name, role, plan, org_id)
-        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, 'VIEWER', ${plan}, NULL)
+        VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, 'USER', ${plan}, NULL)
         RETURNING id, email, name, role, plan
       `;
 
@@ -209,7 +209,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return fail('Unauthorized', 401);
         }
         const isSuperuser = actor.role === 'SUPERUSER';
-        const isPMO = actor.role === 'PMO' || isSuperuser;
+        const isAdmin = actor.role === 'ADMIN' || isSuperuser;
 
         // ── 2FA TOGGLE ────────────────────────────────────────────
         if (subpath === '/2fa/toggle' && event.httpMethod === 'POST') {
@@ -222,7 +222,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // ── ADMIN: list all users ─────────────────────────────────
         if (subpath === '/users' && event.httpMethod === 'GET') {
-            if (!isPMO) return fail('Forbidden', 403);
+            if (!isAdmin) return fail('Forbidden', 403);
 
             if (isSuperuser) {
                 const users = await sql`SELECT id, email, name, role, plan, created_at, org_id FROM users ORDER BY created_at DESC`;
@@ -243,8 +243,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // ── ADMIN: invite user to org ─────────────────────────────
         if (subpath === '/users/invite' && event.httpMethod === 'POST') {
-            if (!isPMO) return fail('Forbidden', 403);
-            const { email, role = 'VIEWER', name = '' } = body;
+            if (!isAdmin) return fail('Forbidden', 403);
+            const { email, role = 'USER', name = '' } = body;
             if (!email) return fail('Email required', 400);
 
             const [caller] = await sql`SELECT org_id, plan FROM users WHERE id = ${actor.id}`;
@@ -276,7 +276,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           COUNT(*) FILTER (WHERE plan = 'PRO')::int              AS pro_users,
           COUNT(*) FILTER (WHERE plan = 'MAX')::int              AS max_users,
           COUNT(*) FILTER (WHERE role = 'SUPERUSER')::int        AS superusers,
-          COUNT(*) FILTER (WHERE role = 'PMO')::int              AS pmo_count,
+          COUNT(*) FILTER (WHERE role = 'ADMIN')::int              AS pmo_count,
           COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS new_this_week
         FROM users
       `;
@@ -289,14 +289,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         // ── ADMIN/SUPERUSER: update user plan or role ─────────────
         if (subpath.match(/^\/users\/[^/]+$/) && event.httpMethod === 'PUT') {
-            if (!isPMO) return fail('Forbidden', 403);
+            if (!isAdmin) return fail('Forbidden', 403);
             const userId = subpath.split('/')[2];
             const { plan, role, name } = body;
 
             const validPlans = ['BASIC', 'PRO', 'MAX'];
             const validRoles = isSuperuser
-                ? ['SUPERUSER', 'PMO', 'PM', 'VIEWER']
-                : ['PMO', 'PM', 'VIEWER'];  // PMO cannot assign SUPERUSER role
+                ? ['SUPERUSER', 'ADMIN', 'USER']
+                : ['ADMIN', 'USER'];  // ADMIN cannot assign SUPERUSER role
 
             if (plan && !validPlans.includes(plan)) return fail('Invalid plan');
             if (role && !validRoles.includes(role)) return fail('Invalid role');
@@ -317,7 +317,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // ── SUPERUSER: create a user directly ────────────────────
         if (subpath === '/admin/users' && event.httpMethod === 'POST') {
             if (!isSuperuser) return fail('Forbidden', 403);
-            const { email, password, name, role = 'VIEWER', plan = 'BASIC' } = body;
+            const { email, password, name, role = 'USER', plan = 'BASIC' } = body;
             if (!email || !password) return fail('Email and password required');
 
             const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;

@@ -1,0 +1,11 @@
+
+> toms-capacity-planner@0.0.0 dev
+> vite
+
+Port 3000 is in use, trying another one...
+
+  VITE v6.4.1  ready in 138 ms
+
+  ➜  Local:   http://localhost:3001/
+  ➜  Network: http://192.168.0.65:3001/
+  ➜  press h + enter to show help
