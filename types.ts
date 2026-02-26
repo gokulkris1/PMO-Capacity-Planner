@@ -92,7 +92,7 @@ export interface CapacitySummary {
 }
 
 export function getAllocationStatus(pct: number): AllocationStatus {
-  if (pct > 100) return AllocationStatus.OVER;
+  if (pct >= 100) return AllocationStatus.OVER;
   if (pct >= 80) return AllocationStatus.HIGH;
   if (pct >= 60) return AllocationStatus.OPTIMAL;
   return AllocationStatus.UNDER;
@@ -100,9 +100,24 @@ export function getAllocationStatus(pct: number): AllocationStatus {
 
 export function getStatusColor(status: AllocationStatus): string {
   switch (status) {
-    case AllocationStatus.OVER: return '#ef4444';
-    case AllocationStatus.HIGH: return '#f59e0b';
-    case AllocationStatus.OPTIMAL: return '#10b981';
-    case AllocationStatus.UNDER: return '#6b7280';
+    case AllocationStatus.OVER: return '#ef4444';    // Red (Critical)
+    case AllocationStatus.HIGH: return '#f59e0b';    // Orange (Warning threshold 80%)
+    case AllocationStatus.OPTIMAL: return '#10b981'; // Green
+    case AllocationStatus.UNDER: return '#94a3b8';   // Gray
   }
+}
+
+// -- SPRINT OVERHAUL TYPES --
+export interface Sprint {
+  id: string; // e.g. "2026-Q1-S1"
+  name: string; // e.g. "Sprint 1"
+  startDate: string; // ISO Date YYYY-MM-DD
+  endDate: string; // ISO Date YYYY-MM-DD
+}
+
+export interface QuarterDef {
+  id: string; // e.g. "2026-Q1"
+  name: string; // "Q1 2026"
+  year: number;
+  sprints: Sprint[];
 }

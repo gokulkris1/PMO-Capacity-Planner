@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { getAvailableYears, getQuartersForYear } from '../src/utils/sprintUtils';
 
 interface Props {
     resources: Resource[];
@@ -35,67 +36,93 @@ function utilBg(pct: number) {
     return 'transparent';
 }
 
-// Check if an allocation falls within the selected month (YYYY-MM)
-function isAllocActiveInMonth(a: Allocation, yyyyMm: string) {
-    if (!yyyyMm) return true; // All Time
-
-    // Convert YYYY-MM to the first and last day of that month
-    const [year, month] = yyyyMm.split('-');
-    const filterStart = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const filterEnd = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
-
-    const aStart = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
-    const aEnd = a.endDate ? new Date(a.endDate) : new Date('2099-12-31');
-
-    return aStart <= filterEnd && aEnd >= filterStart;
+// Helper to see if an allocation hits a specific sprint precise dates
+function isAllocActiveInSprint(a: Allocation, sprintStart: string, sprintEnd: string) {
+    if (!a.startDate || !a.endDate) return true; // generic allocation applies always
+    const aS = new Date(a.startDate);
+    const aE = new Date(a.endDate);
+    const sS = new Date(sprintStart);
+    const sE = new Date(sprintEnd);
+    return aS <= sE && aE >= sS;
 }
 
 export const AllocationMatrix: React.FC<Props> = ({
     resources, projects, allocations, scenarioMode, scenarioAllocations, onUpdateAdvanced, onExportCSV
 }) => {
+    const currentYear = new Date().getUTCFullYear();
+    const currentQ = Math.floor(new Date().getUTCMonth() / 3) + 1;
+
+    const [filterYear, setFilterYear] = useState<number>(currentYear);
+    const [filterQuarterId, setFilterQuarterId] = useState<string>(`${currentYear}-Q${currentQ}`);
     const [filterProjId, setFilterProjId] = useState('');
-    const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7)); // Default: Current Month YYYY-MM
 
     const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
+    const availableYears = getAvailableYears();
+    const quarters = useMemo(() => getQuartersForYear(filterYear), [filterYear]);
+    const activeQuarter = quarters.find(q => q.id === filterQuarterId) || quarters[0];
 
-    const filteredProjects = filterProjId ? projects.filter(p => p.id === filterProjId) : projects;
+    // Resources might be assigned to multiple projects in a single sprint
+    function getResourceSprintUtil(resId: string, sprintStart: string, sprintEnd: string) {
+        let util = 0;
+        liveAlloc.forEach(a => {
+            if (a.resourceId === resId) {
+                // If filtering by project, skip other projects
+                if (filterProjId && a.projectId !== filterProjId) return;
 
-    function getResourceUtil(resId: string) {
-        return liveAlloc
-            .filter(a => a.resourceId === resId && isAllocActiveInMonth(a, filterMonth))
-            .reduce((s, a) => s + a.percentage, 0);
+                if (isAllocActiveInSprint(a, sprintStart, sprintEnd)) {
+                    util += a.percentage;
+                }
+            }
+        });
+        return util;
     }
 
-    function getAllocForCell(resId: string, projId: string) {
-        const allocs = liveAlloc.filter(a => a.resourceId === resId && a.projectId === projId && isAllocActiveInMonth(a, filterMonth));
-        if (allocs.length === 0) return { pct: 0, multiple: false };
-        if (allocs.length === 1) return { pct: allocs[0].percentage, multiple: false };
-
-        // Sum overlapping slices for the month
-        const sum = allocs.reduce((s, a) => s + a.percentage, 0);
-        return { pct: sum, multiple: true };
+    // Projects array matching what a resource is doing inside a sprint
+    function getProjectsForSprint(resId: string, sprintStart: string, sprintEnd: string) {
+        const matches: { proj: Project, pct: number }[] = [];
+        liveAlloc.forEach(a => {
+            if (a.resourceId === resId && isAllocActiveInSprint(a, sprintStart, sprintEnd)) {
+                if (filterProjId && a.projectId !== filterProjId) return;
+                const proj = projects.find(p => p.id === a.projectId);
+                if (proj) {
+                    matches.push({ proj, pct: a.percentage });
+                }
+            }
+        });
+        return matches;
     }
 
     return (
         <div className="panel page-enter" style={{ overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header">
                 <div>
-                    <div className="panel-title">Allocation Matrix Timeline</div>
-                    <div className="panel-subtitle">Filter by month to see forecasted utilization. Click a cell to assign dates.</div>
+                    <div className="panel-title">Sprint Allocation Matrix</div>
+                    <div className="panel-subtitle">View capacity bounded strictly by 14-day Sprint cadence. Colors highlight 80% critical thresholds.</div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <input
-                        type="month"
-                        value={filterMonth}
-                        onChange={e => setFilterMonth(e.target.value)}
-                        className="form-input"
-                        style={{ width: 140, fontSize: 13, height: 34, padding: '0 10px' }}
-                    />
+                    <select
+                        value={filterYear}
+                        onChange={e => {
+                            const y = parseInt(e.target.value);
+                            setFilterYear(y);
+                            setFilterQuarterId(`${y}-Q1`);
+                        }}
+                        className="form-select" style={{ width: 100, fontSize: 13, height: 34 }}
+                    >
+                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    <select
+                        value={filterQuarterId}
+                        onChange={e => setFilterQuarterId(e.target.value)}
+                        className="form-select" style={{ width: 120, fontSize: 13, height: 34 }}
+                    >
+                        {quarters.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+                    </select>
                     <select
                         value={filterProjId}
                         onChange={e => setFilterProjId(e.target.value)}
                         className="form-select"
-                        style={{ width: 'auto', fontSize: 12, height: 34 }}
+                        style={{ width: 'auto', fontSize: 13, height: 34 }}
                     >
                         <option value="">All Projects</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -123,16 +150,15 @@ export const AllocationMatrix: React.FC<Props> = ({
             </div>
 
             <div style={{ overflowX: 'auto' }}>
-                <table className="data-table" style={{ minWidth: 700 }}>
+                <table className="data-table" style={{ minWidth: 900 }}>
                     <thead>
                         <tr>
-                            <th style={{ position: 'sticky', left: 0, background: '#f8fafc', zIndex: 10, minWidth: 180 }}>Resource</th>
-                            <th style={{ minWidth: 80 }}>Total %</th>
-                            {filteredProjects.map(p => (
-                                <th key={p.id} style={{ minWidth: 110, textAlign: 'center' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                                        <div style={{ width: 6, height: 6, borderRadius: 2, background: p.color || '#6366f1' }} />
-                                        <span>{p.name}</span>
+                            <th style={{ position: 'sticky', left: 0, background: '#f8fafc', zIndex: 10, minWidth: 220 }}>Resource</th>
+                            {activeQuarter.sprints.map(s => (
+                                <th key={s.id} style={{ minWidth: 140, textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <div style={{ fontWeight: 700, color: '#1e293b' }}>{s.name}</div>
+                                        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>{s.startDate.slice(5)} to {s.endDate.slice(5)}</div>
                                     </div>
                                 </th>
                             ))}
@@ -140,11 +166,14 @@ export const AllocationMatrix: React.FC<Props> = ({
                     </thead>
                     <tbody>
                         {resources.map(res => {
-                            const util = getResourceUtil(res.id);
+                            // Find out if they are over 80% anywhere in this quarter for background highlight
+                            const sprintUtils = activeQuarter.sprints.map(s => getResourceSprintUtil(res.id, s.startDate, s.endDate));
+                            const maxUtil = Math.max(...sprintUtils, 0);
+
                             return (
-                                <tr key={res.id} style={{ background: utilBg(util) }}>
+                                <tr key={res.id} style={{ background: utilBg(maxUtil) }}>
                                     {/* Resource name sticky */}
-                                    <td style={{ position: 'sticky', left: 0, background: utilBg(util) || '#fff', zIndex: 5 }}>
+                                    <td style={{ position: 'sticky', left: 0, background: utilBg(maxUtil) || '#fff', zIndex: 5 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <div
                                                 className="avatar"
@@ -158,38 +187,52 @@ export const AllocationMatrix: React.FC<Props> = ({
                                             </div>
                                             <div>
                                                 <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{res.name}</div>
-                                                <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role}</div>
+                                                <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role} (Max: {maxUtil}%)</div>
                                             </div>
                                         </div>
                                     </td>
-                                    {/* Total util */}
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                            <span style={{ fontWeight: 800, fontSize: 14, color: utilColor(util) }}>{util}%</span>
-                                            <div className="alloc-bar-bg">
-                                                <div className="alloc-bar-fill" style={{ width: `${Math.min(100, util)}%`, background: utilColor(util) }} />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    {/* Per-project cells */}
-                                    {filteredProjects.map(proj => {
-                                        const { pct, multiple } = getAllocForCell(res.id, proj.id);
+                                    {/* Per-Sprint cells */}
+                                    {activeQuarter.sprints.map((sprint, idx) => {
+                                        const util = sprintUtils[idx];
+                                        const projectsInSprint = getProjectsForSprint(res.id, sprint.startDate, sprint.endDate);
+
                                         return (
-                                            <td key={proj.id} style={{ textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => !scenarioMode && onUpdateAdvanced(res.id, proj.id)}
-                                                    style={{
-                                                        width: 50, height: 32, borderRadius: 6, border: '1px solid #e2e8f0',
-                                                        background: pct > 0 ? '#eff6ff' : '#fff',
-                                                        color: pct > 0 ? '#1e40af' : '#94a3b8',
-                                                        fontWeight: pct > 0 ? 700 : 500,
-                                                        cursor: scenarioMode ? 'not-allowed' : 'pointer',
-                                                        fontSize: 14
-                                                    }}
-                                                    title={multiple ? "Multiple time slices exist in this month. Click to edit." : "Click to edit allocation"}
-                                                >
-                                                    {pct > 0 ? `${pct}%` : '-'}
-                                                </button>
+                                            <td key={sprint.id} style={{ textAlign: 'center', verticalAlign: 'top', background: utilBg(util) }}>
+                                                {/* Threshold logic - 80% is the cutoff */}
+                                                <div style={{ fontWeight: 800, fontSize: 15, color: utilColor(util), marginBottom: 8 }}>
+                                                    {util > 0 ? `${util}%` : '-'}
+                                                </div>
+
+                                                {/* Stack of projects assigned in this sprint */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                                                    {projectsInSprint.map((pSet, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => !scenarioMode && onUpdateAdvanced(res.id, pSet.proj.id)}
+                                                            style={{
+                                                                width: '100%',
+                                                                maxWidth: 130,
+                                                                padding: '4px 6px',
+                                                                borderRadius: 6,
+                                                                border: `1px solid ${pSet.proj.color || '#6366f1'}40`,
+                                                                background: '#fff',
+                                                                cursor: scenarioMode ? 'not-allowed' : 'pointer',
+                                                                fontSize: 10,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                            }}
+                                                            title={`Click to edit allocation for ${pSet.proj.name}`}
+                                                        >
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+                                                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: pSet.proj.color || '#6366f1', flexShrink: 0 }} />
+                                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600, color: '#475569' }}>{pSet.proj.name}</span>
+                                                            </div>
+                                                            <strong style={{ color: pSet.proj.color || '#6366f1' }}>{pSet.pct}%</strong>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </td>
                                         );
                                     })}
