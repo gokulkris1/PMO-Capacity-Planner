@@ -635,6 +635,27 @@ const AppShell: React.FC = () => {
             </button>
           </div>
 
+          {/* Settings / Organization */}
+          {user && (
+            <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+              <div className="nav-section-label">Organization</div>
+              <button
+                className={`nav-item ${location.pathname.endsWith('/directory') ? 'active' : ''}`}
+                onClick={() => navigate(`/o/${orgSlug}/directory`)}
+              >
+                <span style={{ fontSize: 15 }}>👥</span><span>Team Directory</span>
+              </button>
+              {(user.role === 'ADMIN' || user.role === 'SUPERUSER') && (
+                <button
+                  className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
+                  onClick={() => navigate(`/o/${orgSlug}/settings`)}
+                >
+                  <span style={{ fontSize: 15 }}>⚙️</span><span>Settings Hub</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Superuser Workspace Settings — SUPERUSER role only */}
           {user?.role === 'SUPERUSER' && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
@@ -724,32 +745,36 @@ const AppShell: React.FC = () => {
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
             )}
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
-                if (resources.length >= limits.maxUsers) {
-                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxUsers} resources. Please upgrade to add more.`);
-                  return;
-                }
-                authGate(() => setModal({ type: 'addResource' }), true)
-              }}
-            >
-              + Resource {!user && '🔒'}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
-                if (projects.length >= limits.maxProjects) {
-                  alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
-                  return;
-                }
-                authGate(() => setModal({ type: 'addProject' }), true)
-              }}
-            >
-              + Project {!user && '🔒'}
-            </button>
+            {user?.role !== 'USER' && (
+              <>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                    if (resources.length >= limits.maxUsers) {
+                      alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxUsers} resources. Please upgrade to add more.`);
+                      return;
+                    }
+                    authGate(() => setModal({ type: 'addResource' }), true)
+                  }}
+                >
+                  + Resource {!user && '🔒'}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+                    if (projects.length >= limits.maxProjects) {
+                      alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
+                      return;
+                    }
+                    authGate(() => setModal({ type: 'addProject' }), true)
+                  }}
+                >
+                  + Project {!user && '🔒'}
+                </button>
+              </>
+            )}
           </div>
         </header>
 

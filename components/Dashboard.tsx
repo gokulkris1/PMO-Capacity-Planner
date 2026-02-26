@@ -68,6 +68,20 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
         return b;
     }, [resources, liveAllocations]);
 
+    if (resources.length === 0 && projects.length === 0) {
+        return (
+            <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🚀</div>
+                <h2 style={{ color: '#1e293b', marginBottom: 8, fontWeight: 700 }}>Welcome to your new Workspace!</h2>
+                <p style={{ maxWidth: 450, lineHeight: 1.6, marginBottom: 24 }}>You don't have any resources or projects tracked yet. Get started by adding your team members and your first project initiative to see exactly where your capacity is going.</p>
+                <div style={{ display: 'flex', gap: 16 }}>
+                    <button className="btn btn-primary" onClick={() => onTabChange('by-resource')}>+ Add Your First Resource</button>
+                    <button className="btn btn-secondary" onClick={() => onTabChange('by-project')}>+ Setup a Project</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* KPI Row */}
