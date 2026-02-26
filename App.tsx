@@ -635,51 +635,37 @@ const AppShell: React.FC = () => {
             </button>
           </div>
 
-          {/* Settings / Organization */}
-          {user && (
-            <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
-              <div className="nav-section-label">Organization</div>
+          {/* Role-Based Organizational Settings */}
+          <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+            <div className="nav-section-label">Organization</div>
+
+            {user?.role === 'SUPERUSER' && (
+              <button
+                className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
+                onClick={() => navigate(`/o/${orgSlug}/settings`)}
+                style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}
+              >
+                <span style={{ fontSize: 15 }}>🚀</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Cockpit</span>
+              </button>
+            )}
+
+            {user?.role === 'ADMIN' && (
+              <button
+                className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
+                onClick={() => navigate(`/o/${orgSlug}/settings`)}
+              >
+                <span style={{ fontSize: 15 }}>⚙️</span><span>Workspace Settings</span>
+              </button>
+            )}
+
+            {(!user || user?.role === 'USER') && (
               <button
                 className={`nav-item ${location.pathname.endsWith('/directory') ? 'active' : ''}`}
                 onClick={() => navigate(`/o/${orgSlug}/directory`)}
               >
-                <span style={{ fontSize: 15 }}>👥</span><span>Team Directory</span>
+                <span style={{ fontSize: 15 }}>⚙️</span><span>Workspace</span>
               </button>
-              {(user.role === 'ADMIN' || user.role === 'SUPERUSER') && (
-                <button
-                  className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
-                  onClick={() => navigate(`/o/${orgSlug}/settings`)}
-                >
-                  <span style={{ fontSize: 15 }}>⚙️</span><span>Settings Hub</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Superuser Workspace Settings — SUPERUSER role only */}
-          {user?.role === 'SUPERUSER' && (
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-              <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/settings`)}
-                style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}>
-                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Workspace Admin</span>
-              </button>
-            </div>
-          )}
-
-          {/* Admin Panel - ADMIN role only (Superusers use the dedicated console above) */}
-          {user && ['PMO', 'ADMIN'].includes(user.role?.toUpperCase()) && (
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-              <button className="nav-item" onClick={() => setShowAdmin(true)}>
-                <span style={{ fontSize: 15 }}>⚙️</span><span style={{ color: '#fbbf24', fontWeight: 600 }}>Admin Panel</span>
-              </button>
-            </div>
-          )}
-
-          {/* Workspace Directory */}
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-            <button className="nav-item" onClick={() => navigate(`/o/${orgSlug}/directory`)}>
-              <span style={{ fontSize: 15 }}>🪪</span><span style={{ fontWeight: 600 }}>Workspace Directory</span>
-            </button>
+            )}
           </div>
 
           {/* Take a Tour */}

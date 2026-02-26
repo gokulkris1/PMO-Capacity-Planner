@@ -86,9 +86,11 @@ export const SettingsHub: React.FC = () => {
     return (
         <div style={{ padding: 40, background: '#f8fafc', minHeight: '100%', borderRadius: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                <span style={{ fontSize: 32 }}>⚙️</span>
+                <span style={{ fontSize: 32 }}>{currentUser?.role === 'SUPERUSER' ? '🚀' : '⚙️'}</span>
                 <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>Workspace Admin Settings</h2>
+                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                        {currentUser?.role === 'SUPERUSER' ? 'Superuser Cockpit' : 'Workspace Settings'}
+                    </h2>
                     <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Manage your B2B workspace, billing, and teams</p>
                 </div>
             </div>
