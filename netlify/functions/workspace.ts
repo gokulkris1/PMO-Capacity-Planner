@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
 
 const CORS = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': process.env.URL || '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json',
@@ -36,12 +36,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
         return fail('Invalid token', 401);
     }
 
-    const orgSlug = event.queryStringParameters?.orgSlug;
-    if (!orgSlug) return fail('Organization slug required', 400);
-
+    let orgSlug = event.queryStringParameters?.orgSlug;
     const sql = getDb();
 
     if (event.httpMethod === 'GET') {
+        if (!orgSlug) return fail('Organization slug required', 400);
         try {
             // Get user's org and workspace, explicitly validating the slug
             let wsRows = await sql`
@@ -97,19 +96,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const body = JSON.parse(event.body || '{}');
             const { resources = [], projects = [], allocations = [] } = body;
 
-            // Get user's Workspace ID and Plan, validating slug
+            // Get user's Workspace ID and Plan securely via userId ONLY. NEVER trust client inputs.
             let wsRows = await sql`
                 SELECT w.id, u.plan, w.org_id FROM workspaces w
                 JOIN users u ON u.org_id = w.org_id
-                JOIN organizations o ON o.id = w.org_id
-                WHERE u.id = ${userId} AND o.slug = ${orgSlug}
+                WHERE u.id = ${userId}
                 LIMIT 1
             `;
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
             const orgId = wsRows.length > 0 ? wsRows[0].org_id : null;
             const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'BASIC';
 
-            if (!wsId || !orgId) return fail('Unauthorized for this workspace', 403);
+            if (!wsId || !orgId) return fail('Unauthorized no workspace found for user', 403);
 
             // ── FREEMIUM LIMIT ENFORCEMENT ──
             if (userPlan === 'BASIC' || !userPlan) {

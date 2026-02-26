@@ -202,15 +202,19 @@ const AppShell: React.FC = () => {
           initialLoadDone.current = true;
         });
     } else {
-      // Guest/demo — restore demo data
-      initialLoadDone.current = false;
-      const rs = localStorage.getItem('pcp_resources');
-      const ps = localStorage.getItem('pcp_projects');
-      const al = localStorage.getItem('pcp_allocations');
-      setResources(rs && rs !== "[]" ? JSON.parse(rs) : MOCK_RESOURCES);
-      setProjects(ps && ps !== "[]" ? JSON.parse(ps) : MOCK_PROJECTS);
-      setAllocations(al && al !== "[]" ? JSON.parse(al) : MOCK_ALLOCATIONS);
-      initialLoadDone.current = true;
+      // Guest/demo — restore demo data ONLY if no login token exists to prevent local data bleeds
+      if (!localStorage.getItem('pcp_token')) {
+        initialLoadDone.current = false;
+        const rs = localStorage.getItem('pcp_resources');
+        const ps = localStorage.getItem('pcp_projects');
+        const al = localStorage.getItem('pcp_allocations');
+        setResources(rs && rs !== "[]" ? JSON.parse(rs) : MOCK_RESOURCES);
+        setProjects(ps && ps !== "[]" ? JSON.parse(ps) : MOCK_PROJECTS);
+        setAllocations(al && al !== "[]" ? JSON.parse(al) : MOCK_ALLOCATIONS);
+        initialLoadDone.current = true;
+      } else {
+        initialLoadDone.current = true; // Waiting for AuthContext to finish fetching user
+      }
     }
 
     if (!localStorage.getItem('pcp_tour_done')) {

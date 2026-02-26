@@ -14,6 +14,13 @@
   status = 200
   force = true
 
+# Route /api/workspace (exact) to workspace Function
+[[redirects]]
+  from = "/api/workspace"
+  to = "/.netlify/functions/workspace"
+  status = 200
+  force = true
+
 # Route /api/workspace/* to workspace Function
 [[redirects]]
   from = "/api/workspace/*"

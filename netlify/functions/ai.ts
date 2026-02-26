@@ -27,7 +27,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     let userId: string;
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        userId = decoded.userId;
+        userId = decoded.id;
     } catch {
         return fail('Invalid token', 401);
     }
