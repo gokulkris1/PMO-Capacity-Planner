@@ -66,9 +66,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const userEmail = emailRows.length > 0 ? emailRows[0].email : null;
 
         // 4. Bind User to Organization
-        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'ADMIN';
+        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'ORG_ADMIN';
         await sql`
             UPDATE users SET org_id = ${org.id}, role = ${assignedRole} WHERE id = ${userId}
+        `;
+
+        // 4b. Add creator as PMO_ADMIN in the new workspace
+        await sql`
+            INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
+            VALUES (${userId}, (SELECT id FROM workspaces WHERE org_id = ${org.id} LIMIT 1), ${org.id}, 'PMO_ADMIN', ${userId})
+            ON CONFLICT DO NOTHING
         `;
 
         // 5. Fire Welcome Email
