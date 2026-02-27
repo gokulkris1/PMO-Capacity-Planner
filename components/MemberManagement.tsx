@@ -10,15 +10,22 @@ interface Member {
 }
 
 const ROLE_COLOR: Record<string, string> = {
-    WORKSPACE_ADMIN: '#10b981',
+    PMO_ADMIN: '#6366f1',
+    WORKSPACE_OWNER: '#10b981',
     USER: '#64748b',
+};
+
+const ROLE_LABEL: Record<string, string> = {
+    PMO_ADMIN: 'PMO Admin',
+    WORKSPACE_OWNER: 'Workspace Owner',
+    USER: 'Member',
 };
 
 const MemberManagement: React.FC = () => {
     const { user, token, activeWorkspace } = useAuth();
     const [members, setMembers] = useState<Member[]>([]);
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'WORKSPACE_ADMIN' | 'USER'>('USER');
+    const [inviteRole, setInviteRole] = useState<'PMO_ADMIN' | 'WORKSPACE_OWNER' | 'USER'>('USER');
     const [loading, setLoading] = useState(false);
     const [removing, setRemoving] = useState<string | null>(null);
     const [msg, setMsg] = useState('');
@@ -26,13 +33,12 @@ const MemberManagement: React.FC = () => {
 
     const authHdr = { Authorization: `Bearer ${token}` };
     const isAdmin = canManageMembers(user);
+    const orgSlug = activeWorkspace?.org_slug;
 
     // Fetch members from the workspace GET endpoint
     useEffect(() => {
-        if (!activeWorkspace || !token) return;
-        fetch(`/api/workspace?orgSlug=${activeWorkspace.orgSlug}&workspaceId=${activeWorkspace.id}`, {
-            headers: authHdr
-        })
+        if (!activeWorkspace || !token || !orgSlug) return;
+        fetch(`/api/workspace?orgSlug=${orgSlug}`, { headers: authHdr })
             .then(r => r.json())
             .then(data => { if (data.members) setMembers(data.members); })
             .catch(console.error);
@@ -46,14 +52,19 @@ const MemberManagement: React.FC = () => {
             const r = await fetch('/api/auth/users/invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHdr },
-                body: JSON.stringify({ email: inviteEmail, workspaceId: activeWorkspace.id, workspaceRole: inviteRole }),
+                body: JSON.stringify({
+                    email: inviteEmail,
+                    orgId: activeWorkspace.org_id,
+                    role: inviteRole,
+                    workspaceIds: [activeWorkspace.id],
+                }),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error);
-            setMsg(`✅ ${inviteEmail} added as ${inviteRole === 'WORKSPACE_ADMIN' ? 'Workspace Admin' : 'Viewer'}`);
+            setMsg(`✅ ${inviteEmail} invited as ${ROLE_LABEL[inviteRole] || inviteRole}`);
             setInviteEmail('');
             // Re-fetch members
-            const updated = await fetch(`/api/workspace?orgSlug=${activeWorkspace.orgSlug}&workspaceId=${activeWorkspace.id}`, { headers: authHdr });
+            const updated = await fetch(`/api/workspace?orgSlug=${orgSlug}`, { headers: authHdr });
             const ud = await updated.json();
             if (ud.members) setMembers(ud.members);
         } catch (e: any) { setErr('❌ ' + e.message); }
@@ -83,7 +94,6 @@ const MemberManagement: React.FC = () => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Header */}
             <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>
                     👥 Workspace Members
@@ -93,13 +103,13 @@ const MemberManagement: React.FC = () => {
                 </div>
             </div>
 
-            {/* Invite form — ORG_ADMIN/SUPERUSER only */}
+            {/* Invite form — ORG_ADMIN / PMO_ADMIN / SUPERUSER */}
             {isAdmin && (
                 <form onSubmit={handleInvite} style={{
                     background: '#0f1629', border: '1px solid #1e293b', borderRadius: 12, padding: 16,
                     display: 'flex', flexDirection: 'column', gap: 12
                 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>Invite member</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>Invite member (auto-creates account if new)</div>
                     <div style={{ display: 'flex', gap: 10 }}>
                         <input
                             type="email" required value={inviteEmail}
@@ -110,10 +120,11 @@ const MemberManagement: React.FC = () => {
                         <select
                             value={inviteRole}
                             onChange={e => setInviteRole(e.target.value as any)}
-                            style={{ ...inputStyle, width: 'auto', paddingRight: 28, flex: '0 0 160px' }}
+                            style={{ ...inputStyle, width: 'auto', paddingRight: 28, flex: '0 0 190px' }}
                         >
-                            <option value="WORKSPACE_ADMIN">Workspace Admin</option>
-                            <option value="USER">Viewer</option>
+                            <option value="PMO_ADMIN">PMO Admin</option>
+                            <option value="WORKSPACE_OWNER">Workspace Owner</option>
+                            <option value="USER">Member</option>
                         </select>
                     </div>
                     {msg && <div style={{ fontSize: 12, color: '#10b981' }}>{msg}</div>}
@@ -124,7 +135,7 @@ const MemberManagement: React.FC = () => {
                         fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
                         alignSelf: 'flex-start'
                     }}>
-                        {loading ? 'Adding…' : '+ Add to Workspace'}
+                        {loading ? 'Inviting…' : '+ Invite to Workspace'}
                     </button>
                 </form>
             )}
@@ -165,7 +176,7 @@ const MemberManagement: React.FC = () => {
                                         color: ROLE_COLOR[m.workspace_role] || '#64748b',
                                         border: `1px solid ${(ROLE_COLOR[m.workspace_role] || '#64748b')}44`
                                     }}>
-                                        {m.workspace_role === 'WORKSPACE_ADMIN' ? 'Admin' : 'Viewer'}
+                                        {ROLE_LABEL[m.workspace_role] || m.workspace_role}
                                     </span>
                                 </td>
                                 {isAdmin && (

@@ -27,6 +27,7 @@ import { Routes, Route, useNavigate, useParams, Navigate, useLocation } from 're
 import { exportExecSummaryPDF } from './utils/pdfExport';
 import { AdminPanel } from './components/AdminPanel';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
+import { SuperuserCockpit } from './components/SuperuserCockpit';
 import { SettingsHub } from './components/SettingsHub';
 import { DirectoryProfile } from './components/DirectoryProfile';
 
@@ -1134,61 +1135,46 @@ const AppShell: React.FC = () => {
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     if (user) {
+      // SUPERUSER goes to cockpit
+      if (user.role === 'SUPERUSER') {
+        navigate('/cockpit');
+        return;
+      }
+      // User with org goes to their workspace
+      if (user.orgSlug) {
+        navigate(`/o/${user.orgSlug}`);
+        return;
+      }
+      // Otherwise look up their org
       const token = localStorage.getItem('pcp_token');
       fetch('/api/workspace_lookup', { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.json())
-        .then(async d => {
-          if (d.orgSlug) {
-            navigate(`/o/${d.orgSlug}`);
-          } else {
-            // Immediately provision a workspace to prevent jumping to the separate /create screen
-            try {
-              const res = await fetch('/api/org_create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ orgName: `${user.name || 'My'}'s Workspace` })
-              });
-              const data = await res.json();
-              if (res.ok && data.orgSlug) navigate(`/o/${data.orgSlug}`);
-            } catch (createErr) {
-              console.error('Auto-provisioning failed:', createErr);
-            }
-          }
+        .then(d => {
+          if (d.orgSlug) navigate(`/o/${d.orgSlug}`);
+          else navigate('/create');
         })
-        .catch(console.error);
+        .catch(() => navigate('/create'));
     }
   }, [user, navigate]);
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-      {/* Background Animated Orbs */}
       <div className="orb orb-primary"></div>
       <div className="orb orb-secondary"></div>
-
-      {/* Main Hero Container */}
       <div style={{ display: 'flex', gap: 40, alignItems: 'center', justifyContent: 'center', width: '90%', maxWidth: 1000, position: 'relative', zIndex: 10 }}>
-
         <div className="glass-panel" style={{ flex: 1, padding: '60px 40px', borderRadius: '32px', textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', color: 'white', fontSize: 32, marginBottom: 24, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>
-            🪐
-          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', color: 'white', fontSize: 32, marginBottom: 24, boxShadow: '0 8px 16px var(--color-primary-glow)' }}>🪐</div>
           <h1 className="orbit-hero-title" style={{ fontSize: 56, marginBottom: 16 }}>Orbit Space</h1>
-          <p style={{ fontSize: 20, color: '#475569', fontWeight: 500, lineHeight: 1.5, marginBottom: 0 }}>
-            Visual resource orchestration and team capacity management for modern PMOs.
-          </p>
+          <p style={{ fontSize: 20, color: '#475569', fontWeight: 500, lineHeight: 1.5, marginBottom: 0 }}>Visual resource orchestration and team capacity management for modern PMOs.</p>
         </div>
-
-        {/* Embedded Login / Signup */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 420 }}>
             <Login compact />
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -1311,11 +1297,20 @@ const CreateOrg: React.FC = () => {
   );
 };
 
+/* ── Cockpit Route (SUPERUSER only) ───────────────────────── */
+const CockpitRoute: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  if (!user || user.role !== 'SUPERUSER') return <Navigate to="/" replace />;
+  return <SuperuserCockpit onViewOrg={(slug) => navigate(`/o/${slug}`)} />;
+};
+
 /* ── Router Export ────────────────────────────────────────── */
 const App: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/cockpit" element={<CockpitRoute />} />
       <Route path="/create" element={<CreateOrg />} />
       <Route path="/o/:orgSlug" element={<AppShell />} />
       <Route path="/o/:orgSlug/settings" element={<AppShell />} />

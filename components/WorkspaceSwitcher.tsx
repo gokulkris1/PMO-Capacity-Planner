@@ -2,19 +2,22 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
-    WORKSPACE_ADMIN: { label: 'Admin', color: '#10b981' },
-    USER: { label: 'Viewer', color: '#64748b' },
+    PMO_ADMIN: { label: 'PMO Admin', color: '#6366f1' },
+    WORKSPACE_OWNER: { label: 'Owner', color: '#10b981' },
+    USER: { label: 'Member', color: '#64748b' },
 };
 
 const WorkspaceSwitcher: React.FC = () => {
-    const { activeWorkspace, availableWorkspaces, switchWorkspace } = useAuth();
+    const { user, activeWorkspace, availableWorkspaces, switchWorkspace } = useAuth();
 
     if (!activeWorkspace || availableWorkspaces.length === 0) return null;
 
+    // WORKSPACE_OWNER + USER only see one workspace — no switcher needed
+    const showSwitcher = user && ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN'].includes(user.role);
     const badge = ROLE_BADGE[activeWorkspace.role] || { label: activeWorkspace.role, color: '#64748b' };
 
-    // Single workspace — just show the name
-    if (availableWorkspaces.length === 1) {
+    // Single workspace or no switch privilege — show name only
+    if (!showSwitcher || availableWorkspaces.length <= 1) {
         return (
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -28,7 +31,7 @@ const WorkspaceSwitcher: React.FC = () => {
                         {activeWorkspace.name}
                     </div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>
-                        {activeWorkspace.orgName}
+                        {activeWorkspace.org_name}
                     </div>
                 </div>
                 <span style={{
@@ -41,7 +44,7 @@ const WorkspaceSwitcher: React.FC = () => {
         );
     }
 
-    // Multiple workspaces — show a dropdown
+    // Multiple workspaces — show dropdown
     return (
         <div style={{ position: 'relative', marginBottom: 4 }}>
             <div style={{
@@ -61,7 +64,7 @@ const WorkspaceSwitcher: React.FC = () => {
                 >
                     {availableWorkspaces.map(ws => (
                         <option key={ws.id} value={ws.id} style={{ background: '#1e293b', color: '#f1f5f9' }}>
-                            {ws.orgName} › {ws.name} ({ws.role === 'WORKSPACE_ADMIN' ? 'Admin' : 'Viewer'})
+                            {ws.org_name} › {ws.name} ({ROLE_BADGE[ws.role]?.label || ws.role})
                         </option>
                     ))}
                 </select>

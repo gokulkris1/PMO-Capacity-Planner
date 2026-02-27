@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — 5-tier RBAC hierarchy
 // ---------------------------------------------------------------------------
 
 /** Platform-level role stored on the users table */
-export type PlatformRole = 'SUPERUSER' | 'ORG_ADMIN' | 'MEMBER';
+export type PlatformRole = 'SUPERUSER' | 'ORG_ADMIN' | 'PMO_ADMIN' | 'WORKSPACE_OWNER' | 'USER';
 
 /** Workspace-scoped role stored in workspace_members */
-export type WorkspaceRole = 'WORKSPACE_ADMIN' | 'USER';
+export type WorkspaceRole = 'PMO_ADMIN' | 'WORKSPACE_OWNER' | 'USER';
 
 export interface User {
     id: string;
@@ -16,14 +16,16 @@ export interface User {
     name?: string;
     role: PlatformRole;
     plan?: 'BASIC' | 'PRO' | 'MAX';
+    orgId?: string;
+    orgSlug?: string;
 }
 
 export interface WorkspaceInfo {
     id: string;
     name: string;
-    orgId: string;
-    orgName: string;
-    orgSlug: string;
+    org_id: string;
+    org_name: string;
+    org_slug: string;
     role: WorkspaceRole;
 }
 
@@ -67,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceInfo | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Rehydrate from localStorage on mount
+    // Rehydrate from localStorage
     useEffect(() => {
         const storedToken = localStorage.getItem('pcp_token');
         const storedUser = localStorage.getItem('pcp_user');
@@ -75,9 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
-            } catch {
-                console.error('Failed to parse stored user');
-            }
+            } catch { console.error('Failed to parse stored user'); }
         }
         setIsLoading(false);
     }, []);
@@ -149,16 +149,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider value={{
-            user,
-            token,
-            workspaceRole,
-            availableWorkspaces,
-            activeWorkspace,
-            login,
-            logout,
-            switchWorkspace,
-            setWorkspaceRole,
-            setAvailableWorkspaces,
+            user, token, workspaceRole, availableWorkspaces, activeWorkspace,
+            login, logout, switchWorkspace, setWorkspaceRole, setAvailableWorkspaces,
             isLoading,
         }}>
             {children}
@@ -177,32 +169,35 @@ export const useAuth = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Permission helpers
+// Permission helpers — 5-tier RBAC
 // ---------------------------------------------------------------------------
 
-/**
- * Can this user perform write actions (add/edit/delete resources, projects, allocations)?
- * SUPERUSER and ORG_ADMIN always can. Otherwise must be WORKSPACE_ADMIN in the active workspace.
- */
+/** Can this user write (add/edit/delete resources, projects, allocations)? */
 export function canWrite(user: User | null, workspaceRole: WorkspaceRole | null): boolean {
     if (!user) return false;
-    if (user.role === 'SUPERUSER' || user.role === 'ORG_ADMIN') return true;
-    return workspaceRole === 'WORKSPACE_ADMIN';
+    if (['SUPERUSER', 'ORG_ADMIN'].includes(user.role)) return true;
+    return workspaceRole === 'PMO_ADMIN' || workspaceRole === 'WORKSPACE_OWNER';
 }
 
-/**
- * Can the user manage workspace members (invite/remove)?
- * Org Admins and Superusers only.
- */
+/** Can the user manage workspace members (invite/remove)? */
 export function canManageMembers(user: User | null): boolean {
     if (!user) return false;
-    return user.role === 'SUPERUSER' || user.role === 'ORG_ADMIN';
+    return ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN'].includes(user.role);
 }
 
-/**
- * Can the user access the settings/admin panel?
- */
+/** Can the user create workspaces? */
+export function canCreateWorkspace(user: User | null): boolean {
+    if (!user) return false;
+    return ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN'].includes(user.role);
+}
+
+/** Can the user access the admin/settings panel? */
 export function canAccessSettings(user: User | null): boolean {
     if (!user) return false;
-    return user.role === 'SUPERUSER' || user.role === 'ORG_ADMIN';
+    return ['SUPERUSER', 'ORG_ADMIN'].includes(user.role);
+}
+
+/** Is this user a superuser (tool owner)? */
+export function isSuperuser(user: User | null): boolean {
+    return user?.role === 'SUPERUSER';
 }
