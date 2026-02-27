@@ -1059,7 +1059,7 @@ const AppShell: React.FC = () => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
                 }}
               >✕</button>
-              <Login onSuccess={onLoginSuccess} />
+              <Login compact onSuccess={onLoginSuccess} />
             </div>
           </div>
         )
@@ -1185,7 +1185,7 @@ const Landing: React.FC = () => {
         {/* Embedded Login / Signup */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 420 }}>
-            <Login />
+            <Login compact />
           </div>
         </div>
 
