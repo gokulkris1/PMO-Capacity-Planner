@@ -18,7 +18,8 @@ import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { AllocationModal } from './components/AllocationModal';
 import { JiraImportModal } from './components/JiraImportModal';
 import { TourOverlay } from './components/TourOverlay';
-import { useAuth } from './context/AuthContext';
+import { useAuth, canWrite } from './context/AuthContext';
+import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
@@ -84,7 +85,7 @@ const AppShell: React.FC = () => {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, workspaceRole, activeWorkspace, availableWorkspaces, setAvailableWorkspaces, switchWorkspace } = useAuth();
   // Guests see demo data; logged-in users get their own scoped workspace
   const storageKey = useCallback((key: string) =>
     user ? `pcp_${user.id}_${key}` : `pcp_${key}`
@@ -133,8 +134,8 @@ const AppShell: React.FC = () => {
   const pendingActionRef = React.useRef<(() => void) | null>(null);
   const authGate = useCallback((action: () => void, requireWrite = false) => {
     if (user) {
-      if (requireWrite && user.role === 'USER') {
-        alert('Access Denied: You have Viewer permissions for this workspace.');
+      if (requireWrite && !canWrite(user, workspaceRole)) {
+        alert('Access Denied: You need Workspace Admin permissions for this action.');
         return;
       }
       action();
@@ -142,7 +143,7 @@ const AppShell: React.FC = () => {
       pendingActionRef.current = action;
       setModal({ type: 'login' });
     }
-  }, [user]);
+  }, [user, workspaceRole]);
 
   /* Called when login succeeds – fires the pending action if any */
   const onLoginSuccess = useCallback(() => {
@@ -159,7 +160,20 @@ const AppShell: React.FC = () => {
   const initialLoadDone = React.useRef(false);
   const syncTimeoutRef = React.useRef<any>(null);
 
-  // Load/switch data when user logs in or out
+  // Load available workspaces after login
+  useEffect(() => {
+    if (!user) { setAvailableWorkspaces([]); return; }
+    const token = localStorage.getItem('pcp_token');
+    if (!token) return;
+    fetch('/api/my_workspaces', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.workspaces) setAvailableWorkspaces(data.workspaces);
+      })
+      .catch(console.error);
+  }, [user?.id, setAvailableWorkspaces]);
+
+  // Load/switch data when user logs in or activeWorkspace changes
   useEffect(() => {
     if (user) {
       // Authenticated — instantly clear demo data to avoid bleed-over
@@ -191,6 +205,8 @@ const AppShell: React.FC = () => {
           if (data.orgName) setOrgName(data.orgName);
           if (data.workspaceName) setWorkspaceName(data.workspaceName);
           if (data.logoUrl) setWorkspaceLogo(data.logoUrl);
+          // workspaceRole is automatically set via the workspace_members check in the API
+          // (the context updates on activeWorkspace change)
 
           if (data.primaryColor) {
             document.documentElement.style.setProperty('--color-primary', data.primaryColor);
@@ -226,7 +242,7 @@ const AppShell: React.FC = () => {
     if (!localStorage.getItem('pcp_tour_done')) {
       setTimeout(() => setShowTour(true), 600);
     }
-  }, [user?.id]);
+  }, [user?.id, activeWorkspace?.id]);
 
   // Persist data — sync to Postgres when authenticated, localStorage when guest
   useEffect(() => {
@@ -239,6 +255,10 @@ const AppShell: React.FC = () => {
         const token = localStorage.getItem('pcp_token');
         if (!token) return;
 
+        // Use activeWorkspace.id if available so save goes to the right workspace
+        const saveBody: any = { resources, projects, allocations };
+        if (activeWorkspace?.id) saveBody.workspaceId = activeWorkspace.id;
+
         const urlParams = new URLSearchParams(window.location.search);
         const overrideOrg = urlParams.get('org');
         const saveUrl = overrideOrg ? `/api/workspace?orgSlug=${encodeURIComponent(overrideOrg)}` : '/api/workspace';
@@ -246,7 +266,7 @@ const AppShell: React.FC = () => {
         fetch(saveUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ resources, projects, allocations })
+          body: JSON.stringify(saveBody)
         }).then(async res => {
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -509,17 +529,10 @@ const AppShell: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Workspace Tenant Info ── */}
+        {/* ── Workspace Tenant Info / Switcher ── */}
         {user && (
           <div style={{ padding: '0 12px', marginTop: 12 }}>
-            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 4 }}>
-                {orgName}
-              </div>
-              <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: '#6366f1' }}>↳</span> {workspaceName}
-              </div>
-            </div>
+            <WorkspaceSwitcher />
           </div>
         )}
 

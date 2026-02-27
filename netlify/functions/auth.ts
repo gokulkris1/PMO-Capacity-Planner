@@ -248,29 +248,57 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
         }
 
-        // ── ADMIN: invite user to org ─────────────────────────────
+        // ── ADMIN: invite existing user to a workspace ───────────────
+        // This replaces the old user-creation invite flow.
         if (subpath === '/users/invite' && event.httpMethod === 'POST') {
             if (!isAdmin) return fail('Forbidden', 403);
-            const { email, role = 'USER', name = '' } = body;
-            if (!email) return fail('Email required', 400);
+            const { email, workspaceId, workspaceRole = 'USER' } = body;
+            if (!email || !workspaceId) return fail('email and workspaceId are required', 400);
+            if (!['WORKSPACE_ADMIN', 'USER'].includes(workspaceRole)) {
+                return fail('workspaceRole must be WORKSPACE_ADMIN or USER', 400);
+            }
 
-            const [caller] = await sql`SELECT org_id, plan FROM users WHERE id = ${actor.id}`;
-            if (!caller?.org_id) return fail('No Organization found', 400);
+            // Look up the invitee
+            const [invitee] = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
+            if (!invitee) return fail('User not found — they must register first', 404);
 
-            const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
-            if (existing.length > 0) return fail('Email already in use', 400);
+            // Verify workspace exists
+            const [workspace] = await sql`SELECT id, org_id FROM workspaces WHERE id = ${workspaceId}`;
+            if (!workspace) return fail('Workspace not found', 404);
 
-            // Give them a random password, they can reset it later (or login via future magic link)
-            const randomPassword = Math.random().toString(36).slice(-10);
-            const hash = await bcrypt.hash(randomPassword, 10);
-            const userPlan = caller.plan || 'BASIC';
+            // ORG_ADMIN can only invite within their own org
+            if (!isSuperuser) {
+                const [callerUser] = await sql`SELECT org_id FROM users WHERE id = ${actor.id}`;
+                if (callerUser?.org_id !== workspace.org_id) {
+                    return fail('Forbidden — you can only invite to workspaces in your org', 403);
+                }
+            }
 
-            const [newUser] = await sql`
-                INSERT INTO users (email, password_hash, name, role, plan, org_id)
-                VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, ${role}, ${userPlan}, ${caller.org_id})
-                RETURNING id, email, name, role, plan, created_at
+            // Upsert into workspace_members
+            await sql`
+                INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
+                VALUES (${invitee.id}, ${workspaceId}, ${workspace.org_id}, ${workspaceRole}, ${actor.id})
+                ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = ${workspaceRole}
             `;
-            return ok({ user: newUser, password: randomPassword }); // In real app, email the password
+
+            // Ensure their org_id is set if not already
+            await sql`UPDATE users SET org_id = ${workspace.org_id} WHERE id = ${invitee.id} AND org_id IS NULL`;
+
+            return ok({ success: true, message: `${email} added to workspace as ${workspaceRole}` });
+        }
+
+        // ── ADMIN: remove a user from a workspace ────────────────────
+        if (subpath === '/remove-member' && event.httpMethod === 'POST') {
+            if (!isAdmin) return fail('Forbidden', 403);
+            const { userId: memberId, workspaceId } = body;
+            if (!memberId || !workspaceId) return fail('userId and workspaceId required', 400);
+            if (memberId === actor.id) return fail('You cannot remove yourself from a workspace', 400);
+
+            await sql`
+                DELETE FROM workspace_members
+                WHERE user_id = ${memberId} AND workspace_id = ${workspaceId}
+            `;
+            return ok({ success: true });
         }
 
         // ── SUPERUSER: platform stats ─────────────────────────────
@@ -278,12 +306,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (!isSuperuser) return fail('Forbidden', 403);
             const [stats] = await sql`
         SELECT
-          COUNT(*)::int                                          AS total_users,
-          COUNT(*) FILTER (WHERE plan = 'BASIC')::int            AS basic_users,
-          COUNT(*) FILTER (WHERE plan = 'PRO')::int              AS pro_users,
-          COUNT(*) FILTER (WHERE plan = 'MAX')::int              AS max_users,
-          COUNT(*) FILTER (WHERE role = 'SUPERUSER')::int        AS superusers,
-          COUNT(*) FILTER (WHERE role = 'ADMIN')::int              AS pmo_count,
+          COUNT(*)::int                                              AS total_users,
+          COUNT(*) FILTER (WHERE plan = 'BASIC')::int               AS basic_users,
+          COUNT(*) FILTER (WHERE plan = 'PRO')::int                 AS pro_users,
+          COUNT(*) FILTER (WHERE plan = 'MAX')::int                 AS max_users,
+          COUNT(*) FILTER (WHERE role = 'SUPERUSER')::int           AS superusers,
+          COUNT(*) FILTER (WHERE role = 'ORG_ADMIN')::int           AS pmo_count,
           COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS new_this_week
         FROM users
       `;

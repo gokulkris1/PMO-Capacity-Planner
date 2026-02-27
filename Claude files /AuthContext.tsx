@@ -32,7 +32,9 @@ export interface WorkspaceInfo {
 // ---------------------------------------------------------------------------
 
 interface AuthContextType {
+    /** Authenticated user (null = guest) */
     user: User | null;
+    /** Raw JWT */
     token: string | null;
     /** Role the current user holds in the *active* workspace */
     workspaceRole: WorkspaceRole | null;
@@ -41,13 +43,15 @@ interface AuthContextType {
     /** The currently active workspace */
     activeWorkspace: WorkspaceInfo | null;
 
+    /** Log in and persist token/user */
     login: (token: string, user: User) => void;
+    /** Clear all auth state */
     logout: () => void;
-    /** Switch to a different workspace by id */
+    /** Update the active workspace (triggers a workspace role update) */
     switchWorkspace: (workspaceId: string) => void;
-    /** Called after workspace data loads to set the scoped role */
+    /** Called by AppShell after workspace data loads to set the scoped role */
     setWorkspaceRole: (role: WorkspaceRole | null) => void;
-    /** Called after fetching available workspaces */
+    /** Called by AppShell after fetching available workspaces */
     setAvailableWorkspaces: (workspaces: WorkspaceInfo[]) => void;
 
     isLoading: boolean;
@@ -70,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Rehydrate from localStorage on mount
     useEffect(() => {
         const storedToken = localStorage.getItem('pcp_token');
-        const storedUser = localStorage.getItem('pcp_user');
+        const storedUser  = localStorage.getItem('pcp_user');
         if (storedToken && storedUser) {
             try {
                 setToken(storedToken);
@@ -82,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(false);
     }, []);
 
-    // Persist active workspace
+    // Persist active workspace choice
     useEffect(() => {
         if (activeWorkspace) {
             localStorage.setItem('pcp_active_workspace', JSON.stringify(activeWorkspace));
@@ -117,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setAvailableWorkspaces = useCallback((workspaces: WorkspaceInfo[]) => {
         setAvailableWorkspacesState(workspaces);
 
-        // Try to restore previously active workspace
+        // Restore previously active workspace if still available
         const stored = localStorage.getItem('pcp_active_workspace');
         if (stored) {
             try {
@@ -177,12 +181,12 @@ export const useAuth = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Permission helpers
+// Permission helpers  (import these wherever you need gate checks)
 // ---------------------------------------------------------------------------
 
 /**
- * Can this user perform write actions (add/edit/delete resources, projects, allocations)?
- * SUPERUSER and ORG_ADMIN always can. Otherwise must be WORKSPACE_ADMIN in the active workspace.
+ * Can the user perform write actions (add/edit/delete resources, projects, allocations)?
+ * SUPERUSER and ORG_ADMIN always can. Otherwise must be WORKSPACE_ADMIN.
  */
 export function canWrite(user: User | null, workspaceRole: WorkspaceRole | null): boolean {
     if (!user) return false;
