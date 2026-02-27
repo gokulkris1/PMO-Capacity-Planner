@@ -112,6 +112,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return ok({ success: true, workspace: ws }, 201);
             }
 
+            // POST /api/org_manage/:orgId/admin/:adminId/workspace — add admin to workspace
+            if (subpath.match(/^\/[^/]+\/admin\/[^/]+\/workspace$/)) {
+                if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
+                const [, orgId, , adminId] = subpath.split('/');
+                const { workspaceId, role } = JSON.parse(event.body || '{}');
+                if (!workspaceId) return fail('Workspace ID required');
+
+                await sql`
+                    INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
+                    VALUES (${adminId}, ${workspaceId}, ${orgId}, ${role || 'PMO_ADMIN'}, ${userId})
+                    ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = EXCLUDED.role
+                `;
+                return ok({ success: true });
+            }
+
+            // POST /api/org_manage/:orgId/admin/:adminId/workspace/:workspaceId — remove admin from workspace
+            // handled in the DELETE section at the bottom of this file.
+
             // POST /api/org_manage — create org
             const { orgName, adminEmail, plan, logoUrl, primaryColor } = JSON.parse(event.body || '{}');
             if (!orgName) return fail('Organization name required');
@@ -204,6 +222,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (event.httpMethod === 'DELETE') {
             if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
             const subpath = event.path.replace(/^.*\/api\/org_manage/, '');
+            // DELETE /api/org_manage/:orgId/admin/:adminId/workspace/:workspaceId — remove admin from workspace
+            if (subpath.match(/^\/[^/]+\/admin\/[^/]+\/workspace\/[^/]+$/)) {
+                if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
+                const [, orgId, , adminId, , workspaceId] = subpath.split('/');
+
+                await sql`DELETE FROM workspace_members WHERE user_id = ${adminId} AND workspace_id = ${workspaceId}`;
+                return ok({ success: true });
+            }
+
             const orgId = subpath.replace(/^\//, '');
             if (!orgId) return fail('Org ID required');
 

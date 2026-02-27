@@ -56,7 +56,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             } else {
                 // Everyone else must belong to this org
                 wsRows = await sql`
-                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id
+                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, u.role as db_role
                     FROM workspaces w
                     JOIN users u ON u.org_id = w.org_id
                     JOIN organizations o ON o.id = w.org_id
@@ -73,9 +73,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const logoUrl = wsRows[0].logo_url;
             const primaryColor = wsRows[0].primary_color;
 
+            // Sync userRole with DB if available (fixes stale JWTs with legacy 'ADMIN' role)
+            if (wsRows[0].db_role) {
+                userRole = wsRows[0].db_role;
+            } else if (userRole === 'ADMIN') {
+                userRole = 'ORG_ADMIN';
+            }
+
             // Resolve workspace role
             let workspaceRole: string = 'USER';
-            if (userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN' || userRole === 'ADMIN') {
+            if (userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN') {
                 workspaceRole = 'PMO_ADMIN'; // Full access
             } else {
                 const memberRows = await sql`

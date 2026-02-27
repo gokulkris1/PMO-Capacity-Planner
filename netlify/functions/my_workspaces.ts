@@ -48,8 +48,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return ok({ workspaces });
         }
 
+        // Sync userRole with DB if it's the legacy ADMIN role
+        if (userRole === 'ADMIN') {
+            const [caller] = await sql`SELECT role, org_id FROM users WHERE id = ${userId}`;
+            if (caller) {
+                userRole = caller.role;
+                if (!caller.org_id) return ok({ workspaces: [] });
+            }
+        }
+
         // ORG_ADMIN sees ALL workspaces in their org
-        if (userRole === 'ORG_ADMIN' || userRole === 'ADMIN') {
+        if (userRole === 'ORG_ADMIN') {
             const [caller] = await sql`SELECT org_id FROM users WHERE id = ${userId}`;
             if (!caller?.org_id) return ok({ workspaces: [] });
 

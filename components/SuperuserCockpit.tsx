@@ -29,7 +29,7 @@ const cardStyle: React.CSSProperties = {
 
 // ── Main Component ───────────────────────────────────────────────────────
 export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void }> = ({ onViewOrg }) => {
-    const { token } = useAuth();
+    const { token, logout } = useAuth();
     const [orgs, setOrgs] = useState<Org[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -92,6 +92,16 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
         fetchData();
     };
 
+    const handleAssignWorkspace = async (orgId: string, adminId: string, workspaceId: string) => {
+        if (!workspaceId) return;
+        await fetch(`/api/org_manage/${orgId}/admin/${adminId}/workspace`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ workspaceId, role: 'PMO_ADMIN' }),
+        });
+        alert('Admin assigned to workspace successfully');
+        fetchData();
+    };
+
     const handleCreateWorkspace = async (orgId: string) => {
         const name = prompt('Workspace name:');
         if (!name?.trim()) return;
@@ -132,9 +142,9 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
 
     return (
         <div style={{
-            minHeight: '100vh', background: c.bg, color: c.text,
+            height: '100vh', width: '100vw', background: c.bg, color: c.text,
             fontFamily: "'Inter', -apple-system, sans-serif",
-            padding: '32px 40px',
+            padding: '32px 40px', overflowY: 'auto', boxSizing: 'border-box'
         }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
@@ -152,15 +162,23 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                         </div>
                     </div>
                 </div>
-                <button onClick={() => setShowCreate(true)} style={{
-                    padding: '12px 24px', borderRadius: 12, border: 'none',
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                    <span style={{ fontSize: 18 }}>+</span> Create Organization
-                </button>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <button onClick={logout} style={{
+                        padding: '12px 16px', borderRadius: 12, border: `1px solid ${c.border}`,
+                        background: 'transparent', color: c.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                    }}>
+                        Logout
+                    </button>
+                    <button onClick={() => setShowCreate(true)} style={{
+                        padding: '12px 24px', borderRadius: 12, border: 'none',
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                        boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                        <span style={{ fontSize: 18 }}>+</span> Create Organization
+                    </button>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -270,17 +288,32 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                                                 <div style={{ fontSize: 12, color: c.muted }}>No admins assigned</div>
                                             ) : (
                                                 org.admins.map(a => (
-                                                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                                        <div style={{
-                                                            width: 28, height: 28, borderRadius: 8,
-                                                            background: 'rgba(99,102,241,0.2)', color: '#a5b4fc',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            fontSize: 10, fontWeight: 800,
-                                                        }}>{(a.name || a.email).slice(0, 2).toUpperCase()}</div>
-                                                        <div>
-                                                            <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{a.name || a.email}</div>
-                                                            <div style={{ fontSize: 10, color: c.muted }}>{a.email} · {a.role}</div>
+                                                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: 8 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div style={{
+                                                                width: 28, height: 28, borderRadius: 8,
+                                                                background: 'rgba(99,102,241,0.2)', color: '#a5b4fc',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                fontSize: 10, fontWeight: 800,
+                                                            }}>{(a.name || a.email).slice(0, 2).toUpperCase()}</div>
+                                                            <div>
+                                                                <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{a.name || a.email}</div>
+                                                                <div style={{ fontSize: 10, color: c.muted }}>{a.email} · {a.role}</div>
+                                                            </div>
                                                         </div>
+                                                        <select
+                                                            onChange={e => handleAssignWorkspace(org.id, a.id, e.target.value)}
+                                                            style={{
+                                                                background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
+                                                                borderRadius: 6, color: c.text, fontSize: 10, padding: '4px 6px',
+                                                                cursor: 'pointer', outline: 'none', maxWidth: 120
+                                                            }}
+                                                        >
+                                                            <option value="">+ Assign WS</option>
+                                                            {org.workspaces.map(ws => (
+                                                                <option key={ws.id} value={ws.id}>{ws.name}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
                                                 ))
                                             )}
