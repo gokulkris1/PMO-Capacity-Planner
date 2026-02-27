@@ -78,9 +78,34 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return fail('Unauthorized for this organization limit', 403);
             }
 
-            const resources = await sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`;
-            const projects = await sql`SELECT * FROM projects WHERE workspace_id = ${wsId}`;
-            const allocations = await sql`SELECT * FROM allocations WHERE workspace_id = ${wsId}`;
+            // Resolve workspace role from workspace_members
+            let workspaceRole: 'WORKSPACE_ADMIN' | 'USER' | null = null;
+            if (userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN') {
+                workspaceRole = 'WORKSPACE_ADMIN';
+            } else {
+                const [memberRow] = await sql`
+                    SELECT role FROM workspace_members
+                    WHERE user_id = ${userId} AND workspace_id = ${wsId}
+                `;
+                workspaceRole = (memberRow?.role as 'WORKSPACE_ADMIN' | 'USER') ?? null;
+                if (!workspaceRole) return fail('Forbidden — you are not a member of this workspace', 403);
+            }
+
+            const [resources, projects, allocations, members] = await Promise.all([
+                sql`SELECT * FROM resources WHERE workspace_id = ${wsId}`,
+                sql`SELECT * FROM projects WHERE workspace_id = ${wsId}`,
+                sql`SELECT * FROM allocations WHERE workspace_id = ${wsId}`,
+                // Return members list only to admins
+                workspaceRole === 'WORKSPACE_ADMIN'
+                    ? sql`
+                        SELECT u.id, u.email, u.name, u.role AS platform_role, wm.role AS workspace_role
+                        FROM workspace_members wm
+                        JOIN users u ON u.id = wm.user_id
+                        WHERE wm.workspace_id = ${wsId}
+                        ORDER BY u.name
+                      `
+                    : Promise.resolve([]),
+            ]);
 
             const mapRes = resources.map(r => ({
                 id: r.id, name: r.name, role: r.role, type: r.type, department: r.department,
@@ -99,7 +124,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 startDate: a.start_date, endDate: a.end_date
             }));
 
-            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc, orgName, workspaceName: wsName, logoUrl, primaryColor });
+            return ok({ resources: mapRes, projects: mapProj, allocations: mapAlloc, orgName, workspaceName: wsName, logoUrl, primaryColor, workspaceRole, members });
         } catch (e: any) {
             console.error(e);
             return fail('Failed to fetch workspace: ' + e.message, 500);
@@ -109,13 +134,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'POST') {
         try {
             const body = JSON.parse(event.body || '{}');
-            const { resources = [], projects = [], allocations = [] } = body;
+            const { resources = [], projects = [], allocations = [], workspaceId: bodyWsId } = body;
 
-            // Get user's Workspace ID and Plan securely via userId ONLY. NEVER trust client inputs.
-            // Match purely on org_id so any admin in the org can save.
+            // Resolve workspace + user plan. If workspaceId provided in body, use it (workspace switcher support).
             let wsRows;
-            if (userRole === 'SUPERUSER' && orgSlug) {
-                // Superuser saving into a specific tenant workspace
+            if (bodyWsId) {
+                wsRows = await sql`
+                    SELECT w.id, u.plan, w.org_id FROM workspaces w
+                    JOIN users u ON u.org_id = w.org_id
+                    WHERE w.id = ${bodyWsId} AND u.id = ${userId}
+                    LIMIT 1
+                `;
+                // SUPERUSER can save to any workspace
+                if (!wsRows.length && userRole === 'SUPERUSER') {
+                    wsRows = await sql`SELECT id, 'MAX' as plan, org_id FROM workspaces WHERE id = ${bodyWsId} LIMIT 1`;
+                }
+            } else if (userRole === 'SUPERUSER' && orgSlug) {
                 wsRows = await sql`
                     SELECT w.id, 'MAX' as plan, w.org_id FROM workspaces w
                     JOIN organizations o ON o.id = w.org_id
@@ -123,7 +157,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     LIMIT 1
                 `;
             } else {
-                // Normal user saving into their bound organization
                 wsRows = await sql`
                     SELECT w.id, u.plan, w.org_id FROM workspaces w
                     JOIN users u ON u.org_id = w.org_id
@@ -135,6 +168,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const wsId = wsRows.length > 0 ? wsRows[0].id : null;
             const orgId = wsRows.length > 0 ? wsRows[0].org_id : null;
             const userPlan = wsRows.length > 0 ? wsRows[0].plan : 'BASIC';
+
+            // Gate writes on workspace_members role
+            if (userRole !== 'SUPERUSER' && userRole !== 'ORG_ADMIN') {
+                const [member] = await sql`
+                    SELECT role FROM workspace_members
+                    WHERE user_id = ${userId} AND workspace_id = ${wsId}
+                `;
+                if (member?.role !== 'WORKSPACE_ADMIN') {
+                    return fail('Forbidden — Workspace Admin role required to save', 403);
+                }
+            }
 
             if (!wsId || !orgId) return fail('Unauthorized no workspace found for user', 403);
 

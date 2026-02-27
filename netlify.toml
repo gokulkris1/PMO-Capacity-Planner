@@ -80,6 +80,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/my_workspaces"
+  to = "/.netlify/functions/my_workspaces"
+  status = 200
+  force = true
+
 # SPA fallback — all other routes serve index.html
 [[redirects]]
   from = "/*"
