@@ -55,6 +55,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     WHERE o.slug = ${orgSlug}
                     LIMIT 1
                 `;
+            } else if (userRole === 'ORG_ADMIN' || userRole === 'ADMIN') {
+                wsRows = await sql`
+                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
+                    FROM workspaces w
+                    JOIN users u ON u.org_id = w.org_id
+                    JOIN organizations o ON o.id = w.org_id
+                    WHERE u.id = ${userId} AND o.slug = ${orgSlug}
+                    LIMIT 1
+                `;
             } else {
                 wsRows = await sql`
                     SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color 
@@ -80,7 +89,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             // Resolve workspace role from workspace_members
             let workspaceRole: 'WORKSPACE_ADMIN' | 'USER' | null = null;
-            if (userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN') {
+            const isAdmin = userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN' || userRole === 'ADMIN';
+            if (isAdmin) {
                 workspaceRole = 'WORKSPACE_ADMIN';
             } else {
                 const [memberRow] = await sql`
