@@ -7,94 +7,10 @@
   command = "npm run dev"
   targetPort = 3000
 
-# Route /api/auth/* to the Netlify Function
+# Route /api/* to the catch-all Netlify Function
 [[redirects]]
-  from = "/api/auth/*"
-  to = "/.netlify/functions/auth/:splat"
-  status = 200
-  force = true
-
-# Route /api/workspace (exact) to workspace Function
-[[redirects]]
-  from = "/api/workspace"
-  to = "/.netlify/functions/workspace"
-  status = 200
-  force = true
-
-# Route /api/workspace/* to workspace Function
-[[redirects]]
-  from = "/api/workspace/*"
-  to = "/.netlify/functions/workspace/:splat"
-  status = 200
-  force = true
-  
-# Route /api/ai/* to ai Function
-[[redirects]]
-  from = "/api/ai/*"
-  to = "/.netlify/functions/ai/:splat"
-  status = 200
-  force = true
-  
-# Route /api/jira/* to jira Function
-[[redirects]]
-  from = "/api/jira/*"
-  to = "/.netlify/functions/jira/:splat"
-  status = 200
-  force = true
-
-# Route /api/verify/* to verify Function for OTP
-[[redirects]]
-  from = "/api/verify/*"
-  to = "/.netlify/functions/verify/:splat"
-  status = 200
-  force = true
-
-# Phase 8/9 SaaS & Provisioning Routes
-[[redirects]]
-  from = "/api/org_create"
-  to = "/.netlify/functions/org_create"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/workspace_lookup"
-  to = "/.netlify/functions/workspace_lookup"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/checkout"
-  to = "/.netlify/functions/checkout"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/webhook"
-  to = "/.netlify/functions/webhook"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/email_receipt"
-  to = "/.netlify/functions/email_receipt"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/my_workspaces"
-  to = "/.netlify/functions/my_workspaces"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/org_manage/*"
-  to = "/.netlify/functions/org_manage/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/org_manage"
-  to = "/.netlify/functions/org_manage"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
   force = true
 
