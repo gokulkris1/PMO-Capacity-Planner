@@ -30,6 +30,7 @@ import { SuperAdminPanel } from './components/SuperAdminPanel';
 import { SuperuserCockpit } from './components/SuperuserCockpit';
 import { SettingsHub } from './components/SettingsHub';
 import { DirectoryProfile } from './components/DirectoryProfile';
+import { QBRPlanner } from './components/qbr/QBRPlanner';
 
 const APP_VERSION = '1.0.0';
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'public';
@@ -67,6 +68,7 @@ const NAV_ITEMS: { id: ViewTab; label: string; icon: string; section?: string }[
   { id: 'by-skills', label: 'By Skills', icon: '🧩' },
   { id: 'by-team', label: 'By Team', icon: '👥' },
   { id: 'what-if', label: 'What-If Scenarios', icon: '🔬', section: 'Planning' },
+  { id: 'qbr', label: 'QBR Planning', icon: '📋', section: 'Planning' },
 ];
 
 /* ── TYPES for modal state ─────────────────────────────────── */
@@ -503,6 +505,7 @@ const AppShell: React.FC = () => {
     'by-skills': { title: 'By Skills', subtitle: 'Group resources by skills and spot utilization by capability' },
     'by-team': { title: 'By Team', subtitle: 'Team-level allocation heatmap' },
     'what-if': { title: 'What-If Scenarios', subtitle: 'Explore hypothetical reallocation scenarios' },
+    'qbr': { title: 'QBR Planning', subtitle: 'Quarterly Business Review — resource booking & horse trading' },
   };
 
   const current = PAGE_TITLES[activeTab];
@@ -952,6 +955,14 @@ const AppShell: React.FC = () => {
                   aiResponse={aiResponse}
                   isAiLoading={isAiLoading}
                   onAiAsk={handleAiAsk}
+                />
+              )}
+
+              {activeTab === 'qbr' && user && activeWorkspace && (
+                <QBRPlanner
+                  token={localStorage.getItem('pcp_token') || ''}
+                  wsId={activeWorkspace.id}
+                  orgId={activeWorkspace.org_id}
                 />
               )}
             </>
