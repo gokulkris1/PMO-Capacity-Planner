@@ -106,7 +106,8 @@ export const getCapacityInsights = async (
       if (data.response && data.response.includes('disabled')) {
         return data.response;
       }
-      throw new Error(data.error || 'Failed to generate AI insights');
+      const genericError = data.error || data.errorMessage || data.errorType || 'Failed to generate AI insights';
+      throw new Error(genericError);
     }
 
     return data.response;

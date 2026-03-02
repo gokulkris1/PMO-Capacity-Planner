@@ -37,13 +37,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     try {
         const { systemPrompt, userPrompt } = JSON.parse(event.body || '{}');
 
-        // Auto-migrate if columns missing
-        try {
-            await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_queries_month INT DEFAULT 0`;
-            await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reset_date TIMESTAMP DEFAULT NOW()`;
-        } catch (migrationErr) {
-            console.warn('AI DB migration skipped or failed:', migrationErr);
-        }
+        // Removed slow ALTER TABLE auto-migration from critical hotpath to prevent Lambda timeout
 
         // Check Quotas
         const res = await sql`
@@ -72,8 +66,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return ok({ response: "AI advisor is currently disabled. Server is missing OPENAI_API_KEY." });
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8500);
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${OPENAI_API_KEY}`,
@@ -87,7 +85,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 temperature: 0.2, // Low temp for more analytical PMO responses
                 max_tokens: 500,
             }),
-        });
+        }).finally(() => clearTimeout(timeoutId));
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -103,6 +101,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     } catch (err: any) {
         console.error('AI Route Error:', err);
+        if (err.name === 'AbortError') {
+            return fail('The AI service took too long to respond. Your organization query might be too large.', 504);
+        }
         return fail('Internal server error', 500);
     }
 };
