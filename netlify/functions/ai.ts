@@ -37,6 +37,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
     try {
         const { systemPrompt, userPrompt } = JSON.parse(event.body || '{}');
 
+        // Auto-migrate if columns missing
+        try {
+            await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_queries_month INT DEFAULT 0`;
+            await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_reset_date TIMESTAMP DEFAULT NOW()`;
+        } catch (migrationErr) {
+            console.warn('AI DB migration skipped or failed:', migrationErr);
+        }
+
         // Check Quotas
         const res = await sql`
             SELECT plan, ai_queries_month, last_reset_date 
