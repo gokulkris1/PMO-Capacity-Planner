@@ -98,14 +98,20 @@ export function buildMonthDayForecast(
         // Parse 'YYYY-MM-DD' exactly into local timezone so it aligns with our calendar days
         let start = new Date('2000-01-01T00:00:00');
         if (effStart) {
-            const [y, m, d] = String(effStart).split('T')[0].split('-').map(Number);
-            start = new Date(y, m - 1, d, 0, 0, 0);
+            const match = String(effStart).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                const [_, y, m, d] = match.map(Number);
+                start = new Date(y, m - 1, d, 0, 0, 0);
+            }
         }
 
         let end = new Date('2099-12-31T23:59:59');
         if (effEnd) {
-            const [y, m, d] = String(effEnd).split('T')[0].split('-').map(Number);
-            end = new Date(y, m - 1, d, 23, 59, 59);
+            const match = String(effEnd).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                const [_, y, m, d] = match.map(Number);
+                end = new Date(y, m - 1, d, 23, 59, 59);
+            }
         }
 
         return { ...a, start, end, projName: proj?.name || 'Unknown Project' };
