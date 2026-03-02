@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 
@@ -36,11 +37,12 @@ function utilBorderCell(pct: number): string {
     return 'rgba(255,255,255,0.06)';
 }
 
-function isAllocActiveInMonth(a: Allocation, yyyyMm: string) {
-    if (!yyyyMm) return true;
-    const [year, month] = yyyyMm.split('-');
-    const filterStart = new Date(parseInt(year), parseInt(month) - 1, 1);
-    const filterEnd = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+function isAllocActiveInRange(a: Allocation, range: { start: string; end: string }) {
+    if (!range.start || !range.end) return true;
+    const [sYear, sMonth] = range.start.split('-');
+    const [eYear, eMonth] = range.end.split('-');
+    const filterStart = new Date(parseInt(sYear), parseInt(sMonth) - 1, 1);
+    const filterEnd = new Date(parseInt(eYear), parseInt(eMonth), 0, 23, 59, 59);
     const aStart = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
     const aEnd = a.endDate ? new Date(a.endDate) : new Date('2099-12-31');
     return aStart <= filterEnd && aEnd >= filterStart;
@@ -79,7 +81,7 @@ const Avatar: React.FC<{ name: string; type?: string }> = ({ name, type }) => {
     return (
         <div style={{
             width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-            background: c.bg, color: c.color, border: `1px solid ${c.color}30`,
+            background: c.bg, color: c.color, border: `1px solid ${c.color} 30`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 11, fontWeight: 800, letterSpacing: '0.02em',
         }}>
@@ -101,19 +103,23 @@ export const AllocationMatrix: React.FC<Props> = ({
     resources, projects, allocations, scenarioMode, scenarioAllocations, onUpdateAdvanced, onExportCSV
 }) => {
     const [filterProjId, setFilterProjId] = useState('');
-    const [filterMonth, setFilterMonth] = useState(() => new Date().toISOString().slice(0, 7));
+    // Filter range: start and end month (YYYY-MM)
+    const [filterRange, setFilterRange] = useState({
+        start: new Date().toISOString().slice(0, 7),
+        end: new Date().toISOString().slice(0, 7),
+    });
 
     const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
     const filteredProjects = filterProjId ? projects.filter(p => p.id === filterProjId) : projects;
 
     function getResourceUtil(resId: string) {
         return liveAlloc
-            .filter(a => a.resourceId === resId && isAllocActiveInMonth(a, filterMonth))
+            .filter(a => a.resourceId === resId && isAllocActiveInRange(a, filterRange))
             .reduce((s, a) => s + a.percentage, 0);
     }
 
     function getAllocForCell(resId: string, projId: string) {
-        const allocs = liveAlloc.filter(a => a.resourceId === resId && a.projectId === projId && isAllocActiveInMonth(a, filterMonth));
+        const allocs = liveAlloc.filter(a => a.resourceId === resId && a.projectId === projId && isAllocActiveInRange(a, filterRange));
         if (allocs.length === 0) return { pct: 0, multiple: false };
         if (allocs.length === 1) return { pct: allocs[0].percentage, multiple: false };
         return { pct: allocs.reduce((s, a) => s + a.percentage, 0), multiple: true };
@@ -156,11 +162,14 @@ export const AllocationMatrix: React.FC<Props> = ({
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-                        style={{ ...controlInput, width: 150 }} />
+                    {/* Start month */}
+                    <input type="month" value={filterRange.start} onChange={e => setFilterRange({ ...filterRange, start: e.target.value })}
+                        style={{ ...controlInput, width: 120 }} />
+                    {/* End month */}
+                    <input type="month" value={filterRange.end} onChange={e => setFilterRange({ ...filterRange, end: e.target.value })}
+                        style={{ ...controlInput, width: 120, marginLeft: 8 }} />
                     <select value={filterProjId} onChange={e => setFilterProjId(e.target.value)}
                         style={{ ...controlInput, minWidth: 140 }}>
-                        <option value="">All Projects</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                     <button onClick={onExportCSV} style={{
@@ -218,7 +227,7 @@ export const AllocationMatrix: React.FC<Props> = ({
                                 {filteredProjects.map(p => (
                                     <th key={p.id} style={{ ...headerCell, minWidth: 110, textAlign: 'center' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                            <div style={{ width: 8, height: 8, borderRadius: 3, background: p.color || '#6366f1', boxShadow: `0 0 6px ${p.color || '#6366f1'}60` }} />
+                                            <div style={{ width: 8, height: 8, borderRadius: 3, background: p.color || '#6366f1', boxShadow: `0 0 6px ${p.color || '#6366f1'} 60` }} />
                                             <span style={{ maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{p.name}</span>
                                         </div>
                                     </th>
@@ -270,7 +279,7 @@ export const AllocationMatrix: React.FC<Props> = ({
                                                         title={multiple ? 'Multiple slices this month — click to edit' : 'Click to edit allocation'}
                                                         style={{
                                                             width: 56, height: 36, borderRadius: 9,
-                                                            border: `1px solid ${pct > 0 ? utilBorderCell(pct) : 'rgba(255,255,255,0.06)'}`,
+                                                            border: `1px solid ${pct > 0 ? utilBorderCell(pct) : 'rgba(255,255,255,0.06)'} `,
                                                             background: pct > 0 ? utilBgCell(pct) : 'rgba(255,255,255,0.03)',
                                                             color: pct > 0 ? utilColor(pct) : '#334155',
                                                             fontWeight: pct > 0 ? 800 : 500,
@@ -283,7 +292,7 @@ export const AllocationMatrix: React.FC<Props> = ({
                                                         onMouseEnter={e => { if (!scenarioMode) { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; } }}
                                                         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
                                                     >
-                                                        {pct > 0 ? `${pct}%` : '·'}
+                                                        {pct > 0 ? `${pct}% ` : '·'}
                                                         {multiple && (
                                                             <span style={{ position: 'absolute', top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#818cf8', border: '1.5px solid #0d1117' }} />
                                                         )}

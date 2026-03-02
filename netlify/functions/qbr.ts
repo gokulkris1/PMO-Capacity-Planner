@@ -508,7 +508,7 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Patrick Ward']}, 'ADVISOR') ON CONFLICT DO NOTHING`;
 
     const [sqMobile] = await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad Mobile v3', ${tDigital.id}, ${pMobile.id}, ${okrDig1.id}) RETURNING id`;
-    await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Linda O\\'Dwyer']}, 'LEAD') ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds["Linda O'Dwyer"]}, 'LEAD') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Oisin Flynn']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Saoirse Kelly']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Kate Murphy']}, 'MEMBER') ON CONFLICT DO NOTHING`;
