@@ -2,7 +2,11 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import jwt from 'jsonwebtoken';
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.NEON_DATABASE_URL || '');
+const sql = neon(
+    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.NEON_DATABASE_URL || ''
+);
 const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
