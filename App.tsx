@@ -321,10 +321,10 @@ const AppShell: React.FC = () => {
   /* ── AI handler ─────────────────────────────────────────── */
   const handleAiAsk = useCallback(async (prompt: string) => {
     setIsAiLoading(true);
-    const resp = await getCapacityInsights(resources, projects, liveAlloc, prompt);
+    const resp = await getCapacityInsights(resources, projects, liveAlloc, prompt, user, activeWorkspace, workspaceRole);
     setAiResponse(resp);
     setIsAiLoading(false);
-  }, [resources, projects, liveAlloc]);
+  }, [resources, projects, liveAlloc, user, activeWorkspace, workspaceRole]);
 
   /* ── allocation CRUD ────────────────────────────────────── */
   const updateAllocation = useCallback((resId: string, projId: string, val: string) => {

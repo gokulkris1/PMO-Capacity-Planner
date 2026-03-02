@@ -1,9 +1,18 @@
 /// <reference types="vite/client" />
 import { Resource, Project, Allocation } from "../types";
 
+import { User, WorkspaceInfo, WorkspaceRole } from "../context/AuthContext";
+
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 
-function buildSystemPrompt(resources: Resource[], projects: Project[], allocations: Allocation[]): string {
+function buildSystemPrompt(
+  resources: Resource[],
+  projects: Project[],
+  allocations: Allocation[],
+  user: User | null,
+  activeWorkspace: WorkspaceInfo | null,
+  workspaceRole: WorkspaceRole | null
+): string {
   const resourceSummary = resources.map(r => {
     const rAllocs = allocations.filter(a => a.resourceId === r.id);
     const totalPct = rAllocs.reduce((s, a) => s + a.percentage, 0);
@@ -30,9 +39,15 @@ function buildSystemPrompt(resources: Resource[], projects: Project[], allocatio
     allocations.filter(a => a.resourceId === r.id).length === 0
   );
 
-  return `You are an elite McKinsey/BCG Partner and Senior PMO Strategic Advisor. The user is a PMO Director asking for your analytical capacity consulting based on their live portfolio data.
+  const isAdmin = user?.role === 'SUPERUSER' || user?.role === 'ORG_ADMIN' || workspaceRole === 'PMO_ADMIN' || workspaceRole === 'WORKSPACE_OWNER';
 
-📊 LIVE PORTFOLIO DATA:
+  const roleDirectives = isAdmin
+    ? `Since the user is an Executive/Admin, you MAY provide explicit financial reallocation advice, strategic organizational shifts, and unconstrained insights across all departments.`
+    : `Since the user is a standard Viewer/Editor, STRICTLY RESTRICT your advice to tactical team resource capacity. DO NOT advise on financial budgets, organization-wide strategy changes, or sensitive management decisions.`;
+
+  return `You are Orbit AI, an elite PMO Strategic Advisor. The user asking for your advice is "${user?.name || user?.email || 'Unknown User'}", who holds the role of ${user?.role || 'User'} in the organization "${activeWorkspace?.org_name || 'Organization'}" (Workspace: "${activeWorkspace?.name || 'Workspace'}").
+
+📊 LIVE PORTFOLIO DATA FOR THEIR WORKSPACE:
 RESOURCES & ALLOCATIONS:
 ${resourceSummary || '  (No resources yet)'}
 
@@ -44,11 +59,11 @@ BURN & RISK METRICS:
 - Bench / Unutilized: ${unassigned.length} individuals (${unassigned.map(r => r.name).join(', ') || 'none'})
 
 🎯 YOUR DIRECTIVES:
-1. DELIVER HARD TRUTHS: Be direct, analytical, and executive. Do not use fluff. Treat this as a high-stakes Board presentation.
-2. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching roles/departments.
-3. ALIGN WITH PRIORITIES: If low-priority projects are consuming 100% of a critical resource while high-priority projects are starved, call out the strategic misalignment immediately.
-4. FORMATTING: Use Markdown flawlessly. Use *Bold* for names and projects. Use clear headers (e.g., ### 🚨 Immediate Risks, ### 💡 Reallocation Strategy).
-5. BE ACTIONABLE: Give explicit steps like "Transfer 30% of John's allocation from Project B to Project A to relieve bottleneck."
+1. DELIVER HARD TRUTHS: Be direct, analytical, and executive. Do not use fluff. Address the user directly by their name occasionally.
+2. ROLE AWARENESS: ${roleDirectives}
+3. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching roles/departments.
+4. ALIGN WITH PRIORITIES: Call out strategic misalignment if low-priority projects consume critical resources.
+5. FORMATTING: Use Markdown flawlessly. Use *Bold* for names and projects. Use clear headers.
 
 Respond strictly to the user's prompt using the data above. If their query is general ("How are we doing?"), provide a comprehensive health check and reallocation roadmap.`;
 }
@@ -57,7 +72,10 @@ export const getCapacityInsights = async (
   resources: Resource[],
   projects: Project[],
   allocations: Allocation[],
-  userPrompt: string
+  userPrompt: string,
+  user: User | null,
+  activeWorkspace: WorkspaceInfo | null,
+  workspaceRole: WorkspaceRole | null
 ): Promise<string> => {
   const token = localStorage.getItem('pcp_token');
 
@@ -66,7 +84,7 @@ export const getCapacityInsights = async (
   }
 
   try {
-    const systemPrompt = buildSystemPrompt(resources, projects, allocations);
+    const systemPrompt = buildSystemPrompt(resources, projects, allocations, user, activeWorkspace, workspaceRole);
 
     const res = await fetch('/api/ai', {
       method: 'POST',
