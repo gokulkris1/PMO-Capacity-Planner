@@ -146,7 +146,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'POST') {
         try {
             const body = JSON.parse(event.body || '{}');
-            const { resources = [], projects = [], allocations = [], workspaceId: bodyWsId } = body;
+            const { resources = [], projects = [], allocations = [], workspaceId: bodyWsId, forceWipe = false } = body;
 
             // Resolve workspace
             let wsRows;
@@ -194,6 +194,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             if (resources.length > lim.resources) return fail(`${plan} plan allows max ${lim.resources} resources`, 403);
             if (projects.length > lim.projects) return fail(`${plan} plan allows max ${lim.projects} projects`, 403);
+
+            // Backend Safety Guard: Prevent accidental full wipe from frontend race conditions
+            if (!forceWipe && resources.length === 0 && projects.length === 0) {
+                const existingDb = await sql`
+                    SELECT 
+                        (SELECT count(*) FROM resources WHERE workspace_id = ${wsId}) as r_count,
+                        (SELECT count(*) FROM projects WHERE workspace_id = ${wsId}) as p_count
+                `;
+                if (existingDb.length > 0 && (Number(existingDb[0].r_count) > 0 || Number(existingDb[0].p_count) > 0)) {
+                    return fail('Safety Guard: Payload is empty but DB has data. Preventing accidental DB wipe. Use forceWipe=true if intentional.', 400);
+                }
+            }
 
             // Clear + re-insert (transactional save)
             await sql`DELETE FROM allocations WHERE workspace_id = ${wsId}`;

@@ -161,6 +161,7 @@ const AppShell: React.FC = () => {
   }, []);
 
   const initialLoadDone = React.useRef(false);
+  const dataLoadedFromServer = React.useRef(false); // To ensure we never wipe data on login
   const syncTimeoutRef = React.useRef<any>(null);
 
   // Load available workspaces after login
@@ -220,6 +221,7 @@ const AppShell: React.FC = () => {
             document.documentElement.style.removeProperty('--color-primary-glow');
           }
 
+          dataLoadedFromServer.current = true; // Mark as safely loaded from server
           initialLoadDone.current = true;
         })
         .catch(err => {
@@ -252,6 +254,8 @@ const AppShell: React.FC = () => {
     if (!initialLoadDone.current) return;
 
     if (user) {
+      if (!dataLoadedFromServer.current) return; // Wait until initial data securely loads
+
       // Debounce Postgres sync by 1.5s
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
@@ -363,7 +367,9 @@ const AppShell: React.FC = () => {
     setActiveTab('what-if');
   };
   const applyScenario = () => {
-    if (scenarioAllocations) setAllocations(scenarioAllocations);
+    if (scenarioAllocations) {
+      setAllocations(scenarioAllocations);
+    }
     setScenarioAllocations(null);
     setScenarioMode(false);
   };
