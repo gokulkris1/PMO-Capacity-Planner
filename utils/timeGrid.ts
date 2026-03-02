@@ -93,8 +93,20 @@ export function buildMonthDayForecast(
         const proj = projects.find(p => p.id === a.projectId);
         const effStart = a.startDate || proj?.startDate;
         const effEnd = a.endDate || proj?.endDate;
-        const start = effStart ? new Date(effStart) : new Date('2000-01-01');
-        const end = effEnd ? new Date(effEnd + 'T23:59:59') : new Date('2099-12-31T23:59:59');
+
+        // Parse 'YYYY-MM-DD' exactly into local timezone so it aligns with our calendar days
+        let start = new Date('2000-01-01T00:00:00');
+        if (effStart) {
+            const [y, m, d] = effStart.split('-').map(Number);
+            start = new Date(y, m - 1, d, 0, 0, 0);
+        }
+
+        let end = new Date('2099-12-31T23:59:59');
+        if (effEnd) {
+            const [y, m, d] = effEnd.split('-').map(Number);
+            end = new Date(y, m - 1, d, 23, 59, 59);
+        }
+
         return { ...a, start, end, projName: proj?.name || 'Unknown Project' };
     });
 
