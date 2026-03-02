@@ -30,16 +30,24 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
     };
 
     const handleSave = () => {
-        // Filter out empty percentages if they have no dates, or sanitize
-        const validSlices = slices.filter(s => s.percentage && s.percentage > 0).map(s => ({
-            id: s.id || crypto.randomUUID(),
-            resourceId: resource.id,
-            projectId: project.id,
-            percentage: s.percentage!,
-            startDate: s.startDate || undefined,
-            endDate: s.endDate || undefined
-        }));
-        onSave(validSlices as Allocation[]);
+        // Build slices and automatically clamp to project end date
+        const builtSlices = slices.filter(s => s.percentage && s.percentage > 0).map(s => {
+            let finalEndDate = s.endDate;
+            if (project.endDate) {
+                if (!finalEndDate || finalEndDate > project.endDate) {
+                    finalEndDate = project.endDate;
+                }
+            }
+            return {
+                id: s.id || crypto.randomUUID(),
+                resourceId: resource.id,
+                projectId: project.id,
+                percentage: s.percentage!,
+                startDate: s.startDate || undefined,
+                endDate: finalEndDate || undefined
+            };
+        });
+        onSave(builtSlices as Allocation[]);
     };
 
     return (
@@ -55,7 +63,10 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
                         <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#f8fafc', padding: 12, borderRadius: 8 }}>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>% Allocated</label>
-                                <input className="form-input" type="number" min={0} max={100} value={slice.percentage || ''} onChange={e => updateSlice(i, 'percentage', Number(e.target.value))} placeholder="e.g. 50" />
+                                <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0 8px', overflow: 'hidden' }}>
+                                    <input type="number" min={0} max={100} value={slice.percentage || ''} onChange={e => updateSlice(i, 'percentage', Number(e.target.value))} style={{ width: '60px', border: 'none', outline: 'none', fontSize: '16px', fontWeight: 700, padding: '8px 0', textAlign: 'right', background: 'transparent', WebkitAppearance: 'none', MozAppearance: 'textfield' }} />
+                                    <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>%</span>
+                                </div>
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Start Date</label>
@@ -63,7 +74,7 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>End Date</label>
-                                <input className="form-input" type="date" value={slice.endDate || ''} onChange={e => updateSlice(i, 'endDate', e.target.value)} />
+                                <input className="form-input" type="date" max={project.endDate || ''} value={slice.endDate || ''} onChange={e => updateSlice(i, 'endDate', e.target.value)} />
                             </div>
                             <button onClick={() => removeSlice(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', marginTop: 18, fontSize: 16 }}>×</button>
                         </div>
@@ -73,7 +84,6 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
                 <button onClick={addSlice} style={{ background: 'none', border: '1px dashed #cbd5e1', color: '#64748b', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', marginTop: 12, fontSize: 13, width: '100%' }}>
                     + Add specific dates (e.g. Ramp-up phase)
                 </button>
-
                 <div className="modal-footer" style={{ marginTop: 24 }}>
                     <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
                     <button className="btn btn-primary" onClick={handleSave}>Save Allocations</button>

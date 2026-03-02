@@ -5,31 +5,34 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Dynamic Orbit Theming (Web Scraper Hook) */
-  --color-primary: #007aff;
-  --color-primary-glow: rgba(0, 122, 255, 0.4);
-  --color-bg-mesh: radial-gradient(at 0% 0%, #ffffff 0px, transparent 50%),
-    radial-gradient(at 100% 0%, #eef2ff 0px, transparent 50%),
-    radial-gradient(at 100% 100%, #e0e7ff 0px, transparent 50%);
+  /* 🌌 Space Theme (Light Mode) */
+  --color-primary: #8b5cf6; /* Vibrant Space Purple */
+  --color-primary-glow: rgba(139, 92, 246, 0.4);
+  --color-bg-mesh: 
+    radial-gradient(at 10% 20%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 90%, rgba(236, 72, 153, 0.12) 0px, transparent 50%),
+    radial-gradient(at 20% 80%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
+    #fdfdfd;
 
-  /* Brand Palette (Legacy fallback) */
-  --brand-50: #eef2ff;
-  --brand-100: #e0e7ff;
-  --brand-200: #c7d2fe;
-  --brand-400: #818cf8;
-  --brand-500: var(--color-primary);
-  --brand-600: #005bb5;
-  --brand-700: #004080;
+  /* Brand Palette - Celestial Purple/Blue */
+  --brand-50: #faf5ff;
+  --brand-100: #f3e8ff;
+  --brand-200: #e9d5ff;
+  --brand-400: #c084fc;
+  --brand-500: #a855f7;
+  --brand-600: #9333ea;
+  --brand-700: #7e22ce;
 
-  /* Neutral */
-  --n-50: #f8fafc;
-  --n-100: #f1f5f9;
-  --n-200: #e2e8f0;
-  --n-300: #cbd5e1;
-  --n-400: #94a3b8;
-  --n-500: #64748b;
-  --n-600: #475569;
-  --n-700: #334155;
+  /* Neutral (Crisp light variables) */
+  --n-50: #ffffff;
+  --n-100: #f8fafc;
+  --n-200: #f1f5f9;
+  --n-300: #e2e8f0;
+  --n-400: #cbd5e1;
+  --n-500: #94a3b8;
+  --n-600: #64748b;
+  --n-700: #475569;
   --n-800: #1e293b;
   --n-900: #0f172a;
 
@@ -43,39 +46,27 @@
   --under: #94a3b8;
   --under-bg: #f8fafc;
 
-  /* Sidebar */
+  /* Sidebar - Light Space Glass */
   --sidebar-w: 240px;
-  --sidebar-bg: #0f172a;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-text: #94a3b8;
-  --sidebar-active-bg: rgba(99, 102, 241, 0.18);
-  --sidebar-active-text: #a5b4fc;
+  --sidebar-bg: rgba(255, 255, 255, 0.6);
+  --sidebar-border: rgba(139, 92, 246, 0.15);
+  --sidebar-text: #475569;
+  --sidebar-active-bg: rgba(139, 92, 246, 0.1);
+  --sidebar-active-text: #7e22ce;
 
   /* Radii & Shadows */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, .06), 0 1px 2px -1px rgba(0, 0, 0, .04);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, .08), 0 2px 6px -2px rgba(0, 0, 0, .05);
-  --shadow-lg: 0 10px 32px -4px rgba(0, 0, 0, .12), 0 4px 16px -4px rgba(0, 0, 0, .08);
-  --shadow-glow: 0 0 0 3px rgba(99, 102, 241, .25);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 4px 12px rgba(139, 92, 246, 0.05);
+  --shadow-md: 0 8px 24px rgba(139, 92, 246, 0.08);
+  --shadow-lg: 0 12px 32px rgba(139, 92, 246, 0.12);
+  --shadow-glow: 0 0 15px rgba(139, 92, 246, 0.3);
 }
 
 body.dark-theme {
-  --n-50: #0f172a;
-  --n-100: #1e293b;
-  --n-200: #334155;
-  --n-300: #475569;
-  --n-400: #64748b;
-  --n-500: #94a3b8;
-  --n-600: #cbd5e1;
-  --n-700: #e2e8f0;
-  --n-800: #f1f5f9;
-  --n-900: #f8fafc;
-  --color-bg-mesh: radial-gradient(at 0% 0%, #0f172a 0px, transparent 50%),
-    radial-gradient(at 100% 0%, #131c2d 0px, transparent 50%),
-    radial-gradient(at 100% 100%, #1e293b 0px, transparent 50%);
+  /* Enforcing Light Mode Everywhere per urgent request */
 }
 
 *,
