@@ -7,7 +7,7 @@ const sql = neon(
     process.env.NETLIFY_DATABASE_URL ||
     process.env.NEON_DATABASE_URL || ''
 );
-const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
+const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
 
@@ -67,7 +67,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
 
         if (!OPENAI_API_KEY) {
-            return ok({ response: "AI advisor is currently disabled. Server is missing OPENAI_API_KEY." });
+            return ok({ response: "AI advisor is currently disabled. Server is missing an API Key (checked OPENAI_API_KEY, GEMINI_API_KEY, API_KEY)." });
         }
 
         const controller = new AbortController();
