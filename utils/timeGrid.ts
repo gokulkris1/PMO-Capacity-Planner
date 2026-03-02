@@ -91,8 +91,9 @@ export function buildMonthDayForecast(
 
     const normalizedAllocs = allocations.map(a => {
         const proj = projects.find(p => p.id === a.projectId);
-        const effStart = a.startDate || proj?.startDate;
-        const effEnd = a.endDate || proj?.endDate;
+        // Netlify might be returning raw Postgres rows with snake_case
+        const effStart = a.startDate || (a as any).start_date || proj?.startDate || (proj as any)?.start_date;
+        const effEnd = a.endDate || (a as any).end_date || proj?.endDate || (proj as any)?.end_date;
 
         // Parse 'YYYY-MM-DD' exactly into local timezone so it aligns with our calendar days
         let start = new Date('2000-01-01T00:00:00');
