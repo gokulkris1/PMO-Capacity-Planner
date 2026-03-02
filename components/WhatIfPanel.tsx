@@ -183,7 +183,7 @@ export const WhatIfPanel: React.FC<Props> = ({
             {scenarioMode && (
                 <div className="panel">
                     <div className="panel-header">
-                        <div className="panel-title">Before vs After – Resource Utilization</div>
+                        <div className="panel-title">Before vs After – Resource Allocations</div>
                     </div>
                     <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 12 }}>
                         {resources.map(res => {

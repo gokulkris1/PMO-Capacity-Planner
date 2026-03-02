@@ -70,3 +70,63 @@ export function forecastColor(s: AllocationStatus) {
     if (s === AllocationStatus.OPTIMAL) return '#10b981';  // Green
     return '#94a3b8';                                      // Gray (Under)
 }
+
+export interface DayForecast {
+    date: Date;
+    dayOfMonth: number;
+    utilization: number;
+    availability: number;
+    status: AllocationStatus;
+    projects: { id: string; name: string; pct: number }[];
+}
+
+export function buildMonthDayForecast(
+    year: number,
+    month: number, // 0-indexed
+    allocations: Allocation[],
+    projects: Project[]
+): DayForecast[] {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const forecast: DayForecast[] = [];
+
+    const normalizedAllocs = allocations.map(a => {
+        const proj = projects.find(p => p.id === a.projectId);
+        const effStart = a.startDate || proj?.startDate;
+        const effEnd = a.endDate || proj?.endDate;
+        const start = effStart ? new Date(effStart) : new Date('2000-01-01');
+        const end = effEnd ? new Date(effEnd + 'T23:59:59') : new Date('2099-12-31T23:59:59');
+        return { ...a, start, end, projName: proj?.name || 'Unknown Project' };
+    });
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const currentData = new Date(year, month, d);
+        // Exclude weekends from pure booking counting if you wish, 
+        // but typically capacity tools show standard days. We'll show all days.
+
+        let util = 0;
+        const activeProjects: { id: string; name: string; pct: number }[] = [];
+
+        // Check which allocations cover this specific day
+        // using just the date parts to prevent timezone weirdness
+        const startOfDay = new Date(year, month, d, 0, 0, 0);
+        const endOfDay = new Date(year, month, d, 23, 59, 59);
+
+        for (const alloc of normalizedAllocs) {
+            if (alloc.start <= endOfDay && alloc.end >= startOfDay) {
+                util += alloc.percentage;
+                activeProjects.push({ id: alloc.projectId, name: alloc.projName, pct: alloc.percentage });
+            }
+        }
+
+        forecast.push({
+            date: currentData,
+            dayOfMonth: d,
+            utilization: util,
+            availability: Math.max(0, 100 - util),
+            status: getAllocationStatus(util),
+            projects: activeProjects
+        });
+    }
+
+    return forecast;
+}

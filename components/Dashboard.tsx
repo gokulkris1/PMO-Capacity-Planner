@@ -87,7 +87,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
             {/* KPI Row */}
             <div className="stat-grid">
                 <StatCard
-                    label="Avg Utilization"
+                    label="Avg Booking"
                     value={`${stats.avgUtil}%`}
                     icon="📊"
                     iconBg="#eef2ff"
@@ -148,7 +148,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                 <div className="panel">
                     <div className="panel-header">
                         <div>
-                            <div className="panel-title">Resource Utilization Overview</div>
+                            <div className="panel-title">Resource Allocation Overview</div>
                             <div className="panel-subtitle">Color-coded by allocation threshold</div>
                         </div>
                         <div className="legend">

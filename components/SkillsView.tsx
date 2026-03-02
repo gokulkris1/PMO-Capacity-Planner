@@ -72,7 +72,7 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
                             <div>
                                 <div className="panel-title">By Skill: {skill}</div>
                                 <div className="panel-subtitle">
-                                    {members.length} resource{members.length !== 1 ? 's' : ''} · Avg utilization {avgUtil}%
+                                    {members.length} resource{members.length !== 1 ? 's' : ''} · Avg booking {avgUtil}%
                                 </div>
                             </div>
                         </div>
