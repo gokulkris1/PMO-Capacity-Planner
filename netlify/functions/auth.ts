@@ -69,6 +69,7 @@ async function sendAuthOtp(sql: any, email: string, context: '2fa' | 'reset') {
             <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes.</p>
         </div>`
     });
+    return otp; // Return it so it cascades back explicitly
 }
 
 async function verifyAuthOtp(sql: any, email: string, otp: string) {
@@ -199,8 +200,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { email } = body;
             if (!email) return fail('Email required');
             const records = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase().trim()}`;
-            if (records.length > 0) await sendAuthOtp(sql, email, 'reset');
-            return ok({ sent: true });
+            let otpSecret;
+            if (records.length > 0) otpSecret = await sendAuthOtp(sql, email, 'reset');
+            return ok({ sent: true, otp: otpSecret });
         }
 
         if (subpath === '/reset/confirm' && event.httpMethod === 'POST') {
@@ -280,23 +282,28 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             // Auto-create user if doesn't exist
             let userId: string;
+            let tempPasswordForResponse: string | undefined;
+            let addedUser: any;
             const cleanEmail = email.toLowerCase().trim();
             const existing = await sql`SELECT id FROM users WHERE email = ${cleanEmail}`;
 
             if (existing.length > 0) {
                 userId = existing[0].id;
                 // Update their org and role if upgrading
-                await sql`UPDATE users SET org_id = ${effectiveOrgId}, role = ${role} WHERE id = ${userId}`;
+                const [u] = await sql`UPDATE users SET org_id = ${effectiveOrgId}, role = ${role} WHERE id = ${userId} RETURNING id, email, name, role, plan, created_at, org_id`;
+                addedUser = u;
             } else {
                 // Create new account with temp password
                 const tempPassword = generateTempPassword();
+                tempPasswordForResponse = tempPassword;
                 const hash = await bcrypt.hash(tempPassword, 10);
                 const [newUser] = await sql`
                     INSERT INTO users (email, password_hash, name, role, plan, org_id)
                     VALUES (${cleanEmail}, ${hash}, ${cleanEmail.split('@')[0]}, ${role}, 'BASIC', ${effectiveOrgId})
-                    RETURNING id
+                    RETURNING id, email, name, role, plan, created_at, org_id
                 `;
                 userId = newUser.id;
+                addedUser = newUser;
                 // Send invite email with temp password
                 await sendInviteEmail(cleanEmail, tempPassword, orgName);
             }
@@ -327,7 +334,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 }
             }
 
-            return ok({ success: true, message: `${cleanEmail} invited as ${role}` });
+            return ok({ success: true, message: `${cleanEmail} invited as ${role}`, password: tempPasswordForResponse, user: addedUser });
         }
 
         // ── REMOVE MEMBER FROM WORKSPACE ─────────────────────────────
@@ -367,26 +374,33 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const userId = subpath.split('/')[2];
             let { plan, role, name, email, password } = body;
 
-            const updates: string[] = [];
-            const values: any[] = [];
-            let i = 1;
-            if (plan && ['BASIC', 'PRO', 'MAX'].includes(plan)) { updates.push(`plan = $${i++}`); values.push(plan); }
+            let finalUser: any = null;
+
+            if (plan && ['BASIC', 'PRO', 'MAX'].includes(plan)) {
+                const [u] = await sql`UPDATE users SET plan = ${plan} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
+                finalUser = u;
+            }
             if (role && PLATFORM_ROLES.includes(role as any)) {
                 if (!isSuperuser && (role === 'SUPERUSER')) return fail('Only superuser can assign SUPERUSER', 403);
-                updates.push(`role = $${i++}`); values.push(role);
+                const [u] = await sql`UPDATE users SET role = ${role} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
+                finalUser = u;
             }
-            if (name !== undefined) { updates.push(`name = $${i++}`); values.push(name); }
-            if (isSuperuser && email) { updates.push(`email = $${i++}`); values.push(email.toLowerCase().trim()); }
-            if (isSuperuser && password) { const hash = await bcrypt.hash(password, 10); updates.push(`password_hash = $${i++}`); values.push(hash); }
+            if (name !== undefined) {
+                const [u] = await sql`UPDATE users SET name = ${name} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
+                finalUser = u;
+            }
+            if (isSuperuser && email) {
+                const [u] = await sql`UPDATE users SET email = ${email.toLowerCase().trim()} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
+                finalUser = u;
+            }
+            if (isSuperuser && password) {
+                const hash = await bcrypt.hash(password, 10);
+                const [u] = await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
+                finalUser = u;
+            }
 
-            if (updates.length > 0) {
-                values.push(userId);
-                const queryStr = `UPDATE users SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, email, name, role, plan`;
-                try {
-                    const [updated] = await (sql as any)(queryStr, values);
-                    if (!updated) return fail('User not found', 404);
-                    return ok({ success: true, user: updated });
-                } catch (e: any) { return fail('Update failed: ' + e.message, 500); }
+            if (finalUser) {
+                return ok({ success: true, user: finalUser });
             }
             return ok({ success: true });
         }

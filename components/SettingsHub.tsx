@@ -77,9 +77,11 @@ export const SettingsHub: React.FC = () => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Invite failed');
-            setInviteSuccess(`Invited! Temp password: ${data.password}`);
+            setInviteSuccess(data.password ? `Invited! Temp password: ${data.password}` : `Added to workspace!`);
             setInviteEmail('');
-            setUsers(prev => [data.user, ...prev]);
+            if (data.user) {
+                setUsers(prev => [data.user, ...prev.filter(u => u.id !== data.user.id)]);
+            }
         } catch (e: any) { setError(e.message); } finally { setInviting(false); }
     };
 

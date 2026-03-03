@@ -251,7 +251,14 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Authentication failed');
-            if (data.require2FA) { setStep('2fa'); return; }
+            if (data.require2FA) {
+                setStep('2fa');
+                if (data.otp) {
+                    setOtp(data.otp);
+                    setError(`(Demo Mode) Code: ${data.otp}`);
+                }
+                return;
+            }
             login(data.token, data.user);
             onSuccess?.();
         } catch (err: any) { setError(err.message); }
@@ -305,7 +312,13 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start reset');
-            setStep('reset'); setOtp(''); setPassword('');
+            setStep('reset'); setPassword('');
+            if (data.otp) {
+                setOtp(data.otp);
+                setError(`(Demo Mode) Code: ${data.otp}`);
+            } else {
+                setOtp('');
+            }
         } catch (err: any) { setError(err.message); }
         finally { setLoading(false); }
     };
