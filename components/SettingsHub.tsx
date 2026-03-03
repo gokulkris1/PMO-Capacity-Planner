@@ -20,7 +20,7 @@ export const SettingsHub: React.FC = () => {
 
     // Invite state
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'ADMIN' | 'USER'>('USER');
+    const [inviteRole, setInviteRole] = useState<'ORG_ADMIN' | 'PMO_ADMIN' | 'USER'>('USER');
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState('');
 
@@ -131,7 +131,8 @@ export const SettingsHub: React.FC = () => {
                                 style={{ padding: '8px 24px 8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: 13, cursor: 'pointer', appearance: 'none', background: '#fff' }}
                             >
                                 <option value="USER">User</option>
-                                <option value="ADMIN">Admin</option>
+                                <option value="PMO_ADMIN">PMO Admin</option>
+                                <option value="ORG_ADMIN">Org Admin</option>
                             </select>
                             <button onClick={inviteUser} disabled={inviting || !inviteEmail} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
                                 {inviting ? '...' : '+ Invite'}
@@ -180,7 +181,8 @@ export const SettingsHub: React.FC = () => {
                                                     style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: ROLE_COLORS[u.role] || '#475569', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
                                                 >
                                                     <option value="SUPERUSER" disabled>Superuser</option>
-                                                    <option value="ADMIN">Admin</option>
+                                                    <option value="ORG_ADMIN">Org Admin</option>
+                                                    <option value="PMO_ADMIN">PMO Admin</option>
                                                     <option value="USER">User</option>
                                                 </select>
                                             </td>

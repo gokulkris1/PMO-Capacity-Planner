@@ -741,7 +741,7 @@ const AppShell: React.FC = () => {
               </button>
             )}
 
-            {user?.role === 'ADMIN' && (
+            {user?.role === 'ORG_ADMIN' && (
               <button
                 className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
                 onClick={() => navigate(`/o/${orgSlug}/settings`)}
@@ -750,7 +750,7 @@ const AppShell: React.FC = () => {
               </button>
             )}
 
-            {(!user || user?.role === 'USER') && (
+            {(!user || !['SUPERUSER', 'ORG_ADMIN'].includes(user?.role || '')) && (
               <button
                 className={`nav-item ${location.pathname.endsWith('/directory') ? 'active' : ''}`}
                 onClick={() => navigate(`/o/${orgSlug}/directory`)}
