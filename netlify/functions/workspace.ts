@@ -152,13 +152,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
             let wsRows;
             if (bodyWsId) {
                 wsRows = await sql`
-                    SELECT w.id, u.plan, w.org_id FROM workspaces w
-                    JOIN users u ON u.org_id = w.org_id
-                    WHERE w.id = ${bodyWsId} AND u.id = ${userId} LIMIT 1
+                    SELECT w.id, w.org_id, 
+                           COALESCE((SELECT plan FROM users WHERE org_id = w.org_id AND role IN ('ORG_ADMIN', 'SUPERUSER') ORDER BY role DESC LIMIT 1), 'BASIC') as plan
+                    FROM workspaces w
+                    WHERE w.id = ${bodyWsId} LIMIT 1
                 `;
-                if (!wsRows.length && userRole === 'SUPERUSER') {
-                    wsRows = await sql`SELECT id, 'MAX' as plan, org_id FROM workspaces WHERE id = ${bodyWsId} LIMIT 1`;
-                }
             } else if (userRole === 'SUPERUSER' && orgSlug) {
                 wsRows = await sql`
                     SELECT w.id, 'MAX' as plan, w.org_id FROM workspaces w
@@ -177,12 +175,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const plan = (wsRows[0].plan || 'BASIC').toUpperCase();
 
             // Check write permission
-            const canWrite = ['SUPERUSER', 'ORG_ADMIN', 'ADMIN'].includes(userRole);
-            if (!canWrite) {
-                const memberRows = await sql`SELECT role FROM workspace_members WHERE user_id = ${userId} AND workspace_id = ${wsId}`;
-                const wsRole = memberRows[0]?.role || 'USER';
-                if (wsRole === 'USER') return fail('You do not have write access to this workspace', 403);
+            let hasWriteAccess = false;
+            if (userRole === 'SUPERUSER') {
+                hasWriteAccess = true;
+            } else {
+                const [callerUser] = await sql`SELECT org_id FROM users WHERE id = ${userId}`;
+                if (['ORG_ADMIN', 'ADMIN'].includes(userRole) && callerUser?.org_id === wsRows[0].org_id) {
+                    hasWriteAccess = true;
+                } else {
+                    const memberRows = await sql`SELECT role FROM workspace_members WHERE user_id = ${userId} AND workspace_id = ${wsId}`;
+                    const wsRole = memberRows[0]?.role || 'USER';
+                    if (['PMO_ADMIN', 'WORKSPACE_OWNER'].includes(wsRole)) {
+                        hasWriteAccess = true;
+                    }
+                }
             }
+            if (!hasWriteAccess) return fail('You do not have write access to this workspace', 403);
 
             // Plan limits
             const limits: Record<string, { resources: number; projects: number }> = {
