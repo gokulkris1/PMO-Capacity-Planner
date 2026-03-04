@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Allocation, Project, Resource, getAllocationStatus, AllocationStatus } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -62,7 +63,7 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
 
             {skillGroups.map(({ skill, members }) => {
                 const totalUtil = members.reduce((sum, m) => {
-                    return sum + liveAlloc.filter(a => a.resourceId === m.id).reduce((s, a) => s + a.percentage, 0);
+                    return sum + getCurrentUtil(liveAlloc, m.id);
                 }, 0);
                 const avgUtil = members.length ? Math.round(totalUtil / members.length) : 0;
 
@@ -79,7 +80,7 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, padding: 16 }}>
                             {members.map(member => {
                                 const memberAllocs = liveAlloc.filter(a => a.resourceId === member.id);
-                                const memberUtil = memberAllocs.reduce((s, a) => s + a.percentage, 0);
+                                const memberUtil = getCurrentUtil(liveAlloc, member.id);
                                 const topProjects = memberAllocs
                                     .map(a => ({ a, p: projects.find(p => p.id === a.projectId) }))
                                     .filter(x => !!x.p)

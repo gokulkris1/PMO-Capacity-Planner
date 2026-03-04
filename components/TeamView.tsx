@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Resource, Project, Allocation, Team, getAllocationStatus, AllocationStatus } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -77,7 +78,7 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
             </div>
 
             {teamGroups.map(({ team, members }) => {
-                const teamTotalAlloc = members.reduce((s, r) => s + liveAlloc.filter(a => a.resourceId === r.id).reduce((ss, a) => ss + a.percentage, 0), 0);
+                const teamTotalAlloc = members.reduce((s, r) => s + getCurrentUtil(liveAlloc, r.id), 0);
                 const teamAvgUtil = members.length ? Math.round(teamTotalAlloc / members.length) : 0;
 
                 return (
@@ -114,7 +115,7 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
                                 </thead>
                                 <tbody>
                                     {members.map(res => {
-                                        const totalUtil = liveAlloc.filter(a => a.resourceId === res.id).reduce((s, a) => s + a.percentage, 0);
+                                        const totalUtil = getCurrentUtil(liveAlloc, res.id);
                                         const { bg, text } = heatColor(totalUtil);
                                         return (
                                             <tr key={res.id}>

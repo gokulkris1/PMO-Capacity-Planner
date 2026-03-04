@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -26,7 +27,7 @@ function utilColor(pct: number) {
 }
 
 function getUtil(allocs: Allocation[], resId: string) {
-    return allocs.filter(a => a.resourceId === resId).reduce((s, a) => s + a.percentage, 0);
+    return getCurrentUtil(allocs, resId);
 }
 
 const PRESETS = [

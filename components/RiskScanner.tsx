@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Resource, Project, Allocation } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface RiskScannerProps {
     resources: Resource[];
@@ -13,7 +14,7 @@ export const RiskScanner: React.FC<RiskScannerProps> = ({ resources, projects, a
 
         // Check over-allocated resources
         resources.forEach(res => {
-            const load = allocations.filter(a => a.resourceId === res.id).reduce((s, a) => s + a.percentage, 0);
+            const load = getCurrentUtil(allocations, res.id);
             if (load > 110) {
                 list.push({ level: 'High', title: 'Severe Burnout Risk', desc: `${res.name} is allocated at ${load}% capacity.` });
             } else if (load > 90 && load <= 110) {

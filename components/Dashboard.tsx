@@ -6,6 +6,7 @@ import { StatCard } from './StatCard';
 import { CapacityChart } from './CapacityChart';
 import { Heatmap } from './Heatmap';
 import { RiskScanner } from './RiskScanner';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -17,7 +18,7 @@ interface Props {
 }
 
 function getUtil(allocations: Allocation[], resourceId: string) {
-    return allocations.filter(a => a.resourceId === resourceId).reduce((s, a) => s + a.percentage, 0);
+    return getCurrentUtil(allocations, resourceId);
 }
 
 function projectStatusBadge(status: string) {

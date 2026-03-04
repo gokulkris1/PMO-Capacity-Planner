@@ -2,6 +2,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { Resource, Allocation } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
   resources: Resource[];
@@ -41,9 +42,9 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export const CapacityChart: React.FC<Props> = ({ resources, allocations, scenarioAllocations }) => {
   const data = resources.map(r => {
-    const current = allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0);
+    const current = getCurrentUtil(allocations, r.id);
     const scenario = scenarioAllocations
-      ? scenarioAllocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0)
+      ? getCurrentUtil(scenarioAllocations, r.id)
       : undefined;
     return { name: r.name.split(' ')[0], fullName: r.name, current, scenario };
   });

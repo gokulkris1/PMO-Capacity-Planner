@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -145,7 +146,7 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                                     if (!res) return null;
 
                                     // Calculate this person's GLOBAL utilization (across all tribes/projects)
-                                    const totalGlobalUtil = liveAlloc.filter(x => x.resourceId === res.id).reduce((s, x) => s + x.percentage, 0);
+                                    const totalGlobalUtil = getCurrentUtil(liveAlloc, res.id);
                                     const statusS = getAllocationStatus(totalGlobalUtil);
 
                                     return (

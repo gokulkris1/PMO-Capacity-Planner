@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Resource, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface HeatmapProps {
     resources: Resource[];
@@ -10,9 +11,7 @@ export const Heatmap: React.FC<HeatmapProps> = ({ resources, allocations }) => {
     // Aggregate total percentage per resource
     const resourceLoads = useMemo(() => {
         return resources.map(res => {
-            const total = allocations
-                .filter(a => a.resourceId === res.id)
-                .reduce((sum, a) => sum + a.percentage, 0);
+            const total = getCurrentUtil(allocations, res.id);
             return { resource: res, total };
         }).sort((a, b) => b.total - a.total); // Highest load first
     }, [resources, allocations]);
