@@ -67,10 +67,6 @@
   --shadow-glow: 0 0 0 2px rgba(38, 132, 255, 0.6);
 }
 
-body.dark-theme {
-  /* Enforcing Light Mode Everywhere per urgent request */
-}
-
 *,
 *::before,
 *::after {
@@ -244,11 +240,11 @@ body {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, .4);
+  box-shadow: 0 2px 8px rgba(0, 82, 204, 0.25);
 }
 
 .sidebar-logo-text {
-  color: #f1f5f9;
+  color: var(--n-800);
   font-weight: 700;
   font-size: 15px;
   line-height: 1.2;
@@ -294,8 +290,8 @@ body {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, .06);
-  color: #e2e8f0;
+  background: var(--n-200);
+  color: var(--n-800);
 }
 
 .nav-item.active {
@@ -330,8 +326,8 @@ body {
 }
 
 .ai-widget {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border: 1px solid rgba(99, 102, 241, .3);
+  background: #fff;
+  border: 1px solid var(--n-400);
   border-radius: var(--radius-lg);
   padding: 14px;
 }
@@ -366,7 +362,7 @@ body {
 }
 
 .ai-widget-label {
-  color: var(--n-400);
+  color: var(--n-700);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -374,7 +370,7 @@ body {
 }
 
 .ai-widget-desc {
-  color: var(--n-500);
+  color: var(--n-600);
   font-size: 11px;
   line-height: 1.5;
   margin-bottom: 10px;
@@ -386,11 +382,11 @@ body {
 
 .ai-input {
   width: 100%;
-  background: rgba(255, 255, 255, .06);
-  border: 1px solid rgba(255, 255, 255, .1);
+  background: var(--n-100);
+  border: 1px solid var(--n-400);
   border-radius: var(--radius-sm);
   padding: 8px 32px 8px 10px;
-  color: #e2e8f0;
+  color: var(--n-800);
   font-size: 12px;
   font-family: inherit;
   outline: none;

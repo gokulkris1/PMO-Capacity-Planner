@@ -39,7 +39,7 @@ const IconCheck = () => (
 const Stat: React.FC<{ value: string; label: string }> = ({ value, label }) => (
     <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 4, fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 500 }}>{label}</div>
     </div>
 );
 
@@ -47,10 +47,10 @@ const Stat: React.FC<{ value: string; label: string }> = ({ value, label }) => (
 const FeaturePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 14px', borderRadius: 12,
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 500,
+        padding: '10px 14px', borderRadius: 8,
+        background: 'rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500,
     }}>
         <IconCheck /> {children}
     </div>
@@ -60,22 +60,22 @@ const FeaturePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const useInputStyle = () => {
     const base: React.CSSProperties = {
         width: '100%', padding: '14px 16px 14px 44px',
-        borderRadius: 14, border: '1.5px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.04)', color: '#f8fafc',
+        borderRadius: 4, border: '2px solid #DFE1E6',
+        background: '#FAFBFC', color: '#172B4D',
         fontSize: 15, outline: 'none', boxSizing: 'border-box',
         transition: 'border-color 0.2s, box-shadow 0.2s',
         fontFamily: "'Inter', -apple-system, sans-serif",
         WebkitFontSmoothing: 'antialiased',
     };
     const onFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-        e.target.style.borderColor = 'rgba(129,140,248,0.6)';
-        e.target.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.12)';
-        e.target.style.background = 'rgba(255,255,255,0.07)';
+        e.target.style.borderColor = '#0052CC';
+        e.target.style.boxShadow = '0 0 0 2px rgba(0,82,204,0.2)';
+        e.target.style.background = '#fff';
     };
     const onBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        e.target.style.borderColor = 'rgba(255,255,255,0.08)';
+        e.target.style.borderColor = '#DFE1E6';
         e.target.style.boxShadow = 'none';
-        e.target.style.background = 'rgba(255,255,255,0.04)';
+        e.target.style.background = '#FAFBFC';
     };
     return { base, onFocus, onBlur };
 };
@@ -83,20 +83,20 @@ const useInputStyle = () => {
 // ── Shared submit button ──────────────────────────────────────────────────────
 const SubmitBtn: React.FC<{ loading: boolean; disabled?: boolean; label: string }> = ({ loading, disabled, label }) => (
     <button type="submit" disabled={loading || disabled} style={{
-        width: '100%', padding: '15px', borderRadius: 14, border: 'none',
+        width: '100%', padding: '15px', borderRadius: 4, border: 'none',
         background: loading || disabled
-            ? 'rgba(99,102,241,0.4)'
-            : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            ? '#B3D4FF'
+            : '#0052CC',
         color: '#fff', fontWeight: 700, fontSize: 15,
         cursor: loading || disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         transition: 'all 0.2s',
-        boxShadow: loading || disabled ? 'none' : '0 4px 20px rgba(99,102,241,0.4)',
+        boxShadow: loading || disabled ? 'none' : '0 2px 4px rgba(0,82,204,0.25)',
         letterSpacing: '-0.01em',
         fontFamily: "'Inter', -apple-system, sans-serif",
     }}
-        onMouseEnter={e => { if (!loading && !disabled) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(99,102,241,0.5)'; } }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.4)'; }}
+        onMouseEnter={e => { if (!loading && !disabled) { e.currentTarget.style.background = '#0747A6'; } }}
+        onMouseLeave={e => { if (!loading && !disabled) { e.currentTarget.style.background = '#0052CC'; } }}
     >
         {loading ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -112,10 +112,9 @@ const SubmitBtn: React.FC<{ loading: boolean; disabled?: boolean; label: string 
 // ── Error banner ──────────────────────────────────────────────────────────────
 const ErrorBanner: React.FC<{ msg: string }> = ({ msg }) => (
     <div style={{
-        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-        borderRadius: 12, padding: '12px 16px', color: '#fca5a5', fontSize: 13,
+        background: '#FFEBE6', border: '1px solid #DE350B',
+        borderRadius: 4, padding: '12px 16px', color: '#BF2600', fontSize: 13,
         display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 4,
-        backdropFilter: 'blur(4px)',
     }}>
         <span style={{ flexShrink: 0, fontSize: 16, lineHeight: 1 }}>⚠</span>
         <span style={{ lineHeight: 1.5 }}>{msg}</span>
@@ -134,23 +133,22 @@ const LeftPanel: React.FC = () => {
     return (
         <div style={{
             flex: 1, position: 'relative', overflow: 'hidden',
-            background: 'linear-gradient(160deg, #0f0c29 0%, #1a1040 40%, #0d1b2a 100%)',
+            background: 'linear-gradient(160deg, #0747A6 0%, #0052CC 40%, #0065FF 100%)',
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
             padding: '56px 52px',
         }}>
             {/* Ambient glow orbs */}
-            <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: 550, height: 550, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 65%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: '-20%', right: '-15%', width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 65%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: '40%', right: '5%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 65%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: 550, height: 550, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 65%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '-20%', right: '-15%', width: 700, height: 700, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,101,255,0.3) 0%, transparent 65%)', pointerEvents: 'none' }} />
 
             {/* Logo row */}
             <div style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
-                        width: 44, height: 44, borderRadius: 14,
-                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                        width: 44, height: 44, borderRadius: 8,
+                        background: 'rgba(255,255,255,0.15)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 22, boxShadow: '0 8px 24px rgba(99,102,241,0.4)',
+                        fontSize: 22, border: '1px solid rgba(255,255,255,0.2)',
                     }}>🪐</div>
                     <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Orbit Space</span>
                 </div>
@@ -159,7 +157,7 @@ const LeftPanel: React.FC = () => {
             {/* Hero text */}
             <div style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{
-                    fontSize: 11, fontWeight: 700, color: '#818cf8',
+                    fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)',
                     textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 20
                 }}>Resource Intelligence Platform</div>
                 <h1 style={{
@@ -167,7 +165,7 @@ const LeftPanel: React.FC = () => {
                     lineHeight: 1.1, letterSpacing: '-0.03em'
                 }}>
                     Your team,<br />
-                    <span style={{ background: 'linear-gradient(135deg, #818cf8, #c4b5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <span style={{ color: '#B3D4FF' }}>
                         fully visible.
                     </span>
                 </h1>
@@ -210,15 +208,15 @@ const OTPInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({ 
         onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
         placeholder="· · · · · ·" maxLength={6} required autoFocus
         style={{
-            width: '100%', padding: '20px 0', borderRadius: 18,
-            border: '1.5px solid rgba(255,255,255,0.1)',
-            background: 'rgba(255,255,255,0.04)', color: '#fff',
+            width: '100%', padding: '20px 0', borderRadius: 4,
+            border: '2px solid #DFE1E6',
+            background: '#FAFBFC', color: '#172B4D',
             fontSize: 36, letterSpacing: '0.5em', textAlign: 'center',
             fontWeight: 700, outline: 'none', transition: 'all 0.2s',
             boxSizing: 'border-box', fontFamily: "'Inter', monospace",
         }}
-        onFocus={e => { e.target.style.borderColor = 'rgba(129,140,248,0.6)'; e.target.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.12)'; }}
-        onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+        onFocus={e => { e.target.style.borderColor = '#0052CC'; e.target.style.boxShadow = '0 0 0 2px rgba(0,82,204,0.2)'; }}
+        onBlur={e => { e.target.style.borderColor = '#DFE1E6'; e.target.style.boxShadow = 'none'; }}
     />
 );
 
@@ -348,13 +346,13 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
     // ── Small link button ────────────────────────────────────────────────────
     const LinkBtn: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
         <button type="button" onClick={onClick} style={{
-            background: 'none', border: 'none', color: '#818cf8', fontSize: 13,
+            background: 'none', border: 'none', color: '#0052CC', fontSize: 13,
             cursor: 'pointer', fontWeight: 600, padding: 0,
             fontFamily: "'Inter', -apple-system, sans-serif",
             transition: 'color 0.15s',
         }}
-            onMouseEnter={e => e.currentTarget.style.color = '#a5b4fc'}
-            onMouseLeave={e => e.currentTarget.style.color = '#818cf8'}
+            onMouseEnter={e => e.currentTarget.style.color = '#0747A6'}
+            onMouseLeave={e => e.currentTarget.style.color = '#0052CC'}
         >{children}</button>
     );
 
@@ -365,7 +363,7 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
         WebkitFontSmoothing: 'antialiased',
     };
     const rightSide: React.CSSProperties = {
-        flex: '0 0 480px', background: '#0b0f1a',
+        flex: '0 0 480px', background: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', overflow: 'hidden',
     };
@@ -373,7 +371,7 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
     // Shared heading style
     const heading = (sub: string) => (
         <div style={{ marginBottom: 36 }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>{sub}</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: 30, fontWeight: 900, color: '#172B4D', letterSpacing: '-0.03em' }}>{sub}</h2>
         </div>
     );
 
@@ -386,11 +384,11 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
                 <div style={rightBg}>
                     {heading(is2fa ? 'Two-Factor Auth' : 'Verify Your Identity')}
                     <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                        <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: 12, background: '#DEEBFF', border: '1px solid #B3D4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                             <IconShield />
                         </div>
-                        <p style={{ fontSize: 14, color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
-                            6-digit code sent to <strong style={{ color: '#e2e8f0' }}>{email}</strong>
+                        <p style={{ fontSize: 14, color: '#6B778C', margin: 0, lineHeight: 1.6 }}>
+                            6-digit code sent to <strong style={{ color: '#172B4D' }}>{email}</strong>
                         </p>
                     </div>
                     {error && <ErrorBanner msg={error} />}
@@ -462,10 +460,10 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
         return (
             <div style={rightBg}>
                 <div style={{ marginBottom: 40 }}>
-                    <h2 style={{ margin: '0 0 8px', fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>
+                    <h2 style={{ margin: '0 0 8px', fontSize: 30, fontWeight: 900, color: '#172B4D', letterSpacing: '-0.03em' }}>
                         {isRegistering ? 'Create your workspace' : 'Welcome back'}
                     </h2>
-                    <p style={{ margin: 0, fontSize: 15, color: '#64748b', lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, fontSize: 15, color: '#6B778C', lineHeight: 1.6 }}>
                         {isRegistering
                             ? 'Start your 30-day free trial, no credit card required.'
                             : 'Enter your credentials to access your workspace.'}
@@ -497,10 +495,10 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
                     )}
 
                     {isRegistering && (
-                        <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6ee7b7', fontWeight: 500 }}><IconCheck /> 30-day free trial included</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6ee7b7', fontWeight: 500 }}><IconCheck /> No credit card required</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6ee7b7', fontWeight: 500 }}><IconCheck /> Cancel anytime</div>
+                        <div style={{ background: '#E3FCEF', border: '1px solid #ABF5D1', borderRadius: 4, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#006644', fontWeight: 500 }}><IconCheck /> 30-day free trial included</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#006644', fontWeight: 500 }}><IconCheck /> No credit card required</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#006644', fontWeight: 500 }}><IconCheck /> Cancel anytime</div>
                         </div>
                     )}
 
@@ -509,8 +507,8 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
                     </div>
                 </form>
 
-                <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-                    <span style={{ fontSize: 13, color: '#3f4d60' }}>
+                <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #DFE1E6', textAlign: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#6B778C' }}>
                         {isRegistering ? 'Already have an account? ' : "Don't have an account? "}
                     </span>
                     <LinkBtn onClick={() => { setIsRegistering(!isRegistering); setError(''); }}>
@@ -526,9 +524,9 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
     if (compact) {
         return (
             <div style={{
-                background: 'linear-gradient(145deg, rgba(15,23,42,0.98) 0%, rgba(9,12,26,1) 100%)',
-                borderRadius: 20, padding: '36px 32px',
-                boxShadow: '0 32px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)',
+                background: '#fff',
+                borderRadius: 8, padding: '36px 32px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px #DFE1E6',
                 fontFamily: "'Inter', -apple-system, sans-serif",
                 WebkitFontSmoothing: 'antialiased',
             }}>
@@ -546,8 +544,8 @@ export const Login: React.FC<{ onSuccess?: () => void; compact?: boolean; force2
                 {/* Left brand panel */}
                 <LeftPanel />
                 {/* Right form panel */}
-                <div style={{ flex: '0 0 480px', background: '#0b0f1a', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', minWidth: 360 }}>
-                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.07) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.05) 0%, transparent 55%)', pointerEvents: 'none' }} />
+                <div style={{ flex: '0 0 480px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', minWidth: 360 }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'none', pointerEvents: 'none' }} />
                     <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center', padding: '0 0 0 0' }}>
                         {renderStep()}
                     </div>

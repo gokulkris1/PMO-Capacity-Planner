@@ -12,15 +12,20 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function getAvailColor(avail: number): string {
-    if (avail >= 80) return '#10b981'; // Green (Highly available)
-    if (avail > 0) return '#f59e0b';   // Orange (Partially booked)
-    return '#ef4444';                  // Red (Fully booked or overbooked)
+    if (avail >= 80) return '#E3FCEF'; // Soft green bg (highly available)
+    if (avail > 0) return '#FFF0B3';   // Soft amber bg (partially booked)
+    return '#FFEBE6';                  // Soft red bg (fully booked)
+}
+function getAvailBorder(avail: number): string {
+    if (avail >= 80) return '#00875A';
+    if (avail > 0) return '#FF8B00';
+    return '#DE350B';
 }
 
 function getAvailText(avail: number): string {
-    if (avail >= 80) return '#fff';
-    if (avail > 0) return '#fff';
-    return '#fff';
+    if (avail >= 80) return '#006644';
+    if (avail > 0) return '#974F0C';
+    return '#BF2600';
 }
 
 const CalendarMonth: React.FC<{ year: number; month: number; forecast: DayForecast[] }> = ({ year, month, forecast }) => {
@@ -33,17 +38,17 @@ const CalendarMonth: React.FC<{ year: number; month: number; forecast: DayForeca
 
     return (
         <div style={{ flex: 1, minWidth: 260 }}>
-            <div style={{ textAlign: 'center', fontWeight: 800, fontSize: 16, color: '#1e293b', marginBottom: 16 }}>
+            <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color: 'var(--n-800)', marginBottom: 16 }}>
                 {MONTHS[month]} {year}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 8, textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8, textAlign: 'center' }}>
                 {DAYS.map((d, i) => (
-                    <div key={i} style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>{d}</div>
+                    <div key={i} style={{ fontSize: 11, fontWeight: 600, color: 'var(--n-600)', padding: '4px 0' }}>{d}</div>
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                 {days.map((day, i) => {
                     if (!day) return <div key={i} />;
 
@@ -53,19 +58,21 @@ const CalendarMonth: React.FC<{ year: number; month: number; forecast: DayForeca
                     return (
                         <div key={i} style={{ position: 'relative', display: 'flex', justifyContent: 'center' }} title={`Available: ${avail}%\nUtilized: ${day.utilization}%\n${day.projects.map(p => `- ${p.name} (${p.pct}%)`).join('\n')}`}>
                             <div style={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: '50%',
-                                background: isWeekend ? '#f1f5f9' : getAvailColor(avail),
-                                color: isWeekend ? '#94a3b8' : getAvailText(avail),
+                                width: 32,
+                                height: 32,
+                                borderRadius: 6,
+                                background: isWeekend ? 'var(--n-100)' : getAvailColor(avail),
+                                border: isWeekend ? '1px solid var(--n-300)' : `1px solid ${getAvailBorder(avail)}40`,
+                                color: isWeekend ? 'var(--n-500)' : getAvailText(avail),
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 13,
-                                fontWeight: 800,
+                                fontSize: 12,
+                                fontWeight: 600,
                                 cursor: 'default',
                                 opacity: isWeekend && day.utilization === 0 ? 0.5 : 1,
-                                boxShadow: isWeekend ? 'none' : '0 2px 4px rgba(0,0,0,0.1)'
+                                boxShadow: 'none',
+                                transition: 'background 0.15s',
                             }}>
                                 {day.dayOfMonth}
                             </div>
@@ -113,20 +120,20 @@ export const TimeForecastGrid: React.FC<Props> = ({ resource, projects, allocati
     const forecastMonth2 = buildMonthDayForecast(nextY, nextM, allocations, projects);
 
     return (
-        <div style={{ marginTop: 12, padding: 20, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+        <div style={{ marginTop: 12, padding: 20, background: '#fff', borderRadius: 8, border: '1px solid var(--n-400)', boxShadow: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--n-700)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                         Availability Calendar
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--n-600)', marginTop: 2 }}>
                         Daily individual capacity (Green = Open, Orange = Partial, Red = Booked)
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button
                         onClick={prevMonth}
-                        style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '50%', cursor: 'pointer', color: '#64748b' }}
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid var(--n-400)', borderRadius: 4, cursor: 'pointer', color: 'var(--n-600)', fontSize: 14 }}
                         title="Previous Month"
                     >
                         &larr;
@@ -134,14 +141,14 @@ export const TimeForecastGrid: React.FC<Props> = ({ resource, projects, allocati
                     {(currentMonth !== today.getMonth() || currentYear !== today.getFullYear()) && (
                         <button
                             onClick={resetToToday}
-                            style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, cursor: 'pointer', padding: '4px 12px', fontSize: 11, fontWeight: 700, color: '#64748b' }}
+                            style={{ background: 'var(--brand-50)', border: '1px solid var(--brand-200)', borderRadius: 4, cursor: 'pointer', padding: '4px 10px', fontSize: 11, fontWeight: 600, color: 'var(--brand-500)' }}
                         >
                             TODAY
                         </button>
                     )}
                     <button
                         onClick={nextMonth}
-                        style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '50%', cursor: 'pointer', color: '#64748b' }}
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid var(--n-400)', borderRadius: 4, cursor: 'pointer', color: 'var(--n-600)', fontSize: 14 }}
                         title="Next Month"
                     >
                         &rarr;

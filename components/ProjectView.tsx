@@ -14,10 +14,10 @@ interface Props {
 
 function utilColor(pct: number) {
     const s = getAllocationStatus(pct);
-    if (s === AllocationStatus.OVER) return '#ef4444';
-    if (s === AllocationStatus.HIGH) return '#f59e0b';
-    if (s === AllocationStatus.OPTIMAL) return '#10b981';
-    return '#94a3b8';
+    if (s === AllocationStatus.OVER) return 'var(--over)';
+    if (s === AllocationStatus.HIGH) return 'var(--high)';
+    if (s === AllocationStatus.OPTIMAL) return 'var(--optimal)';
+    return 'var(--n-500)';
 }
 
 function statusBadgeClass(s: AllocationStatus) {
@@ -112,32 +112,32 @@ export const ProjectView: React.FC<Props> = ({
                             </div>
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                                    <span style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{project.name}</span>
+                                    <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--n-900)' }}>{project.name}</span>
                                 </div>
-                                <div style={{ fontSize: 12, color: '#64748b' }}>{project.description}</div>
+                                <div style={{ fontSize: 12, color: 'var(--n-600)' }}>{project.description}</div>
                                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                     {onEditProject && <button className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onEditProject(project)}>Edit</button>}
                                     {onDeleteProject && <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => onDeleteProject(project)}>Delete</button>}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Status</div>
+                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Status</div>
                                 <span className={getProjStatusBadge(project.status)}>{project.status}</span>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>FTE Committed</div>
-                                <span style={{ fontSize: 22, fontWeight: 800, color: '#1e293b' }}>{totalFte.toFixed(1)}</span>
-                                <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>FTE</span>
+                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>FTE Committed</div>
+                                <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--n-800)' }}>{totalFte.toFixed(1)}</span>
+                                <span style={{ fontSize: 12, color: 'var(--n-500)', marginLeft: 4 }}>FTE</span>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Est. Monthly Cost</div>
+                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Est. Monthly Cost</div>
                                 <span style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>
                                     €{totalMonthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                 </span>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Timeline</div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Timeline</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n-700)' }}>
                                     {project.startDate && project.endDate ? `${project.startDate} -> ${project.endDate}` : 'TBD'}
                                 </div>
                             </div>
@@ -166,14 +166,14 @@ export const ProjectView: React.FC<Props> = ({
                                     return (
                                         <div key={a.id} style={{
                                             background: '#fff',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: 12,
+                                            border: '1px solid var(--n-400)',
+                                            borderRadius: 8,
                                             padding: '16px',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: 10,
-                                            boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                                            borderLeft: `3px solid ${project.color || '#6366f1'}`,
+                                            boxShadow: 'none',
+                                            borderLeft: `3px solid ${project.color || 'var(--brand-500)'}`,
                                         }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                 <div className="avatar" style={{
@@ -183,11 +183,11 @@ export const ProjectView: React.FC<Props> = ({
                                                     {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                                 </div>
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--n-800)' }}>
                                                         {res.name}
-                                                        {res.dailyRate ? <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500, marginLeft: 6 }}>€{res.dailyRate}/day</span> : ''}
+                                                        {res.dailyRate ? <span style={{ fontSize: 11, color: 'var(--n-600)', fontWeight: 500, marginLeft: 6 }}>€{res.dailyRate}/day</span> : ''}
                                                     </div>
-                                                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{res.role} · {res.department}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--n-500)' }}>{res.role} · {res.department}</div>
                                                     {(res.skills || []).length > 0 && (
                                                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                                                             {res.skills!.slice(0, 3).map(skill => (
@@ -201,10 +201,10 @@ export const ProjectView: React.FC<Props> = ({
                                                 </div>
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                                                <div style={{ fontSize: 11, color: 'var(--n-500)', marginBottom: 4 }}>
                                                     {a.percentage}% to {project.name} · <span style={{ color: utilColor(totalUtil), fontWeight: 700 }}>{totalUtil}% total load</span>
                                                 </div>
-                                                <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+                                                <div style={{ height: 8, background: 'var(--n-200)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
                                                     <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, totalUtil)}%`, background: utilColor(totalUtil), borderRadius: 99 }} />
                                                     <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, a.percentage)}%`, background: project.color || '#6366f1', opacity: .7, borderRadius: 99 }} />
                                                 </div>

@@ -90,8 +90,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                     label="Avg Booking"
                     value={`${stats.avgUtil}%`}
                     icon="📊"
-                    iconBg="#eef2ff"
-                    glowColor="#6366f1"
+                    iconBg="#DEEBFF"
+                    glowColor="#0052CC"
                     trend="+2.4% vs last month"
                     trendType="up"
                 />
@@ -99,8 +99,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                     label="Active Projects"
                     value={stats.activeProjects}
                     icon="🚀"
-                    iconBg="#dbeafe"
-                    glowColor="#3b82f6"
+                    iconBg="#DEEBFF"
+                    glowColor="#0065FF"
                     trend={`${projects.length} total`}
                     trendType="neu"
                 />

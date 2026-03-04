@@ -564,7 +564,7 @@ const AppShell: React.FC = () => {
                   window.location.href = '/'; // Hard redirect to clear all router artifacts
                 }}
                 title="Log out"
-                style={{ background: 'none', border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                style={{ background: 'none', border: '1px solid var(--n-400)', borderRadius: 4, color: 'var(--n-600)', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
                 Out
               </button>
             </div>
@@ -573,11 +573,11 @@ const AppShell: React.FC = () => {
               onClick={() => { pendingActionRef.current = null; setModal({ type: 'login' }); }}
               style={{
                 width: '100%', padding: '11px 16px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                border: 'none', borderRadius: 12, cursor: 'pointer',
+                background: 'var(--brand-500)',
+                border: 'none', borderRadius: 4, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 10,
                 color: '#fff', fontWeight: 700, fontSize: 14,
-                boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                boxShadow: 'var(--shadow-sm)',
               }}
             >
               <span style={{ fontSize: 18 }}>🔑</span>
@@ -624,7 +624,7 @@ const AppShell: React.FC = () => {
           })}
 
           {/* Quick Add / Pricing */}
-          <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--n-300)', paddingTop: 14 }}>
             {APP_MODE === 'public' && (
               <button
                 className="nav-item"
