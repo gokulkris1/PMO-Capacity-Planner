@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
-import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -50,8 +50,9 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
     const tribeProjects = projects.filter(p => p.clientName === selectedTribe);
     const tribeProjectIds = new Set(tribeProjects.map(p => p.id));
 
-    // Allocations belonging to this Tribe
-    const tribeAllocs = liveAlloc.filter(a => tribeProjectIds.has(a.projectId));
+    // Allocations belonging to this Tribe (filtered to currently active date ranges)
+    const now = new Date();
+    const tribeAllocs = liveAlloc.filter(a => tribeProjectIds.has(a.projectId) && isAllocActiveOn(a, now));
 
     // Aggregate capacity per resource within this Tribe
     const resourceMap = new Map<string, { totalPct: number; projCount: number }>();

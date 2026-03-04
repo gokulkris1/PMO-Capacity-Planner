@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
+import { isAllocActiveOn } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -59,7 +60,8 @@ export const ResourceView: React.FC<Props> = ({
             </div>
 
             {filtered.map(res => {
-                const resAllocs = liveAlloc.filter(a => a.resourceId === res.id && a.percentage > 0);
+                const now = new Date();
+                const resAllocs = liveAlloc.filter(a => a.resourceId === res.id && a.percentage > 0 && isAllocActiveOn(a, now));
                 const totalUtil = resAllocs.reduce((s, a) => s + a.percentage, 0);
 
                 const typeMap: Record<string, string> = {

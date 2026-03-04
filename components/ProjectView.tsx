@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
-import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -51,7 +51,8 @@ export const ProjectView: React.FC<Props> = ({
     }, [projects, selectedProj]);
 
     const project = projects.find(p => p.id === selectedProj);
-    const projAllocs = liveAlloc.filter(a => a.projectId === selectedProj);
+    const now = new Date();
+    const projAllocs = liveAlloc.filter(a => a.projectId === selectedProj && isAllocActiveOn(a, now));
     const totalFte = projAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
     const totalMonthlyCost = projAllocs.reduce((s, a) => {
         const res = resources.find(r => r.id === a.resourceId);

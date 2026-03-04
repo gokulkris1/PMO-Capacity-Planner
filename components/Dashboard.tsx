@@ -6,7 +6,7 @@ import { StatCard } from './StatCard';
 import { CapacityChart } from './CapacityChart';
 import { Heatmap } from './Heatmap';
 import { RiskScanner } from './RiskScanner';
-import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
 
 interface Props {
     resources: Resource[];
@@ -51,7 +51,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
         const underAllocated = resources.filter(r => getUtil(liveAllocations, r.id) < 60);
         const totalPct = resources.reduce((s, r) => s + getUtil(liveAllocations, r.id), 0);
         const avgUtil = resources.length ? Math.round(totalPct / resources.length) : 0;
-        const totalFte = liveAllocations.reduce((s, a) => s + a.percentage, 0) / 100;
+        const now = new Date();
+        const totalFte = liveAllocations.filter(a => isAllocActiveOn(a, now)).reduce((s, a) => s + a.percentage, 0) / 100;
         return { totalResources, activeProjects, overAllocated, underAllocated, avgUtil, totalFte };
     }, [resources, projects, liveAllocations]);
 
@@ -229,7 +230,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                         </thead>
                         <tbody>
                             {projects.map(proj => {
-                                const pAllocs = liveAllocations.filter(a => a.projectId === proj.id);
+                                const pAllocs = liveAllocations.filter(a => a.projectId === proj.id && isAllocActiveOn(a, new Date()));
                                 const fte = pAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
                                 const barPct = Math.min(100, fte * 33);
                                 return (
