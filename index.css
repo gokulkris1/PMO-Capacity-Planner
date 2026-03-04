@@ -5,64 +5,66 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* 🌌 Space Theme (Light Mode) */
-  --color-primary: #8b5cf6; /* Vibrant Space Purple */
-  --color-primary-glow: rgba(139, 92, 246, 0.4);
-  --color-bg-mesh: 
-    radial-gradient(at 10% 20%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 90%, rgba(236, 72, 153, 0.12) 0px, transparent 50%),
-    radial-gradient(at 20% 80%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
-    #fdfdfd;
+  /* 🔵 Jira / Atlassian Theme */
+  --color-primary: #0052CC;
+  /* Jira Classic Blue */
+  --color-primary-glow: rgba(0, 82, 204, 0.2);
+  --color-bg-mesh: #FAFBFC;
+  /* Clean solid background instead of mesh */
 
-  /* Brand Palette - Celestial Purple/Blue */
-  --brand-50: #faf5ff;
-  --brand-100: #f3e8ff;
-  --brand-200: #e9d5ff;
-  --brand-400: #c084fc;
-  --brand-500: #a855f7;
-  --brand-600: #9333ea;
-  --brand-700: #7e22ce;
+  /* Brand Palette - Atlassian Blues */
+  --brand-50: #DEEBFF;
+  --brand-100: #B3D4FF;
+  --brand-200: #4C9AFF;
+  --brand-400: #2684FF;
+  --brand-500: #0052CC;
+  --brand-600: #0747A6;
+  --brand-700: #09326C;
 
   /* Neutral (Crisp light variables) */
-  --n-50: #ffffff;
-  --n-100: #f8fafc;
-  --n-200: #f1f5f9;
-  --n-300: #e2e8f0;
-  --n-400: #cbd5e1;
-  --n-500: #94a3b8;
-  --n-600: #64748b;
-  --n-700: #475569;
-  --n-800: #1e293b;
-  --n-900: #0f172a;
+  --n-50: #FFFFFF;
+  --n-100: #FAFBFC;
+  --n-200: #F4F5F7;
+  --n-300: #EBECF0;
+  --n-400: #DFE1E6;
+  --n-500: #7A869A;
+  --n-600: #5E6C84;
+  --n-700: #42526E;
+  --n-800: #172B4D;
+  /* Standard text color */
+  --n-900: #091E42;
 
-  /* Status colors */
-  --over: #ef4444;
-  --over-bg: #fef2f2;
-  --high: #f59e0b;
-  --high-bg: #fffbeb;
-  --optimal: #10b981;
-  --optimal-bg: #ecfdf5;
-  --under: #94a3b8;
-  --under-bg: #f8fafc;
+  /* Status colors (Jira conventions) */
+  --over: #DE350B;
+  /* Red for high/over */
+  --over-bg: #FFEBE6;
+  --high: #FFAB00;
+  /* Yellow/Orange */
+  --high-bg: #FFF0B3;
+  --optimal: #00875A;
+  /* Green for good */
+  --optimal-bg: #E3FCEF;
+  --under: #42526E;
+  /* Neutral grey */
+  --under-bg: #F4F5F7;
 
-  /* Sidebar - Light Space Glass */
-  --sidebar-w: 240px;
-  --sidebar-bg: rgba(255, 255, 255, 0.6);
-  --sidebar-border: rgba(139, 92, 246, 0.15);
-  --sidebar-text: #475569;
-  --sidebar-active-bg: rgba(139, 92, 246, 0.1);
-  --sidebar-active-text: #7e22ce;
+  /* Sidebar - Clean Light */
+  --sidebar-w: 260px;
+  --sidebar-bg: #FAFBFC;
+  --sidebar-border: #EBECF0;
+  --sidebar-text: #42526E;
+  --sidebar-active-bg: #DEEBFF;
+  --sidebar-active-text: #0052CC;
 
-  /* Radii & Shadows */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --shadow-sm: 0 4px 12px rgba(139, 92, 246, 0.05);
-  --shadow-md: 0 8px 24px rgba(139, 92, 246, 0.08);
-  --shadow-lg: 0 12px 32px rgba(139, 92, 246, 0.12);
-  --shadow-glow: 0 0 15px rgba(139, 92, 246, 0.3);
+  /* Radii & Shadows - Sharper for Jira feel */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --shadow-sm: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --shadow-md: 0 4px 8px -2px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --shadow-lg: 0 8px 16px -4px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+  --shadow-glow: 0 0 0 2px rgba(38, 132, 255, 0.6);
 }
 
 body.dark-theme {
@@ -85,9 +87,10 @@ body,
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.42857143;
+  /* Standard Jira line height */
   color: var(--n-800);
   background: var(--n-100);
   -webkit-font-smoothing: antialiased;
@@ -95,8 +98,8 @@ body {
 
 /* ---- Scrollbars ---- */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -104,12 +107,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--n-300);
-  border-radius: 99px;
+  background: rgba(9, 30, 66, 0.13);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--n-400);
+  background: rgba(9, 30, 66, 0.26);
 }
 
 /* ---- Layout Shell ---- */
@@ -117,30 +120,30 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background-image: var(--color-bg-mesh);
-  background-attachment: fixed;
+  background: var(--color-bg-mesh);
+  /* Solid now */
 }
 
-/* Glassmorphism Utilities */
+/* Crisp Panels (Replacing Glassmorphism) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  background: #FFFFFF;
+  border: 1px solid var(--n-400);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: #FFFFFF;
+  border: 1px solid var(--n-400);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: box-shadow 0.2s;
 }
 
 .glass-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: none;
+  /* Removed hover float for grounded app feel */
 }
 
 /* ============================================================

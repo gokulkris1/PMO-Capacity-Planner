@@ -728,16 +728,16 @@ const AppShell: React.FC = () => {
           </div>
 
           {/* Role-Based Organizational Settings */}
-          <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--n-300)', paddingTop: 14 }}>
             <div className="nav-section-label">Organization</div>
 
             {user?.role === 'SUPERUSER' && (
               <button
                 className={`nav-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
                 onClick={() => navigate(`/o/${orgSlug}/settings`)}
-                style={{ background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: 10 }}
+                style={{ background: 'var(--n-50)', border: '1px solid var(--n-300)', borderRadius: 10 }}
               >
-                <span style={{ fontSize: 15 }}>🚀</span><span style={{ color: '#f43f5e', fontWeight: 700 }}>Cockpit</span>
+                <span style={{ fontSize: 15 }}>🚀</span><span style={{ color: 'var(--n-800)', fontWeight: 700 }}>Cockpit</span>
               </button>
             )}
 
@@ -761,7 +761,7 @@ const AppShell: React.FC = () => {
           </div>
 
           {/* Take a Tour */}
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--n-300)' }}>
             <button className="nav-item" onClick={() => setShowTour(true)}>
               <span style={{ fontSize: 15 }}>🎓</span><span>Take a Tour</span>
             </button>

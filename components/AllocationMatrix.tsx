@@ -23,18 +23,18 @@ function utilColor(pct: number): string {
 
 function utilBgCell(pct: number): string {
     const s = getAllocationStatus(pct);
-    if (s === AllocationStatus.OVER) return 'rgba(248,113,113,0.12)';
-    if (s === AllocationStatus.HIGH) return 'rgba(251,191,36,0.10)';
-    if (s === AllocationStatus.OPTIMAL) return 'rgba(52,211,153,0.10)';
+    if (s === AllocationStatus.OVER) return 'var(--over-bg)';
+    if (s === AllocationStatus.HIGH) return 'var(--high-bg)';
+    if (s === AllocationStatus.OPTIMAL) return 'var(--optimal-bg)';
     return 'transparent';
 }
 
 function utilBorderCell(pct: number): string {
     const s = getAllocationStatus(pct);
-    if (s === AllocationStatus.OVER) return 'rgba(248,113,113,0.35)';
-    if (s === AllocationStatus.HIGH) return 'rgba(251,191,36,0.30)';
-    if (s === AllocationStatus.OPTIMAL) return 'rgba(52,211,153,0.30)';
-    return 'rgba(255,255,255,0.06)';
+    if (s === AllocationStatus.OVER) return 'var(--over)';
+    if (s === AllocationStatus.HIGH) return 'var(--high)';
+    if (s === AllocationStatus.OPTIMAL) return 'var(--optimal)';
+    return 'var(--n-300)';
 }
 
 function isAllocActiveInRange(a: Allocation, range: { start: string; end: string }) {
@@ -51,7 +51,7 @@ function isAllocActiveInRange(a: Allocation, range: { start: string; end: string
 // ── Mini progress bar ────────────────────────────────────────────────────────
 const UtilBar: React.FC<{ pct: number }> = ({ pct }) => (
     <div style={{
-        height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.06)',
+        height: 4, borderRadius: 4, background: 'var(--n-300)',
         overflow: 'hidden', width: '100%', marginTop: 4,
     }}>
         <div style={{
@@ -73,9 +73,9 @@ const UtilBar: React.FC<{ pct: number }> = ({ pct }) => (
 const Avatar: React.FC<{ name: string; type?: string }> = ({ name, type }) => {
     const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const colors = {
-        Permanent: { bg: 'rgba(99,102,241,0.2)', color: '#a5b4fc' },
-        Contractor: { bg: 'rgba(139,92,246,0.2)', color: '#c4b5fd' },
-        default: { bg: 'rgba(6,182,212,0.2)', color: '#67e8f9' },
+        Permanent: { bg: 'var(--brand-50)', color: 'var(--brand-500)' },
+        Contractor: { bg: 'var(--n-200)', color: 'var(--n-700)' },
+        default: { bg: 'var(--brand-50)', color: 'var(--brand-400)' },
     };
     const c = colors[type as keyof typeof colors] || colors.default;
     return (
@@ -127,37 +127,37 @@ export const AllocationMatrix: React.FC<Props> = ({
 
     // ── Styles ────────────────────────────────────────────────────────────────
     const headerCell: React.CSSProperties = {
-        padding: '10px 14px', background: 'rgba(15,23,42,0.8)',
-        color: '#475569', fontSize: 11, fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.06em',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '10px 14px', background: 'var(--n-100)',
+        color: 'var(--n-600)', fontSize: 11, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.04em',
+        borderBottom: '1px solid var(--n-400)',
         whiteSpace: 'nowrap',
     };
 
     const controlInput: React.CSSProperties = {
-        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: 10, color: '#f1f5f9', fontSize: 12, padding: '7px 12px',
+        background: '#fff', border: '1px solid var(--n-400)',
+        borderRadius: 4, color: 'var(--n-800)', fontSize: 13, padding: '7px 12px',
         outline: 'none', fontFamily: 'inherit', cursor: 'pointer',
     };
 
     return (
         <div style={{
-            background: '#0d1117', borderRadius: 16,
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: '#fff', borderRadius: 8,
+            border: '1px solid var(--n-400)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+            boxShadow: 'var(--shadow-sm)',
         }}>
             {/* ── Header row ────────────────────────────────────────────────── */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(15,23,42,0.6)', gap: 16, flexWrap: 'wrap',
+                padding: '18px 20px', borderBottom: '1px solid var(--n-400)',
+                background: 'var(--n-100)', gap: 16, flexWrap: 'wrap',
             }}>
                 <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--n-800)', letterSpacing: '-0.02em' }}>
                         Allocation Matrix
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--n-600)', marginTop: 2 }}>
                         Utilisation overview · Click any cell to edit
                     </div>
                 </div>
@@ -174,12 +174,12 @@ export const AllocationMatrix: React.FC<Props> = ({
                     </select>
                     <button onClick={onExportCSV} style={{
                         ...controlInput, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                        background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
-                        color: '#a5b4fc', fontWeight: 600, padding: '7px 14px',
+                        background: '#fff', border: '1px solid var(--n-400)',
+                        color: 'var(--n-800)', fontWeight: 600, padding: '7px 14px',
                         transition: 'all 0.15s',
                     }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.2)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--n-200)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                     >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                         Export CSV
@@ -190,8 +190,8 @@ export const AllocationMatrix: React.FC<Props> = ({
             {/* ── Legend + what-if banner ───────────────────────────────────── */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 20, padding: '10px 20px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                background: 'rgba(0,0,0,0.2)', flexWrap: 'wrap',
+                borderBottom: '1px solid var(--n-400)',
+                background: '#fff', flexWrap: 'wrap',
             }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Legend</span>
                 <LegendPill color="#64748b" label="Under 60%" />
@@ -222,7 +222,7 @@ export const AllocationMatrix: React.FC<Props> = ({
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                         <thead>
                             <tr>
-                                <th style={{ ...headerCell, position: 'sticky', left: 0, zIndex: 10, minWidth: 200, background: '#0a0d14' }}>Resource</th>
+                                <th style={{ ...headerCell, position: 'sticky', left: 0, zIndex: 10, minWidth: 200, background: 'var(--n-100)' }}>Resource</th>
                                 <th style={{ ...headerCell, minWidth: 100 }}>Total %</th>
                                 {filteredProjects.map(p => (
                                     <th key={p.id} style={{ ...headerCell, minWidth: 110, textAlign: 'center' }}>
@@ -237,30 +237,30 @@ export const AllocationMatrix: React.FC<Props> = ({
                         <tbody>
                             {resources.map((res, rIdx) => {
                                 const util = getResourceUtil(res.id);
-                                const rowBg = rIdx % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent';
+                                const rowBg = rIdx % 2 === 0 ? 'var(--n-50)' : '#fff';
                                 return (
-                                    <tr key={res.id} style={{ transition: 'background 0.15s' }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.06)')}
+                                    <tr key={res.id} style={{ transition: 'background 0.15s', background: rowBg }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--n-100)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = rowBg)}
                                     >
                                         {/* Sticky resource name */}
                                         <td style={{
                                             position: 'sticky', left: 0, zIndex: 5,
-                                            background: '#0a0d14',
-                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                            background: rowBg,
+                                            borderBottom: '1px solid var(--n-400)',
                                             padding: '12px 14px',
                                         }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                 <Avatar name={res.name} type={res.type} />
                                                 <div style={{ minWidth: 0 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</div>
-                                                    <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>{res.role}</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--n-800)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--n-600)', marginTop: 1 }}>{res.role}</div>
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* Total util */}
-                                        <td style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }}>
+                                        <td style={{ padding: '12px 14px', borderBottom: '1px solid var(--n-400)', verticalAlign: 'middle' }}>
                                             <div style={{ minWidth: 70 }}>
                                                 <span style={{ fontSize: 16, fontWeight: 900, color: utilColor(util), letterSpacing: '-0.02em' }}>
                                                     {util}%
@@ -273,15 +273,15 @@ export const AllocationMatrix: React.FC<Props> = ({
                                         {filteredProjects.map(proj => {
                                             const { pct, multiple } = getAllocForCell(res.id, proj.id);
                                             return (
-                                                <td key={proj.id} style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                                <td key={proj.id} style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid var(--n-400)' }}>
                                                     <button
                                                         onClick={() => !scenarioMode && onUpdateAdvanced(res.id, proj.id)}
                                                         title={multiple ? 'Multiple slices this month — click to edit' : 'Click to edit allocation'}
                                                         style={{
-                                                            width: 56, height: 36, borderRadius: 9,
-                                                            border: `1px solid ${pct > 0 ? utilBorderCell(pct) : 'rgba(255,255,255,0.06)'} `,
-                                                            background: pct > 0 ? utilBgCell(pct) : 'rgba(255,255,255,0.03)',
-                                                            color: pct > 0 ? utilColor(pct) : '#334155',
+                                                            width: 56, height: 36, borderRadius: 4,
+                                                            border: pct > 0 ? `1px solid ${utilBorderCell(pct)}` : '1px solid var(--n-300)',
+                                                            background: pct > 0 ? utilBgCell(pct) : 'var(--n-50)',
+                                                            color: pct > 0 ? utilColor(pct) : 'var(--n-500)',
                                                             fontWeight: pct > 0 ? 800 : 500,
                                                             cursor: scenarioMode ? 'not-allowed' : 'pointer',
                                                             fontSize: 13, transition: 'all 0.15s',
@@ -289,12 +289,14 @@ export const AllocationMatrix: React.FC<Props> = ({
                                                             letterSpacing: pct > 0 ? '-0.02em' : 'normal',
                                                             position: 'relative',
                                                         }}
-                                                        onMouseEnter={e => { if (!scenarioMode) { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; } }}
+                                                        onMouseEnter={e => {
+                                                            if (!scenarioMode) { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }
+                                                        }}
                                                         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
                                                     >
                                                         {pct > 0 ? `${pct}% ` : '·'}
                                                         {multiple && (
-                                                            <span style={{ position: 'absolute', top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#818cf8', border: '1.5px solid #0d1117' }} />
+                                                            <span style={{ position: 'absolute', top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: 'var(--brand-500)', border: '1.5px solid #fff' }} />
                                                         )}
                                                     </button>
                                                 </td>

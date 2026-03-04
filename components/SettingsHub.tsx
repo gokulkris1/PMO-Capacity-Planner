@@ -86,57 +86,57 @@ export const SettingsHub: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: 40, background: '#f8fafc', minHeight: '100%', borderRadius: 16 }}>
+        <div style={{ padding: 40, background: 'var(--n-100)', minHeight: '100%', borderRadius: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
                 <span style={{ fontSize: 32 }}>{currentUser?.role === 'SUPERUSER' ? '🚀' : '⚙️'}</span>
                 <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                    <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--n-800)', margin: 0 }}>
                         {currentUser?.role === 'SUPERUSER' ? 'Superuser Cockpit' : 'Workspace Settings'}
                     </h2>
-                    <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Manage your B2B workspace, billing, and teams</p>
+                    <p style={{ color: 'var(--n-600)', margin: 0, fontSize: 14 }}>Manage your B2B workspace, billing, and teams</p>
                 </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24, alignItems: 'start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div className="glass-panel" style={{ padding: 24, borderRadius: 16, border: '1px solid #cbd5e1' }}>
-                        <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 16 }}>Workspace Details</h3>
-                        <p style={{ fontSize: 14, color: '#64748b' }}>Configure global workspace attributes. Orbit custom domains coming soon.</p>
+                    <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
+                        <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 16 }}>Workspace Details</h3>
+                        <p style={{ fontSize: 14, color: 'var(--n-600)' }}>Configure global workspace attributes. Orbit custom domains coming soon.</p>
                         {currentUser?.email === 'gokulkris1@gmail.com' && (
-                            <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                            <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
                                 🦸 Global Superuser Active
                             </div>
                         )}
                     </div>
 
-                    <div className="glass-panel" style={{ padding: 24, borderRadius: 16, border: '1px solid #cbd5e1' }}>
-                        <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 16 }}>Billing & Quotas</h3>
-                        <p style={{ fontSize: 14, color: '#64748b' }}>Review seat usage, upgrade plans, and manage Stripe subscriptions.</p>
+                    <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
+                        <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 16 }}>Billing & Quotas</h3>
+                        <p style={{ fontSize: 14, color: 'var(--n-600)' }}>Review seat usage, upgrade plans, and manage Stripe subscriptions.</p>
                     </div>
                 </div>
 
-                <div className="glass-panel" style={{ padding: 24, borderRadius: 16, border: '1px solid #cbd5e1' }}>
+                <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                         <div>
-                            <h3 style={{ fontSize: 18, color: '#1e293b', marginBottom: 4 }}>User Directory</h3>
-                            <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Invite members and manage row-level access controls</p>
+                            <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 4 }}>User Directory</h3>
+                            <p style={{ fontSize: 14, color: 'var(--n-600)', margin: 0 }}>Invite members and manage row-level access controls</p>
                         </div>
 
-                        <div style={{ display: 'flex', gap: 8, background: '#f1f5f9', padding: '6px', borderRadius: 12 }}>
+                        <div style={{ display: 'flex', gap: 8, background: 'var(--n-50)', padding: '6px', borderRadius: 6, border: '1px solid var(--n-300)' }}>
                             <input
                                 value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                                 placeholder="name@company.com"
-                                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: 13, width: 200 }}
+                                style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--n-400)', outline: 'none', fontSize: 13, width: 200, color: 'var(--n-800)' }}
                             />
                             <select
                                 value={inviteRole} onChange={e => setInviteRole(e.target.value as any)}
-                                style={{ padding: '8px 24px 8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', fontSize: 13, cursor: 'pointer', appearance: 'none', background: '#fff' }}
+                                style={{ padding: '8px 24px 8px 12px', borderRadius: 4, border: '1px solid var(--n-400)', outline: 'none', fontSize: 13, cursor: 'pointer', appearance: 'none', background: '#fff', color: 'var(--n-800)' }}
                             >
                                 <option value="USER">User</option>
                                 <option value="PMO_ADMIN">PMO Admin</option>
                                 <option value="ORG_ADMIN">Org Admin</option>
                             </select>
-                            <button onClick={inviteUser} disabled={inviting || !inviteEmail} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                            <button onClick={inviteUser} disabled={inviting || !inviteEmail} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
                                 {inviting ? '...' : '+ Invite'}
                             </button>
                         </div>
@@ -154,33 +154,33 @@ export const SettingsHub: React.FC = () => {
                     )}
 
                     {loading ? (
-                        <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>Loading roster...</div>
+                        <div style={{ padding: 24, textAlign: 'center', color: 'var(--n-600)' }}>Loading roster...</div>
                     ) : (
-                        <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                        <div style={{ border: '1px solid var(--n-400)', borderRadius: 8, overflow: 'hidden' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                                 <thead>
-                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Member</th>
-                                        <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Role</th>
-                                        <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Plan Seats</th>
-                                        <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Joined</th>
+                                    <tr style={{ background: 'var(--n-100)', borderBottom: '1px solid var(--n-400)' }}>
+                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Member</th>
+                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Role</th>
+                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Plan Seats</th>
+                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Joined</th>
                                         {currentUser?.role === 'SUPERUSER' && (
-                                            <th style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}>Actions</th>
+                                            <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Actions</th>
                                         )}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {users.map(u => (
-                                        <tr key={u.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <tr key={u.id} style={{ borderBottom: '1px solid var(--n-300)', background: '#fff' }}>
                                             <td style={{ padding: '16px' }}>
-                                                <div style={{ fontWeight: 600, color: '#1e293b' }}>{u.name || 'Pending Invite'}</div>
-                                                <div style={{ color: '#64748b', fontSize: 12 }}>{u.email}</div>
+                                                <div style={{ fontWeight: 600, color: 'var(--n-800)' }}>{u.name || 'Pending Invite'}</div>
+                                                <div style={{ color: 'var(--n-600)', fontSize: 12 }}>{u.email}</div>
                                             </td>
                                             <td style={{ padding: '16px' }}>
                                                 <select
                                                     value={u.role} disabled={saving === u.id + 'role' || u.id === currentUser?.id}
                                                     onChange={e => updateUser(u.id, 'role', e.target.value)}
-                                                    style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: ROLE_COLORS[u.role] || '#475569', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
+                                                    style={{ background: 'var(--n-50)', border: '1px solid var(--n-400)', borderRadius: 4, color: ROLE_COLORS[u.role] || 'var(--n-600)', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
                                                 >
                                                     <option value="SUPERUSER" disabled>Superuser</option>
                                                     <option value="ORG_ADMIN">Org Admin</option>
@@ -193,7 +193,7 @@ export const SettingsHub: React.FC = () => {
                                                     <select
                                                         value={u.plan || 'BASIC'} disabled={saving === u.id + 'plan'}
                                                         onChange={e => updateUser(u.id, 'plan', e.target.value)}
-                                                        style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, color: PLAN_COLORS[u.plan || 'BASIC'], padding: '6px 10px', fontSize: 12, fontWeight: 700, outline: 'none' }}
+                                                        style={{ background: 'var(--n-50)', border: '1px solid var(--n-400)', borderRadius: 4, color: PLAN_COLORS[u.plan || 'BASIC'], padding: '6px 10px', fontSize: 12, fontWeight: 700, outline: 'none' }}
                                                     >
                                                         <option value="BASIC">Basic</option>
                                                         <option value="PRO">Pro</option>
@@ -203,7 +203,7 @@ export const SettingsHub: React.FC = () => {
                                                     <span style={{ fontWeight: 700, color: PLAN_COLORS[u.plan || 'BASIC'] }}>{u.plan || 'BASIC'}</span>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '16px', color: '#64748b' }}>
+                                            <td style={{ padding: '16px', color: 'var(--n-600)' }}>
                                                 {new Date(u.created_at).toLocaleDateString()}
                                             </td>
                                             {currentUser?.role === 'SUPERUSER' && (
@@ -211,7 +211,7 @@ export const SettingsHub: React.FC = () => {
                                                     <button
                                                         disabled={u.id === currentUser?.id || saving === u.id + 'delete'}
                                                         onClick={() => deleteUser(u.id)}
-                                                        style={{ padding: '6px 10px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: (u.id === currentUser?.id) ? 'not-allowed' : 'pointer', opacity: (u.id === currentUser?.id) ? 0.5 : 1 }}
+                                                        style={{ padding: '6px 10px', background: 'var(--over-bg)', color: 'var(--over)', border: '1px solid var(--over)', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: (u.id === currentUser?.id) ? 'not-allowed' : 'pointer', opacity: (u.id === currentUser?.id) ? 0.5 : 1 }}
                                                     >
                                                         Remove
                                                     </button>
