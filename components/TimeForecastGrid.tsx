@@ -58,23 +58,28 @@ const CalendarMonth: React.FC<{ year: number; month: number; forecast: DayForeca
                     return (
                         <div key={i} style={{ position: 'relative', display: 'flex', justifyContent: 'center' }} title={`Available: ${avail}%\nUtilized: ${day.utilization}%\n${day.projects.map(p => `- ${p.name} (${p.pct}%)`).join('\n')}`}>
                             <div style={{
-                                width: 32,
-                                height: 32,
+                                width: 34,
+                                height: 34,
                                 borderRadius: 6,
                                 background: isWeekend ? 'var(--n-100)' : getAvailColor(avail),
                                 border: isWeekend ? '1px solid var(--n-300)' : `1px solid ${getAvailBorder(avail)}40`,
                                 color: isWeekend ? 'var(--n-500)' : getAvailText(avail),
                                 display: 'flex',
+                                flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 12,
-                                fontWeight: 600,
+                                fontSize: 13,
+                                fontWeight: 700,
                                 cursor: 'default',
                                 opacity: isWeekend && day.utilization === 0 ? 0.5 : 1,
                                 boxShadow: 'none',
                                 transition: 'background 0.15s',
+                                lineHeight: 1,
                             }}>
-                                {day.dayOfMonth}
+                                <div>{day.dayOfMonth}</div>
+                                {!isWeekend && day.utilization > 0 && (
+                                    <div style={{ fontSize: 9, fontWeight: 800, opacity: 0.85, marginTop: 1 }}>{day.utilization}%</div>
+                                )}
                             </div>
                         </div>
                     );

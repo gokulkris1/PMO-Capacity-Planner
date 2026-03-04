@@ -118,7 +118,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 id: r.id, name: r.name, role: r.role, type: r.type, department: r.department,
                 teamId: r.team_id, totalCapacity: Number(r.total_capacity),
                 avatarInitials: r.avatar_initials, email: r.email, location: r.location,
-                dailyRate: r.daily_rate_eur ? Number(r.daily_rate_eur) : undefined
+                dailyRate: r.daily_rate_eur ? Number(r.daily_rate_eur) : undefined,
+                skills: r.skills || []
             }));
             const mapProj = projects.map((p: any) => ({
                 id: p.id, name: p.name, status: p.status, priority: p.priority,
@@ -222,9 +223,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             for (const r of resources) {
                 await sql`
-                    INSERT INTO resources (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur)
+                    INSERT INTO resources (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
                     VALUES (${r.id}, ${wsId}, ${r.name}, ${r.role || ''}, ${r.type || 'Permanent'}, ${r.department || ''}, ${r.teamId || null},
-                            ${r.totalCapacity ?? 100}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null})
+                            ${r.totalCapacity ?? 100}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null}, ${r.skills || []})
                 `;
             }
 
