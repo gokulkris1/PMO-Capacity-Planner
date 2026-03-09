@@ -557,16 +557,34 @@ const AppShell: React.FC = () => {
                   <div style={{ fontSize: 10, color: 'var(--n-600)' }}>{(user.plan || 'BASIC')} plan</div>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate('/');
-                  window.location.href = '/'; // Hard redirect to clear all router artifacts
-                }}
-                title="Log out"
-                style={{ background: 'none', border: '1px solid var(--n-400)', borderRadius: 4, color: 'var(--n-600)', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
-                Out
-              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {user.role === 'SUPERUSER' && (
+                  <button
+                    onClick={() => setShowSuperAdmin(true)}
+                    title="Superuser Console"
+                    style={{ background: 'var(--brand-500)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                    Super
+                  </button>
+                )}
+                {user.role === 'ADMIN' && (
+                  <button
+                    onClick={() => setShowAdmin(true)}
+                    title="Workspace Admin"
+                    style={{ background: 'var(--n-600)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                    Admin
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate('/');
+                    window.location.href = '/'; // Hard redirect to clear all router artifacts
+                  }}
+                  title="Log out"
+                  style={{ background: 'none', border: '1px solid var(--n-400)', borderRadius: 4, color: 'var(--n-600)', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                  Out
+                </button>
+              </div>
             </div>
           ) : (
             <button
