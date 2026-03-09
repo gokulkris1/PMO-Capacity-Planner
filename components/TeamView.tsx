@@ -31,7 +31,7 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
     }).filter(g => g.members.length > 0);
 
     // Custom team names saved directly on the resource
-    const customTeamNames = Array.from(new Set(
+    const customTeamNames = Array.from<string>(new Set(
         resources
             .filter(r => (!r.teamId || !canonicalTeamIds.has(r.teamId)) && r.teamName?.trim())
             .map(r => r.teamName!.trim())

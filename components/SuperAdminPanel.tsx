@@ -11,6 +11,15 @@ interface Stats {
     total_users: number; basic_users: number;
     pro_users: number; max_users: number; new_this_week: number; mrr_eur: number;
 }
+interface AuditLog {
+    id: number;
+    action: string;
+    details: any;
+    ip_address: string;
+    created_at: string;
+    user_email: string;
+    user_name: string;
+}
 
 const PLAN_COLOR: Record<string, string> = { BASIC: '#6366f1', PRO: '#f59e0b', MAX: '#10b981' };
 const ROLE_COLOR: Record<string, string> = { SUPERUSER: '#f43f5e', ADMIN: '#ef4444', USER: '#64748b' };
@@ -56,7 +65,9 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState('');
     const [search, setSearch] = useState('');
-    const [tab, setTab] = useState<'users' | 'create'>('users');
+    const [tab, setTab] = useState<'users' | 'create' | 'audit'>('users');
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    const [loadingAudit, setLoadingAudit] = useState(false);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<PlatformUser | null>(null);
     const [editForm, setEditForm] = useState({ name: '', email: '', password: '' });
@@ -82,7 +93,20 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
         setLoading(false);
     }, [token]);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    const fetchAuditLogs = useCallback(async () => {
+        setLoadingAudit(true);
+        try {
+            const res = await fetch('/api/audit', { headers: authHdr });
+            if (!res.ok) throw new Error((await res.json()).error || 'Audit Log load failed');
+            setAuditLogs((await res.json()).logs);
+        } catch (e: any) { setErr('Audit Error: ' + e.message); }
+        setLoadingAudit(false);
+    }, [token]);
+
+    useEffect(() => {
+        fetchAll();
+        if (tab === 'audit') fetchAuditLogs();
+    }, [fetchAll, tab]);
 
     const updateUser = async (userId: string, field: string, value: string) => {
         setSaving(userId + field);
@@ -215,17 +239,17 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
                 {/* ── TABS ── */}
                 <div style={{ display: 'flex', gap: 6, padding: '14px 24px 0' }}>
-                    {(['users', 'create'] as const).map(t => (
+                    {(['users', 'create', 'audit'] as const).map(t => (
                         <button key={t} onClick={() => setTab(t)} style={{
                             padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                             background: tab === t ? '#6366f1' : '#1e293b',
                             color: tab === t ? '#fff' : '#64748b',
                         }}>
-                            {t === 'users' ? `👥 Users (${users.length})` : '➕ Create User'}
+                            {t === 'users' ? `👥 Users (${users.length})` : t === 'audit' ? `🛡️ Audit Logs` : '➕ Create User'}
                         </button>
                     ))}
                     <div style={{ flex: 1 }} />
-                    <button onClick={fetchAll} style={{
+                    <button onClick={() => tab === 'audit' ? fetchAuditLogs() : fetchAll()} style={{
                         padding: '6px 14px', background: '#1e293b',
                         border: '1px solid #334155', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 13
                     }}>
@@ -398,6 +422,58 @@ export const SuperAdminPanel: React.FC<{ onClose: () => void }> = ({ onClose }) 
                                 {creating ? 'Creating…' : '🚀 Create Account'}
                             </button>
                         </form>
+                    )}
+
+                    {/* AUDIT LOGS TAB */}
+                    {tab === 'audit' && (
+                        <div style={{ maxWidth: '100%' }}>
+                            <h3 style={{ color: '#f1f5f9', margin: '0 0 16px', fontWeight: 800 }}>Security Audit Logs</h3>
+                            {loadingAudit ? (
+                                <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading logs...</div>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                                            {['Timestamp', 'User', 'Action', 'IP Address', 'Details'].map(h => (
+                                                <th key={h} style={{
+                                                    textAlign: 'left', padding: '8px 10px', color: '#64748b',
+                                                    fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em'
+                                                }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {auditLogs.map(log => (
+                                            <tr key={log.id} style={{ borderBottom: '1px solid #0f1629' }}>
+                                                <td style={{ padding: '11px 10px', color: '#94a3b8', fontSize: 12, whiteSpace: 'nowrap' }}>
+                                                    {new Date(log.created_at).toLocaleString('en-GB')}
+                                                </td>
+                                                <td style={{ padding: '11px 10px' }}>
+                                                    <div style={{ fontWeight: 700, color: '#f1f5f9' }}>{log.user_name || '—'}</div>
+                                                    <div style={{ color: '#64748b', fontSize: 11 }}>{log.user_email || 'Unknown User'}</div>
+                                                </td>
+                                                <td style={{ padding: '11px 10px' }}>
+                                                    <span style={{
+                                                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                                        background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)'
+                                                    }}>
+                                                        {log.action}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '11px 10px', color: '#94a3b8', fontSize: 12 }}>
+                                                    {log.ip_address || '—'}
+                                                </td>
+                                                <td style={{ padding: '11px 10px', color: '#64748b', fontSize: 11 }}>
+                                                    <pre style={{ margin: 0, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                                                        {log.details ? JSON.stringify(log.details, null, 2) : '—'}
+                                                    </pre>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     )}
                 </div>
 

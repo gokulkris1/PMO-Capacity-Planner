@@ -553,8 +553,8 @@ const AppShell: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>👤</div>
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</div>
-                  <div style={{ fontSize: 10, color: '#64748b' }}>{(user.plan || 'BASIC')} plan</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--n-800)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</div>
+                  <div style={{ fontSize: 10, color: 'var(--n-600)' }}>{(user.plan || 'BASIC')} plan</div>
                 </div>
               </div>
               <button

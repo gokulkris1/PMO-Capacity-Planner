@@ -22,15 +22,15 @@ const WorkspaceSwitcher: React.FC = () => {
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '8px 12px', borderRadius: 10,
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--n-100)', border: '1px solid var(--n-200)',
                 marginBottom: 4
             }}>
                 <span style={{ fontSize: 14 }}>🏢</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--n-800)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {activeWorkspace.name}
                     </div>
-                    <div style={{ fontSize: 10, color: '#64748b' }}>
+                    <div style={{ fontSize: 10, color: 'var(--n-600)' }}>
                         {activeWorkspace.org_name}
                     </div>
                 </div>
@@ -50,7 +50,7 @@ const WorkspaceSwitcher: React.FC = () => {
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '4px 8px 4px 12px', borderRadius: 10,
-                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)'
+                background: 'var(--n-100)', border: '1px solid var(--n-200)'
             }}>
                 <span style={{ fontSize: 13 }}>🏢</span>
                 <select
@@ -58,12 +58,12 @@ const WorkspaceSwitcher: React.FC = () => {
                     onChange={e => switchWorkspace(e.target.value)}
                     style={{
                         flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                        color: '#f1f5f9', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        color: 'var(--n-800)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         appearance: 'none', WebkitAppearance: 'none'
                     }}
                 >
                     {availableWorkspaces.map(ws => (
-                        <option key={ws.id} value={ws.id} style={{ background: '#1e293b', color: '#f1f5f9' }}>
+                        <option key={ws.id} value={ws.id} style={{ background: 'var(--n-50)', color: 'var(--n-800)' }}>
                             {ws.org_name} › {ws.name} ({ROLE_BADGE[ws.role]?.label || ws.role})
                         </option>
                     ))}

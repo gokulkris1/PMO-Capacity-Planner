@@ -178,6 +178,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 user.role = 'SUPERUSER'; user.plan = 'MAX';
             }
 
+            try {
+                // Log the login to the audit tracker
+                await sql`
+                    INSERT INTO audit_logs (user_id, action, ip_address, details)
+                    VALUES (${user.id}, 'LOGIN', ${event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'Unknown'}, ${JSON.stringify({ plan: user.plan, role: user.role })})
+                `;
+            } catch (auditErr: any) {
+                console.error('Failed to write audit log for login:', auditErr.message);
+            }
+
             // Get orgSlug for routing
             let orgSlug: string | null = null;
             if (user.org_id) {

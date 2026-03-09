@@ -209,12 +209,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     return ok({ success: true, deleted: true });
                 }
 
-                const [booking] = await sql`
+                const [booking] = (await sql`
                     INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
                     VALUES (${orgId}, ${wsId}, ${memberId}, ${projectId}, ${sprintId}, ${percentage}, ${scenarioId || null}, ${notes || null})
                     ON CONFLICT (member_id, project_id, sprint_id, scenario_id)
                     DO UPDATE SET percentage = EXCLUDED.percentage, notes = EXCLUDED.notes
-                    RETURNING *`;
+                    RETURNING *`) as any[];
                 return ok({ success: true, booking });
             }
 
@@ -223,10 +223,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const { name, description, quarterId } = body;
                 if (!name || !quarterId) return fail('name and quarterId required');
 
-                const [scenario] = await sql`
+                const [scenario] = (await sql`
                     INSERT INTO qbr_scenarios (org_id, workspace_id, name, description, quarter_id, created_by)
                     VALUES (${orgId}, ${wsId}, ${name}, ${description || null}, ${quarterId}, ${user.id})
-                    RETURNING *`;
+                    RETURNING *`) as any[];
 
                 // Clone current live bookings into scenario
                 await sql`
@@ -242,7 +242,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // POST /api/qbr/scenario/:id/commit — commit a scenario
             if (subpath.match(/^\/scenario\/[^/]+\/commit$/)) {
                 const sId = subpath.split('/')[2];
-                const [sc] = await sql`SELECT * FROM qbr_scenarios WHERE id = ${sId}`;
+                const [sc] = (await sql`SELECT * FROM qbr_scenarios WHERE id = ${sId}`) as any[];
                 if (!sc) return fail('Scenario not found', 404);
 
                 // Delete current live bookings for this quarter
@@ -267,10 +267,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const { name, tribeId, projectId, okrId, members: memberList } = body;
                 if (!name) return fail('Squad name required');
 
-                const [squad] = await sql`
+                const [squad] = (await sql`
                     INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id)
                     VALUES (${orgId}, ${wsId}, ${name}, ${tribeId || null}, ${projectId || null}, ${okrId || null})
-                    RETURNING *`;
+                    RETURNING *`) as any[];
 
                 if (memberList?.length) {
                     for (const m of memberList) {
@@ -331,19 +331,19 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
     await sql`DELETE FROM qbr_tribes WHERE workspace_id = ${wsId}`;
 
     // ── Tribes ──
-    const [tPayments] = await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Payments', 'All payment-related products and services', 'Sarah Mitchell', '#6366f1') RETURNING id`;
-    const [tLending] = await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Lending & Credit', 'Loan origination, credit decisioning, servicing', 'James O''Brien', '#3b82f6') RETURNING id`;
-    const [tDigital] = await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Digital Experience', 'Mobile app, web portal, customer self-service', 'Aisha Patel', '#8b5cf6') RETURNING id`;
+    const [tPayments] = (await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Payments', 'All payment-related products and services', 'Sarah Mitchell', '#6366f1') RETURNING id`) as any[];
+    const [tLending] = (await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Lending & Credit', 'Loan origination, credit decisioning, servicing', 'James O''Brien', '#3b82f6') RETURNING id`) as any[];
+    const [tDigital] = (await sql`INSERT INTO qbr_tribes (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Digital Experience', 'Mobile app, web portal, customer self-service', 'Aisha Patel', '#8b5cf6') RETURNING id`) as any[];
 
     // ── Chapters ──
-    const [cEng] = await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Engineering', 'Full-stack and backend engineers', 'Tom Hayes', '#10b981') RETURNING id`;
-    const [cDesign] = await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Design & UX', 'Product designers, UX researchers', 'Fiona Kelly', '#ec4899') RETURNING id`;
-    const [cQA] = await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Quality Assurance', 'Test automation, manual QA', 'Derek Nolan', '#f59e0b') RETURNING id`;
-    const [cPM] = await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Project Management', 'Delivery leads, scrum masters', 'Claire Ryan', '#ef4444') RETURNING id`;
+    const [cEng] = (await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Engineering', 'Full-stack and backend engineers', 'Tom Hayes', '#10b981') RETURNING id`) as any[];
+    const [cDesign] = (await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Design & UX', 'Product designers, UX researchers', 'Fiona Kelly', '#ec4899') RETURNING id`) as any[];
+    const [cQA] = (await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Quality Assurance', 'Test automation, manual QA', 'Derek Nolan', '#f59e0b') RETURNING id`) as any[];
+    const [cPM] = (await sql`INSERT INTO qbr_chapters (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Project Management', 'Delivery leads, scrum masters', 'Claire Ryan', '#ef4444') RETURNING id`) as any[];
 
     // ── CoE Groups ──
-    const [coeSec] = await sql`INSERT INTO qbr_coe_groups (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Security & Compliance', 'InfoSec, PCI-DSS, GDPR specialists', 'Ravi Shankar', '#dc2626') RETURNING id`;
-    const [coeData] = await sql`INSERT INTO qbr_coe_groups (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Data & Analytics', 'Data engineers, ML engineers, BI analysts', 'Lisa Chen', '#0891b2') RETURNING id`;
+    const [coeSec] = (await sql`INSERT INTO qbr_coe_groups (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Security & Compliance', 'InfoSec, PCI-DSS, GDPR specialists', 'Ravi Shankar', '#dc2626') RETURNING id`) as any[];
+    const [coeData] = (await sql`INSERT INTO qbr_coe_groups (org_id, workspace_id, name, description, lead_name, color) VALUES (${orgId}, ${wsId}, 'Data & Analytics', 'Data engineers, ML engineers, BI analysts', 'Lisa Chen', '#0891b2') RETURNING id`) as any[];
 
     // ── Members (25) ──
     const memberInserts = [
@@ -390,16 +390,16 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
 
     const memberIds: Record<string, string> = {};
     for (const m of memberInserts) {
-        const [row] = await sql`
+        const [row] = (await sql`
             INSERT INTO qbr_members (org_id, workspace_id, name, email, role_title, tribe_id, chapter_id, coe_id, member_type, daily_rate, skills, avatar_color)
             VALUES (${orgId}, ${wsId}, ${m.name}, ${m.email}, ${m.role}, ${m.tribe}, ${m.ch}, ${m.coe}, ${m.type}, ${(m as any).daily_rate || null}, ${m.skills}, ${m.color})
-            RETURNING id`;
+            RETURNING id`) as any[];
         memberIds[m.name] = row.id;
     }
 
     // ── Quarters (Q1 & Q2 2026) ──
-    const [q1] = await sql`INSERT INTO qbr_quarters (org_id, workspace_id, label, start_date, end_date, is_active) VALUES (${orgId}, ${wsId}, 'Q1 2026', '2026-01-05', '2026-03-27', false) RETURNING id`;
-    const [q2] = await sql`INSERT INTO qbr_quarters (org_id, workspace_id, label, start_date, end_date, is_active) VALUES (${orgId}, ${wsId}, 'Q2 2026', '2026-03-30', '2026-06-19', true) RETURNING id`;
+    const [q1] = (await sql`INSERT INTO qbr_quarters (org_id, workspace_id, label, start_date, end_date, is_active) VALUES (${orgId}, ${wsId}, 'Q1 2026', '2026-01-05', '2026-03-27', false) RETURNING id`) as any[];
+    const [q2] = (await sql`INSERT INTO qbr_quarters (org_id, workspace_id, label, start_date, end_date, is_active) VALUES (${orgId}, ${wsId}, 'Q2 2026', '2026-03-30', '2026-06-19', true) RETURNING id`) as any[];
 
     // ── Sprints ──
     const q1Sprints: string[] = [];
@@ -408,8 +408,8 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
         ['2026-02-16', '2026-02-27'], ['2026-03-02', '2026-03-13'], ['2026-03-16', '2026-03-27'],
     ];
     for (let i = 0; i < 6; i++) {
-        const [s] = await sql`INSERT INTO qbr_sprints (quarter_id, sprint_number, label, start_date, end_date)
-            VALUES (${q1.id}, ${i + 1}, ${'S' + (i + 1) + ' (' + q1SprintDates[i][0].slice(5) + ')'}, ${q1SprintDates[i][0]}, ${q1SprintDates[i][1]}) RETURNING id`;
+        const [s] = (await sql`INSERT INTO qbr_sprints (quarter_id, sprint_number, label, start_date, end_date)
+            VALUES (${q1.id}, ${i + 1}, ${'S' + (i + 1) + ' (' + q1SprintDates[i][0].slice(5) + ')'}, ${q1SprintDates[i][0]}, ${q1SprintDates[i][1]}) RETURNING id`) as any[];
         q1Sprints.push(s.id);
     }
 
@@ -419,32 +419,32 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
         ['2026-05-11', '2026-05-22'], ['2026-05-25', '2026-06-05'], ['2026-06-08', '2026-06-19'],
     ];
     for (let i = 0; i < 6; i++) {
-        const [s] = await sql`INSERT INTO qbr_sprints (quarter_id, sprint_number, label, start_date, end_date)
-            VALUES (${q2.id}, ${i + 1}, ${'S' + (i + 1) + ' (' + q2SprintDates[i][0].slice(5) + ')'}, ${q2SprintDates[i][0]}, ${q2SprintDates[i][1]}) RETURNING id`;
+        const [s] = (await sql`INSERT INTO qbr_sprints (quarter_id, sprint_number, label, start_date, end_date)
+            VALUES (${q2.id}, ${i + 1}, ${'S' + (i + 1) + ' (' + q2SprintDates[i][0].slice(5) + ')'}, ${q2SprintDates[i][0]}, ${q2SprintDates[i][1]}) RETURNING id`) as any[];
         q2Sprints.push(s.id);
     }
 
     // ── Leadership OKRs ──
-    const [okrGrow] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Grow digital revenue by 25%', 'Increase digital channel revenue across all product lines', 'LEADERSHIP', ${q2.id}) RETURNING id`;
-    const [okrCx] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Improve customer experience NPS to 75+', 'Drive NPS improvements through faster, more reliable services', 'LEADERSHIP', ${q2.id}) RETURNING id`;
-    const [okrRisk] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Reduce operational risk by 40%', 'Strengthen security, compliance, and operational resilience', 'LEADERSHIP', ${q2.id}) RETURNING id`;
+    const [okrGrow] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Grow digital revenue by 25%', 'Increase digital channel revenue across all product lines', 'LEADERSHIP', ${q2.id}) RETURNING id`) as any[];
+    const [okrCx] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Improve customer experience NPS to 75+', 'Drive NPS improvements through faster, more reliable services', 'LEADERSHIP', ${q2.id}) RETURNING id`) as any[];
+    const [okrRisk] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, quarter_id) VALUES (${orgId}, ${wsId}, 'Reduce operational risk by 40%', 'Strengthen security, compliance, and operational resilience', 'LEADERSHIP', ${q2.id}) RETURNING id`) as any[];
 
     // ── Tribe OKRs ──
-    const [okrPay1] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Launch real-time payments v2', 'Modernize payment rails for instant settlement', 'TRIBE', ${okrGrow.id}, ${tPayments.id}, ${q2.id}) RETURNING id`;
-    const [okrPay2] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Achieve PCI-DSS Level 1 re-certification', 'Annual compliance audit and remediation', 'TRIBE', ${okrRisk.id}, ${tPayments.id}, ${q2.id}) RETURNING id`;
-    const [okrLend1] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Reduce loan approval time to <24hrs', 'Automate credit decisioning pipeline', 'TRIBE', ${okrCx.id}, ${tLending.id}, ${q2.id}) RETURNING id`;
-    const [okrDig1] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Ship mobile app v3 with biometric login', 'Major mobile app update with improved auth', 'TRIBE', ${okrCx.id}, ${tDigital.id}, ${q2.id}) RETURNING id`;
-    const [okrDig2] = await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Launch AI-powered customer insights dashboard', 'Self-service analytics for relationship managers', 'TRIBE', ${okrGrow.id}, ${tDigital.id}, ${q2.id}) RETURNING id`;
+    const [okrPay1] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Launch real-time payments v2', 'Modernize payment rails for instant settlement', 'TRIBE', ${okrGrow.id}, ${tPayments.id}, ${q2.id}) RETURNING id`) as any[];
+    const [okrPay2] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Achieve PCI-DSS Level 1 re-certification', 'Annual compliance audit and remediation', 'TRIBE', ${okrRisk.id}, ${tPayments.id}, ${q2.id}) RETURNING id`) as any[];
+    const [okrLend1] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Reduce loan approval time to <24hrs', 'Automate credit decisioning pipeline', 'TRIBE', ${okrCx.id}, ${tLending.id}, ${q2.id}) RETURNING id`) as any[];
+    const [okrDig1] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Ship mobile app v3 with biometric login', 'Major mobile app update with improved auth', 'TRIBE', ${okrCx.id}, ${tDigital.id}, ${q2.id}) RETURNING id`) as any[];
+    const [okrDig2] = (await sql`INSERT INTO qbr_okrs (org_id, workspace_id, title, description, level, parent_okr_id, tribe_id, quarter_id) VALUES (${orgId}, ${wsId}, 'Launch AI-powered customer insights dashboard', 'Self-service analytics for relationship managers', 'TRIBE', ${okrGrow.id}, ${tDigital.id}, ${q2.id}) RETURNING id`) as any[];
 
     // ── Projects ──
-    const [pRTP] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Real-Time Payments v2', 'Modernize payment rails', ${tPayments.id}, ${okrPay1.id}, 'ACTIVE', 'CRITICAL', ${q1.id}, ${q2.id}, '#6366f1') RETURNING id`;
-    const [pPCI] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'PCI-DSS Remediation', 'Security compliance project', ${tPayments.id}, ${okrPay2.id}, 'ACTIVE', 'HIGH', ${q2.id}, ${q2.id}, '#ef4444') RETURNING id`;
-    const [pLoan] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Automated Credit Engine', 'ML-powered credit decisioning', ${tLending.id}, ${okrLend1.id}, 'ACTIVE', 'CRITICAL', ${q1.id}, ${q2.id}, '#3b82f6') RETURNING id`;
-    const [pMobile] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Mobile App v3', 'Biometric login & redesigned UX', ${tDigital.id}, ${okrDig1.id}, 'PLANNING', 'HIGH', ${q2.id}, ${q2.id}, '#8b5cf6') RETURNING id`;
-    const [pInsights] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'AI Customer Insights', 'Self-service analytics dashboard', ${tDigital.id}, ${okrDig2.id}, 'PLANNING', 'MEDIUM', ${q2.id}, ${q2.id}, '#0891b2') RETURNING id`;
-    const [pLegacy] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Legacy System Decommission', 'Sunset old COBOL batch processor', ${tLending.id}, ${okrLend1.id}, 'ACTIVE', 'LOW', ${q1.id}, ${q2.id}, '#6b7280') RETURNING id`;
-    const [pAPI] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Open Banking API Gateway', 'PSD2-compliant API platform', ${tPayments.id}, ${okrGrow.id}, 'ACTIVE', 'HIGH', ${q1.id}, ${q2.id}, '#10b981') RETURNING id`;
-    const [pDesign] = await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Design System 2.0', 'Unified component library', ${tDigital.id}, ${okrCx.id}, 'ACTIVE', 'MEDIUM', ${q1.id}, ${q2.id}, '#ec4899') RETURNING id`;
+    const [pRTP] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Real-Time Payments v2', 'Modernize payment rails', ${tPayments.id}, ${okrPay1.id}, 'ACTIVE', 'CRITICAL', ${q1.id}, ${q2.id}, '#6366f1') RETURNING id`) as any[];
+    const [pPCI] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'PCI-DSS Remediation', 'Security compliance project', ${tPayments.id}, ${okrPay2.id}, 'ACTIVE', 'HIGH', ${q2.id}, ${q2.id}, '#ef4444') RETURNING id`) as any[];
+    const [pLoan] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Automated Credit Engine', 'ML-powered credit decisioning', ${tLending.id}, ${okrLend1.id}, 'ACTIVE', 'CRITICAL', ${q1.id}, ${q2.id}, '#3b82f6') RETURNING id`) as any[];
+    const [pMobile] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Mobile App v3', 'Biometric login & redesigned UX', ${tDigital.id}, ${okrDig1.id}, 'PLANNING', 'HIGH', ${q2.id}, ${q2.id}, '#8b5cf6') RETURNING id`) as any[];
+    const [pInsights] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'AI Customer Insights', 'Self-service analytics dashboard', ${tDigital.id}, ${okrDig2.id}, 'PLANNING', 'MEDIUM', ${q2.id}, ${q2.id}, '#0891b2') RETURNING id`) as any[];
+    const [pLegacy] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Legacy System Decommission', 'Sunset old COBOL batch processor', ${tLending.id}, ${okrLend1.id}, 'ACTIVE', 'LOW', ${q1.id}, ${q2.id}, '#6b7280') RETURNING id`) as any[];
+    const [pAPI] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Open Banking API Gateway', 'PSD2-compliant API platform', ${tPayments.id}, ${okrGrow.id}, 'ACTIVE', 'HIGH', ${q1.id}, ${q2.id}, '#10b981') RETURNING id`) as any[];
+    const [pDesign] = (await sql`INSERT INTO qbr_projects (org_id, workspace_id, name, description, tribe_id, okr_id, status, priority, start_quarter_id, end_quarter_id, color) VALUES (${orgId}, ${wsId}, 'Design System 2.0', 'Unified component library', ${tDigital.id}, ${okrCx.id}, 'ACTIVE', 'MEDIUM', ${q1.id}, ${q2.id}, '#ec4899') RETURNING id`) as any[];
 
     // ── Bookings (Q1 — already booked, Q2 — partially booked for horse trading) ──
     // Q1 bookings (all 6 sprints filled — represents "carried over" bookings)
@@ -494,20 +494,20 @@ async function seedDemoData(sql: ReturnType<typeof neon>, orgId: string | undefi
     }
 
     // ── Squads ──
-    const [sqRTP] = await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad RTP', ${tPayments.id}, ${pRTP.id}, ${okrPay1.id}) RETURNING id`;
+    const [sqRTP] = (await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad RTP', ${tPayments.id}, ${pRTP.id}, ${okrPay1.id}) RETURNING id`) as any[];
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqRTP.id}, ${memberIds['Gokul Gurijala']}, 'LEAD') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqRTP.id}, ${memberIds['Liam Murphy']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqRTP.id}, ${memberIds['Emma Walsh']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqRTP.id}, ${memberIds['Aoife Brennan']}, 'MEMBER') ON CONFLICT DO NOTHING`;
 
-    const [sqLoan] = await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad Credit Engine', ${tLending.id}, ${pLoan.id}, ${okrLend1.id}) RETURNING id`;
+    const [sqLoan] = (await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad Credit Engine', ${tLending.id}, ${pLoan.id}, ${okrLend1.id}) RETURNING id`) as any[];
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Tom Hayes']}, 'LEAD') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Sean Doyle']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Niamh Carroll']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Raj Kapoor']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqLoan.id}, ${memberIds['Patrick Ward']}, 'ADVISOR') ON CONFLICT DO NOTHING`;
 
-    const [sqMobile] = await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad Mobile v3', ${tDigital.id}, ${pMobile.id}, ${okrDig1.id}) RETURNING id`;
+    const [sqMobile] = (await sql`INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id) VALUES (${orgId}, ${wsId}, 'Squad Mobile v3', ${tDigital.id}, ${pMobile.id}, ${okrDig1.id}) RETURNING id`) as any[];
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds["Linda O'Dwyer"]}, 'LEAD') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Oisin Flynn']}, 'MEMBER') ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES (${sqMobile.id}, ${memberIds['Saoirse Kelly']}, 'MEMBER') ON CONFLICT DO NOTHING`;
