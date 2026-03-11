@@ -153,6 +153,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     // ── POST — save workspace data ───────────────────────────────────────
     if (event.httpMethod === 'POST') {
         try {
+            // High Severity Fix: Payload size limit (5MB)
+            if (event.body && event.body.length > 5 * 1024 * 1024) {
+                return fail('Payload too large (max 5MB)', 413);
+            }
             const body = JSON.parse(event.body || '{}');
             const { resources = [], projects = [], allocations = [], workspaceId: bodyWsId, forceWipe = false } = body;
 
@@ -188,7 +192,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             if (!wsRows || wsRows.length === 0) return fail('Workspace not found', 404);
             const wsId = wsRows[0].id;
-            const plan = (wsRows[0].plan || 'BASIC').toUpperCase();
+
+            // High Severity Fix: Re-verify plan from DB specifically for the current org
+            const [planRow] = await sql`
+                SELECT plan FROM users 
+                WHERE org_id = (SELECT org_id FROM workspaces WHERE id = ${wsId}) 
+                AND role IN ('ORG_ADMIN', 'SUPERUSER') 
+                ORDER BY role DESC LIMIT 1
+            `;
+            const plan = (planRow?.plan || 'BASIC').toUpperCase();
 
             // Check write permission
             let hasWriteAccess = false;

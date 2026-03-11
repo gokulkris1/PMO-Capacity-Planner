@@ -39,12 +39,21 @@ function utilBorderCell(pct: number): string {
 
 function isAllocActiveInRange(a: Allocation, range: { start: string; end: string }) {
     if (!range.start || !range.end) return true;
-    const [sYear, sMonth] = range.start.split('-');
-    const [eYear, eMonth] = range.end.split('-');
-    const filterStart = new Date(parseInt(sYear), parseInt(sMonth) - 1, 1);
-    const filterEnd = new Date(parseInt(eYear), parseInt(eMonth), 0, 23, 59, 59);
+    const [sYearStr, sMonthStr] = range.start.split('-');
+    const [eYearStr, eMonthStr] = range.end.split('-');
+
+    const sYear = parseInt(sYearStr);
+    const sMonth = Math.max(1, Math.min(12, parseInt(sMonthStr)));
+    const eYear = parseInt(eYearStr);
+    const eMonth = Math.max(1, Math.min(12, parseInt(eMonthStr)));
+
+    const filterStart = new Date(sYear, sMonth - 1, 1);
+    const filterEnd = new Date(eYear, eMonth, 0, 23, 59, 59);
+
     const aStart = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
     const aEnd = a.endDate ? new Date(a.endDate) : new Date('2099-12-31');
+
+    if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime())) return true;
     return aStart <= filterEnd && aEnd >= filterStart;
 }
 
@@ -217,6 +226,12 @@ export const AllocationMatrix: React.FC<Props> = ({
                         <div style={{ fontSize: 40, marginBottom: 12 }}>👤</div>
                         <div style={{ fontSize: 16, color: '#475569', fontWeight: 600 }}>No resources yet</div>
                         <div style={{ fontSize: 13, color: '#334155', marginTop: 6 }}>Add your first resource to start building the matrix</div>
+                    </div>
+                ) : projects.length === 0 ? (
+                    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
+                        <div style={{ fontSize: 16, color: '#475569', fontWeight: 600 }}>No projects yet</div>
+                        <div style={{ fontSize: 13, color: '#334155', marginTop: 6 }}>Create a project to begin allocating your resources</div>
                     </div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>

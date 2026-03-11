@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import './index.css';
 
-import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus } from './types';
+import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus, ResourceType } from './types';
 import { MOCK_RESOURCES, MOCK_PROJECTS, MOCK_ALLOCATIONS, TEAMS, PLAN_LIMITS } from './constants';
 import { getCapacityInsights } from './services/geminiService';
 
@@ -366,7 +366,7 @@ const AppShell: React.FC = () => {
         );
       }
       if (num === 0) return prev;
-      return [...prev, { id: `a-${Date.now()}-${Math.random().toString(36).slice(2)}`, resourceId: resId, projectId: projId, percentage: num }];
+      return [...prev, { id: `a-${crypto.randomUUID()}`, resourceId: resId, projectId: projId, percentage: num }];
     });
   }, [scenarioMode, allocations]);
 
@@ -412,7 +412,7 @@ const AppShell: React.FC = () => {
     if (modal.type === 'editResource') {
       setResources(prev => prev.map(r => r.id === modal.resource.id ? { ...r, ...data } : r));
     } else {
-      const newRes: Resource = { id: `r-${Date.now()}`, name: '', role: '', type: 'Permanent' as any, department: '', totalCapacity: 100, ...data };
+      const newRes: Resource = { id: `r-${crypto.randomUUID()}`, name: '', role: '', type: ResourceType.PERMANENT, department: '', totalCapacity: 100, ...data };
       setResources(prev => [newRes, ...prev]);
     }
     setModal({ type: 'none' });
@@ -436,7 +436,7 @@ const AppShell: React.FC = () => {
     if (modal.type === 'editProject') {
       setProjects(prev => prev.map(p => p.id === modal.project.id ? { ...p, ...data } : p));
     } else {
-      const newProj: Project = { id: `p-${Date.now()}`, name: '', status: 'Planning' as any, priority: 'Medium', description: '', ...data };
+      const newProj: Project = { id: `p-${crypto.randomUUID()}`, name: '', status: 'Planning' as any, priority: 'Medium', description: '', ...data };
       setProjects(prev => [newProj, ...prev]);
     }
     setModal({ type: 'none' });

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Resource, Project, ResourceType, ProjectStatus } from '../types';
 
 /* ── Add/Edit Resource Modal ─────────────────────────────────── */
@@ -17,13 +16,30 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
         name: '', role: '', department: '', type: ResourceType.PERMANENT, totalCapacity: 100, location: '', email: '',
         ...(initial || {}),
     });
+    const [isDirty, setIsDirty] = useState(false);
+    const modalRef = useRef<HTMLDivElement>(null);
     const [teamMode, setTeamMode] = useState<'preset' | 'custom'>(() => initial?.teamId ? 'preset' : (initial?.teamName ? 'custom' : 'preset'));
     const [customTeam, setCustomTeam] = useState(initial?.teamId ? '' : (initial?.teamName || ''));
     const [skillsText, setSkillsText] = useState((initial?.skills || []).join(', '));
     const [csvMode, setCsvMode] = useState(false);
     const [csvError, setCsvError] = useState('');
 
-    const set = (k: keyof Resource, v: any) => setForm(f => ({ ...f, [k]: v }));
+    const set = (k: keyof Resource, v: any) => {
+        setForm(f => ({ ...f, [k]: v }));
+        setIsDirty(true);
+    };
+
+    const handleClose = () => {
+        if (isDirty && !window.confirm('You have unsaved changes. Are you sure you want to close?')) return;
+        onClose();
+    };
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+        window.addEventListener('keydown', handleEsc);
+        modalRef.current?.querySelector('input')?.focus(); // Focus trap start
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isDirty]);
 
     const handleResourceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -73,8 +89,8 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
     };
 
     return (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal-box">
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && handleClose()}>
+            <div className="modal-box" ref={modalRef} tabIndex={-1}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <div className="modal-title" style={{ marginBottom: 0 }}>{isEditing ? 'Edit Resource' : 'Add New Resource'}</div>
                     {!isEditing && onBulkSave && (
@@ -232,8 +248,25 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     });
     const [csvMode, setCsvMode] = useState(false);
     const [csvError, setCsvError] = useState('');
+    const [isDirty, setIsDirty] = useState(false);
+    const modalRef = useRef<HTMLDivElement>(null);
 
-    const set = (k: keyof Project, v: any) => setForm(f => ({ ...f, [k]: v }));
+    const set = (k: keyof Project, v: any) => {
+        setForm(f => ({ ...f, [k]: v }));
+        setIsDirty(true);
+    };
+
+    const handleClose = () => {
+        if (isDirty && !window.confirm('You have unsaved changes. Are you sure you want to close?')) return;
+        onClose();
+    };
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+        window.addEventListener('keydown', handleEsc);
+        modalRef.current?.querySelector('input')?.focus();
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isDirty]);
 
     const handleProjectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -284,8 +317,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     const COLORS = ['#6366f1', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#14b8a6'];
 
     return (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal-box">
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && handleClose()}>
+            <div className="modal-box" ref={modalRef} tabIndex={-1}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <div className="modal-title" style={{ marginBottom: 0 }}>{isEditing ? 'Edit Project' : 'Add New Project'}</div>
                     {!isEditing && onBulkSave && (
@@ -403,15 +436,26 @@ interface ConfirmModalProps {
     onClose: () => void;
 }
 
-export const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onConfirm, onClose }) => (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-        <div className="modal-box" style={{ maxWidth: 360 }}>
-            <div className="modal-title" style={{ color: '#b91c1c' }}>⚠️ {title}</div>
-            <p style={{ color: '#64748b', fontSize: 14, lineHeight: 1.6 }}>{message}</p>
-            <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                <button className="btn btn-danger" onClick={() => { onConfirm(); onClose(); }}>Delete</button>
+export const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onConfirm, onClose }) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handleEsc);
+        modalRef.current?.querySelector('button')?.focus();
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
+
+    return (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+            <div className="modal-box" style={{ maxWidth: 360 }} ref={modalRef} tabIndex={-1}>
+                <div className="modal-title" style={{ color: '#b91c1c' }}>⚠️ {title}</div>
+                <p style={{ color: '#64748b', fontSize: 14, lineHeight: 1.6 }}>{message}</p>
+                <div className="modal-footer">
+                    <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                    <button className="btn btn-danger" onClick={() => { onConfirm(); onClose(); }}>Delete</button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};

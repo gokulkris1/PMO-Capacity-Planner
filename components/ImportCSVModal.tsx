@@ -45,7 +45,7 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
         const newProjects = [...currentProjects];
         let newAllocations = [...currentAllocations];
 
-        const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const generateId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
         preview.forEach((row, i) => {
             // Flexible column matching to handle Excel whitespace
@@ -54,9 +54,9 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
                 return foundKey ? row[foundKey]?.trim() : '';
             };
 
-            const resName = getCol(['resource', 'resource name']);
-            const projName = getCol(['project', 'project name']);
-            const percentStr = getCol(['allocation %', 'allocation', 'percentage']);
+            const resName = getCol(['resource', 'resource name', 'name', 'individual', 'employee']);
+            const projName = getCol(['project', 'project name', 'project title', 'initiative']);
+            const percentStr = getCol(['allocation %', 'allocation', 'percentage', 'utilization', 'alloc %', 'fte %', 'util %']);
 
             if (!resName || !projName || !percentStr) return; // Skip invalid rows
 
