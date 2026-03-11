@@ -268,7 +268,8 @@ const AppShell: React.FC = () => {
 
         const urlParams = new URLSearchParams(window.location.search);
         const overrideOrg = urlParams.get('org');
-        const saveUrl = overrideOrg ? `/api/workspace?orgSlug=${encodeURIComponent(overrideOrg)}` : '/api/workspace';
+        const targetSlug = overrideOrg || orgSlug;
+        const saveUrl = targetSlug ? `/api/workspace?orgSlug=${encodeURIComponent(targetSlug)}` : '/api/workspace';
 
         fetch(saveUrl, {
           method: 'POST',
@@ -281,10 +282,15 @@ const AppShell: React.FC = () => {
               alert('Free Plan Limit Exceeded: ' + (data.error || 'You have exceeded your Free tier limits. Data will not be saved.'));
               setShowPricing(true);
             } else {
-              console.error('Failed to sync workspace');
+              console.error('Failed to sync workspace:', data);
+              const msg = data.error || data.message || res.statusText || 'Unknown error';
+              alert(`Error: Failed to save your changes to the server. (${msg})`);
             }
           }
-        }).catch(err => console.error('Sync failed', err));
+        }).catch(err => {
+          console.error('Sync failed', err);
+          alert('Error: Network failure while saving changes. Please check your connection.');
+        });
       }, 1500);
     } else {
       // Demo users still save to local storage

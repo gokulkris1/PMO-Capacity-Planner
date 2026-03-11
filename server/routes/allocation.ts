@@ -17,12 +17,12 @@ router.get('/', async (req, res) => {
 
 // POST create allocation
 router.post('/', async (req, res) => {
-    const { resource_id, project_id, allocation_percent } = req.body;
+    const { resource_id, project_id, percentage } = req.body;
     try {
         const result = await pool.query(
-            `INSERT INTO allocations (resource_id, project_id, allocation_percent)
+            `INSERT INTO allocations (resource_id, project_id, percentage)
        VALUES ($1, $2, $3) RETURNING *`,
-            [resource_id, project_id, allocation_percent]
+            [resource_id, project_id, percentage]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -34,11 +34,11 @@ router.post('/', async (req, res) => {
 // PUT update allocation
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { allocation_percent } = req.body;
+    const { percentage } = req.body;
     try {
         const result = await pool.query(
-            `UPDATE allocations SET allocation_percent=$1 WHERE id=$2 RETURNING *`,
-            [allocation_percent, id]
+            `UPDATE allocations SET percentage=$1 WHERE id=$2 RETURNING *`,
+            [percentage, id]
         );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Allocation not found' });
         res.json(result.rows[0]);

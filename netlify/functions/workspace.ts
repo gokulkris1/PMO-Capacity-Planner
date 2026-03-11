@@ -163,6 +163,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     SELECT w.id, 'MAX' as plan, w.org_id FROM workspaces w
                     JOIN organizations o ON o.id = w.org_id WHERE o.slug = ${orgSlug} LIMIT 1
                 `;
+            } else if (orgSlug) {
+                wsRows = await sql`
+                    SELECT w.id, u.plan, w.org_id FROM workspaces w
+                    JOIN organizations o ON o.id = w.org_id
+                    JOIN users u ON u.org_id = w.org_id
+                    WHERE u.id = ${userId} AND o.slug = ${orgSlug}
+                    LIMIT 1
+                `;
             } else {
                 wsRows = await sql`
                     SELECT w.id, u.plan, w.org_id FROM workspaces w
@@ -222,27 +230,42 @@ export const handler: Handler = async (event: HandlerEvent) => {
             await sql`DELETE FROM projects WHERE workspace_id = ${wsId}`;
 
             for (const r of resources) {
-                await sql`
-                    INSERT INTO resources (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
-                    VALUES (${r.id}, ${wsId}, ${r.name}, ${r.role || ''}, ${r.type || 'Permanent'}, ${r.department || ''}, ${r.teamId || null},
-                            ${r.totalCapacity ?? 100}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null}, ${r.skills || []})
-                `;
+                try {
+                    await sql`
+                        INSERT INTO resources (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
+                        VALUES (${r.id}, ${wsId}, ${r.name}, ${r.role || ''}, ${r.type || 'Permanent'}, ${r.department || ''}, ${r.teamId || null},
+                                ${r.totalCapacity ?? 100}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null}, ${r.skills || []})
+                    `;
+                } catch (err: any) {
+                    console.error(`Failed to insert resource ${r.id}:`, err);
+                    throw new Error(`Resource insert failed for ${r.name}: ${err.message}`);
+                }
             }
 
             for (const p of projects) {
-                await sql`
-                    INSERT INTO projects (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-                    VALUES (${p.id}, ${wsId}, ${p.name}, ${p.status || 'Active'}, ${p.priority || 'Medium'}, ${p.description || ''},
-                            ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
-                `;
+                try {
+                    await sql`
+                        INSERT INTO projects (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
+                        VALUES (${p.id}, ${wsId}, ${p.name}, ${p.status || 'Active'}, ${p.priority || 'Medium'}, ${p.description || ''},
+                                ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
+                    `;
+                } catch (err: any) {
+                    console.error(`Failed to insert project ${p.id}:`, err);
+                    throw new Error(`Project insert failed for ${p.name}: ${err.message}`);
+                }
             }
 
             for (const a of allocations) {
                 if (!a.percentage || a.percentage <= 0) continue;
-                await sql`
-                    INSERT INTO allocations (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
-                    VALUES (${a.id}, ${wsId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
-                `;
+                try {
+                    await sql`
+                        INSERT INTO allocations (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
+                        VALUES (${a.id}, ${wsId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
+                    `;
+                } catch (err: any) {
+                    console.error(`Failed to insert allocation ${a.id}:`, err);
+                    throw new Error(`Allocation insert failed: ${err.message}`);
+                }
             }
 
             return ok({ success: true });
