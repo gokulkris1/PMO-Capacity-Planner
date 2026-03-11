@@ -279,7 +279,12 @@ const AppShell: React.FC = () => {
           return; // Don't sync junk data to the server
         }
 
-        const saveBody: any = { resources, projects, allocations: cleanAllocations };
+        // Audit fix: Proactive Deduplication (Deep Clean)
+        // Prevent duplicate IDs from ever reaching the server in case of local race conditions
+        const uniqueResources = Array.from(new Map(resources.map(r => [r.id, r])).values());
+        const uniqueProjects = Array.from(new Map(projects.map(p => [p.id, p])).values());
+
+        const saveBody: any = { resources: uniqueResources, projects: uniqueProjects, allocations: cleanAllocations };
         if (activeWorkspace?.id) saveBody.workspaceId = activeWorkspace.id;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -456,8 +461,8 @@ const AppShell: React.FC = () => {
       alert(`Plan limit reached. Your ${userPlan} plan allows a maximum of ${limits.maxUsers} resources. Please upgrade to add more.`);
       return;
     }
-    const newResources = data.map((d, i) => ({
-      id: `r-${Date.now()}-${i}`,
+    const newResources = data.map((d) => ({
+      id: `r-${crypto.randomUUID()}`,
       name: d.name || 'Unnamed Resource',
       role: d.role || '',
       type: d.type || 'Permanent' as any,
@@ -482,8 +487,8 @@ const AppShell: React.FC = () => {
       alert(`Plan limit reached. Your ${userPlan} plan allows a maximum of ${limits.maxProjects} projects. Please upgrade to add more.`);
       return;
     }
-    const newProjects = data.map((d, i) => ({
-      id: `p-${Date.now()}-${i}`,
+    const newProjects = data.map((d) => ({
+      id: `p-${crypto.randomUUID()}`,
       name: d.name || 'Unnamed Project',
       status: d.status || 'Planning' as any,
       priority: d.priority || 'Medium',
