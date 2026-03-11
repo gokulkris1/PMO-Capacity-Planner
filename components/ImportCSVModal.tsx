@@ -17,6 +17,7 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
     const [preview, setPreview] = useState<any[]>([]);
     const [error, setError] = useState<string>('');
     const [processedData, setProcessedData] = useState<{ resources: Resource[], projects: Project[], allocations: Allocation[] } | null>(null);
+    const [previewPage, setPreviewPage] = useState(0);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -184,9 +185,9 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
                     {preview.length > 0 && (
                         <div style={{ marginTop: '1rem' }}>
                             <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 600 }}>Preview ({preview.length} rows found):</div>
-                            <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                            <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                                 <table className="alloc-table" style={{ fontSize: '12px', width: '100%' }}>
-                                    <thead>
+                                    <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
                                         <tr>
                                             <th>Resource</th>
                                             <th>Project</th>
@@ -194,8 +195,8 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {preview.slice(0, 10).map((r, i) => (
-                                            <tr key={i}>
+                                        {preview.slice(previewPage * 20, (previewPage + 1) * 20).map((r, i) => (
+                                            <tr key={previewPage * 20 + i}>
                                                 <td>{r['Resource'] || '-'}</td>
                                                 <td>{r['Project'] || '-'}</td>
                                                 <td>{r['Allocation %'] || '-'}</td>
@@ -204,7 +205,27 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
                                     </tbody>
                                 </table>
                             </div>
-                            {preview.length > 10 && <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Showing first 10 rows.</div>}
+                            {preview.length > 20 && (
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center', justifyContent: 'center' }}>
+                                    <button 
+                                        onClick={() => setPreviewPage(Math.max(0, previewPage - 1))}
+                                        disabled={previewPage === 0}
+                                        style={{ padding: '4px 12px', fontSize: '12px', cursor: previewPage === 0 ? 'default' : 'pointer', opacity: previewPage === 0 ? 0.5 : 1 }}
+                                    >
+                                        ← Previous
+                                    </button>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                        Page {previewPage + 1} of {Math.ceil(preview.length / 20)} (Rows {previewPage * 20 + 1}-{Math.min((previewPage + 1) * 20, preview.length)})
+                                    </span>
+                                    <button 
+                                        onClick={() => setPreviewPage(Math.min(Math.ceil(preview.length / 20) - 1, previewPage + 1))}
+                                        disabled={previewPage >= Math.ceil(preview.length / 20) - 1}
+                                        style={{ padding: '4px 12px', fontSize: '12px', cursor: previewPage >= Math.ceil(preview.length / 20) - 1 ? 'default' : 'pointer', opacity: previewPage >= Math.ceil(preview.length / 20) - 1 ? 0.5 : 1 }}
+                                    >
+                                        Next →
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

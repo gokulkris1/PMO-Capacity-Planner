@@ -196,8 +196,10 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                                         className="form-input"
                                         style={{ marginTop: 8 }}
                                         value={customTeam}
-                                        onChange={e => setCustomTeam(e.target.value)}
-                                        placeholder="Enter custom team name"
+                                        onChange={e => setCustomTeam(e.target.value.substring(0, 50))}
+                                        placeholder="Enter custom team name (max 50 chars)"
+                                        maxLength={50}
+                                        title="Team names are limited to 50 characters"
                                     />
                                 )}
                             </div>

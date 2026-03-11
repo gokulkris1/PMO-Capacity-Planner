@@ -115,8 +115,15 @@ const AppShell: React.FC = () => {
   const [workspaceLogo, setWorkspaceLogo] = useState<string | null>(null);
 
   /* scenario state */
-  const [scenarioMode, setScenarioMode] = useState(false);
-  const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(null);
+  // Issue #32: Persist scenario mode across page reloads
+  const [scenarioMode, setScenarioMode] = useState(() => {
+    const saved = localStorage.getItem('pcp_scenario_mode');
+    return saved === 'true';
+  });
+  const [scenarioAllocations, setScenarioAllocations] = useState<Allocation[] | null>(() => {
+    const saved = localStorage.getItem('pcp_scenario_allocations');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   /* Theme state */
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
@@ -292,29 +299,63 @@ const AppShell: React.FC = () => {
         const targetSlug = overrideOrg || orgSlug;
         const saveUrl = targetSlug ? `/api/workspace?orgSlug=${encodeURIComponent(targetSlug)}` : '/api/workspace';
 
-        fetch(saveUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(saveBody)
-        }).then(async res => {
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            if (res.status === 403) {
-              alert('Save Failed (Limit Reached): ' + (data.error || 'You have exceeded your plan limits. Please upgrade.'));
-              setShowPricing(true);
-            } else if (res.status === 401) {
-              alert('Save Failed (Session Expired): Please log in again.');
-              logout();
-            } else if (res.status === 413) {
-              alert('Save Failed (Payload Too Large): Your workspace data exceeds the 5MB limit.');
-            } else {
-              alert(`Save Failed (${res.status}): ` + (data.error || 'The server encountered an issue while saving your changes.'));
+        // Issue #17 + #18: Exponential backoff retry + auto-token refresh
+        const doSave = async (currentToken: string, retryCount = 0, maxRetries = 3) => {
+          try {
+            const res = await fetch(saveUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+              body: JSON.stringify(saveBody)
+            });
+
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              
+              // Issue #18: Auto-retry on 401 with token refresh attempt
+              if (res.status === 401 && retryCount === 0) {
+                try {
+                  // Try refreshing the token from the server
+                  const refreshRes = await fetch('/api/auth?refresh=true', {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                  });
+                  const refreshData = await refreshRes.json().catch(() => ({}));
+                  
+                  if (refreshData.token) {
+                    localStorage.setItem('pcp_token', refreshData.token);
+                    // Retry save with fresh token
+                    return doSave(refreshData.token, retryCount + 1, maxRetries);
+                  }
+                } catch (e) {
+                  console.warn('Token refresh failed, logging out', e);
+                }
+                
+                alert('Save Failed (Session Expired): Please log in again.');
+                logout();
+              } else if (res.status === 403) {
+                alert('Save Failed (Limit Reached): ' + (data.error || 'You have exceeded your plan limits. Please upgrade.'));
+                setShowPricing(true);
+              } else if (res.status === 413) {
+                alert('Save Failed (Payload Too Large): Your workspace data exceeds the 5MB limit.');
+              } else {
+                alert(`Save Failed (${res.status}): ` + (data.error || 'The server encountered an issue while saving your changes.'));
+              }
             }
+          } catch (err: any) {
+            // Issue #17: Network error with exponential backoff retry
+            const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 8000); // Max 8s
+            
+            if (retryCount < maxRetries && err.message.includes('fetch')) {
+              console.warn(`Network sync error, retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`, err);
+              await new Promise(resolve => setTimeout(resolve, backoffDelay));
+              return doSave(currentToken, retryCount + 1, maxRetries);
+            }
+            
+            console.error('Network sync error after retries:', err);
+            alert('Save Failed (Network Error): Please check your internet connection. Your changes are currently only saved locally.');
           }
-        }).catch(err => {
-          console.error('Network sync error', err);
-          alert('Save Failed (Network Error): Please check your internet connection. Your changes are currently only saved locally.');
-        });
+        };
+
+        doSave(token);
       }, 1500);
     } else {
       // Demo users still save to local storage
@@ -323,6 +364,16 @@ const AppShell: React.FC = () => {
       localStorage.setItem('pcp_allocations', JSON.stringify(allocations));
     }
   }, [resources, projects, allocations, user?.id]);
+
+  // Issue #32: Persist scenario mode across page reloads
+  useEffect(() => {
+    localStorage.setItem('pcp_scenario_mode', String(scenarioMode));
+    if (scenarioAllocations) {
+      localStorage.setItem('pcp_scenario_allocations', JSON.stringify(scenarioAllocations));
+    } else {
+      localStorage.removeItem('pcp_scenario_allocations');
+    }
+  }, [scenarioMode, scenarioAllocations]);
 
 
   /* ── derived stats ──────────────────────────────────────── */
