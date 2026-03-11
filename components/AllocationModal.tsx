@@ -30,12 +30,14 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
     };
 
     const handleSave = () => {
+        let clamped = false;
         // Build slices and automatically clamp to project end date
         const builtSlices = slices.filter(s => s.percentage && s.percentage > 0).map(s => {
             let finalEndDate = s.endDate;
             if (project.endDate) {
                 if (!finalEndDate || finalEndDate > project.endDate) {
                     finalEndDate = project.endDate;
+                    clamped = true;
                 }
             }
             return {
@@ -47,6 +49,11 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
                 endDate: finalEndDate || undefined
             };
         });
+
+        if (clamped) {
+            alert(`Note: One or more allocation end dates were shortened to match the project's end date (${project.endDate}).`);
+        }
+
         onSave(builtSlices as Allocation[]);
     };
 

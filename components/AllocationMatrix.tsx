@@ -42,10 +42,14 @@ function isAllocActiveInRange(a: Allocation, range: { start: string; end: string
     const [sYearStr, sMonthStr] = range.start.split('-');
     const [eYearStr, eMonthStr] = range.end.split('-');
 
-    const sYear = parseInt(sYearStr);
-    const sMonth = Math.max(1, Math.min(12, parseInt(sMonthStr)));
-    const eYear = parseInt(eYearStr);
-    const eMonth = Math.max(1, Math.min(12, parseInt(eMonthStr)));
+    const sYear = parseInt(sYearStr, 10);
+    const sMonth = parseInt(sMonthStr, 10);
+    const eYear = parseInt(eYearStr, 10);
+    const eMonth = parseInt(eMonthStr, 10);
+
+    // Audit fix: Issue #21 (Date Parsing Safety)
+    if (isNaN(sYear) || isNaN(sMonth) || isNaN(eYear) || isNaN(eMonth)) return true;
+    if (sMonth < 1 || sMonth > 12 || eMonth < 1 || eMonth > 12) return true;
 
     const filterStart = new Date(sYear, sMonth - 1, 1);
     const filterEnd = new Date(eYear, eMonth, 0, 23, 59, 59);
@@ -80,7 +84,8 @@ const UtilBar: React.FC<{ pct: number }> = ({ pct }) => (
 
 // ── Avatar initials ──────────────────────────────────────────────────────────
 const Avatar: React.FC<{ name: string; type?: string }> = ({ name, type }) => {
-    const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    // Audit fix: Issue #23 (Resource Initials Break on Empty Names)
+    const initials = (name || '??').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const colors = {
         Permanent: { bg: 'var(--brand-50)', color: 'var(--brand-500)' },
         Contractor: { bg: 'var(--n-200)', color: 'var(--n-700)' },

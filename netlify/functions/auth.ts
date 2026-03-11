@@ -43,6 +43,16 @@ function generateOTP(): string {
 
 async function sendAuthOtp(sql: any, email: string, context: '2fa' | 'reset') {
     const cleanEmail = email.toLowerCase().trim();
+
+    // Audit fix: Issue #38 (OTP Rate Limiting)
+    const existing = await sql`SELECT expires_at FROM otps WHERE email = ${cleanEmail}`;
+    if (existing.length > 0) {
+        const lastSentAt = Number(existing[0].expires_at) - (15 * 60 * 1000);
+        if (Date.now() - lastSentAt < 60 * 1000) {
+            throw new Error('Please wait 60 seconds before requesting another code.');
+        }
+    }
+
     const otp = generateOTP();
     const expires = Date.now() + 15 * 60 * 1000;
     await sql`

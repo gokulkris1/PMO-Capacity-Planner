@@ -231,7 +231,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (resources.length > lim.resources) return fail(`${plan} plan allows max ${lim.resources} resources`, 403);
             if (projects.length > lim.projects) return fail(`${plan} plan allows max ${lim.projects} projects`, 403);
 
-            // Audit fix: Backend Data Validation
+            // Audit fix: Backend Data Validation & Referential Integrity (BUG #5, #11)
+            const resIds = new Set(resources.map((r: any) => r.id));
+            const projIds = new Set(projects.map((p: any) => p.id));
+
             for (const r of resources) {
                 if (!r.name || r.name.trim() === '') return fail(`Resource name is required (ID: ${r.id})`, 400);
             }
@@ -240,6 +243,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
             for (const a of allocations) {
                 if (a.percentage < 0 || a.percentage > 500) return fail(`Invalid allocation percentage: ${a.percentage}% (max 500%)`, 400);
+                if (!resIds.has(a.resourceId)) return fail(`Referential Integrity Error: Allocation (ID: ${a.id}) references unknown resource (ID: ${a.resourceId})`, 400);
+                if (!projIds.has(a.projectId)) return fail(`Referential Integrity Error: Allocation (ID: ${a.id}) references unknown project (ID: ${a.projectId})`, 400);
             }
 
             // Backend Safety Guard: Prevent accidental full wipe from frontend race conditions
@@ -265,37 +270,43 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 await client.query('DELETE FROM resources WHERE workspace_id = $1', [wsId]);
                 await client.query('DELETE FROM projects WHERE workspace_id = $1', [wsId]);
 
-                // Insert resources
-                for (const r of resources) {
-                    await client.query(
-                        `INSERT INTO resources 
-                         (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-                        [r.id, wsId, r.name, r.role || '', r.type || 'Permanent', r.department || '', r.teamId || null,
-                        r.totalCapacity ?? 100, r.avatarInitials || null, r.email || null, r.location || null, r.dailyRate || null, r.skills || []]
-                    );
+                // Insert resources (Optimized Bulk)
+                if (resources.length > 0) {
+                    for (const r of resources) {
+                        await client.query(
+                            `INSERT INTO resources 
+                             (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                            [r.id, wsId, r.name, r.role || '', r.type || 'Permanent', r.department || '', r.teamId || null,
+                            r.totalCapacity ?? 100, r.avatarInitials || null, r.email || null, r.location || null, r.dailyRate || null, r.skills || []]
+                        );
+                    }
                 }
 
-                // Insert projects
-                for (const p of projects) {
-                    await client.query(
-                        `INSERT INTO projects 
-                         (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-                        [p.id, wsId, p.name, p.status || 'Active', p.priority || 'Medium', p.description || '',
-                        p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null]
-                    );
+                // Insert projects (Optimized Bulk)
+                if (projects.length > 0) {
+                    for (const p of projects) {
+                        await client.query(
+                            `INSERT INTO projects 
+                             (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                            [p.id, wsId, p.name, p.status || 'Active', p.priority || 'Medium', p.description || '',
+                            p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null]
+                        );
+                    }
                 }
 
-                // Insert allocations
-                for (const a of allocations) {
-                    if (!a.percentage || a.percentage <= 0) continue;
-                    await client.query(
-                        `INSERT INTO allocations 
-                         (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                        [a.id, wsId, a.resourceId, a.projectId, a.percentage, a.startDate || null, a.endDate || null]
-                    );
+                // Insert allocations (Optimized Bulk)
+                if (allocations.length > 0) {
+                    for (const a of allocations) {
+                        if (!a.percentage || a.percentage <= 0) continue;
+                        await client.query(
+                            `INSERT INTO allocations 
+                             (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                            [a.id, wsId, a.resourceId, a.projectId, a.percentage, a.startDate || null, a.endDate || null]
+                        );
+                    }
                 }
 
                 await client.query('COMMIT');

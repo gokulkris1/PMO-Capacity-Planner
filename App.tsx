@@ -300,17 +300,20 @@ const AppShell: React.FC = () => {
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             if (res.status === 403) {
-              alert('Free Plan Limit Exceeded: ' + (data.error || 'You have exceeded your Free tier limits. Data will not be saved.'));
+              alert('Save Failed (Limit Reached): ' + (data.error || 'You have exceeded your plan limits. Please upgrade.'));
               setShowPricing(true);
+            } else if (res.status === 401) {
+              alert('Save Failed (Session Expired): Please log in again.');
+              logout();
+            } else if (res.status === 413) {
+              alert('Save Failed (Payload Too Large): Your workspace data exceeds the 5MB limit.');
             } else {
-              console.error('Failed to sync workspace:', data);
-              const msg = data.error || data.message || res.statusText || 'Unknown error';
-              alert(`Error: Failed to save your changes to the server. (${msg})`);
+              alert(`Save Failed (${res.status}): ` + (data.error || 'The server encountered an issue while saving your changes.'));
             }
           }
         }).catch(err => {
-          console.error('Sync failed', err);
-          alert('Error: Network failure while saving changes. Please check your connection.');
+          console.error('Network sync error', err);
+          alert('Save Failed (Network Error): Please check your internet connection. Your changes are currently only saved locally.');
         });
       }, 1500);
     } else {
@@ -532,9 +535,10 @@ const AppShell: React.FC = () => {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'capacity_allocations.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    a.href = url;
+    a.download = `pmo_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   /* ── render helpers ─────────────────────────────────────── */
@@ -555,6 +559,14 @@ const AppShell: React.FC = () => {
   if (isLoading) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-main)', fontFamily: 'Inter' }}>Loading...</div>;
   }
+
+  const handleLogout = () => {
+    setScenarioMode(false);
+    setScenarioAllocations(null);
+    logout();
+    navigate('/');
+    window.location.href = '/'; // Hard redirect to clear all router artifacts
+  };
 
   return (
     <div className="app-shell">
@@ -611,11 +623,7 @@ const AppShell: React.FC = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    logout();
-                    navigate('/');
-                    window.location.href = '/'; // Hard redirect to clear all router artifacts
-                  }}
+                  onClick={handleLogout}
                   title="Log out"
                   style={{ background: 'none', border: '1px solid var(--n-400)', borderRadius: 4, color: 'var(--n-600)', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
                   Out

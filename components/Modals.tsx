@@ -35,10 +35,25 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
     };
 
     useEffect(() => {
-        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
-        window.addEventListener('keydown', handleEsc);
-        modalRef.current?.querySelector('input')?.focus(); // Focus trap start
-        return () => window.removeEventListener('keydown', handleEsc);
+        const handleKeys = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') handleClose();
+            if (e.key === 'Tab') {
+                const focusable = modalRef.current?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') as NodeListOf<HTMLElement>;
+                if (!focusable || focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeys);
+        modalRef.current?.querySelector('input')?.focus();
+        return () => window.removeEventListener('keydown', handleKeys);
     }, [isDirty]);
 
     const handleResourceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,8 +99,9 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'resource_template.csv';
+        a.download = `resources_template.csv`;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (
@@ -140,11 +156,15 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                         <div className="form-row">
                             <div className="form-group">
                                 <label className="form-label">Full Name *</label>
-                                <input className="form-input" required value={form.name || ''} onChange={e => set('name', e.target.value)} placeholder="e.g. Jane Doe" />
+                                <input className="form-input" required value={form.name || ''}
+                                    onChange={e => set('name', e.target.value)} placeholder="e.g. John Doe" maxLength={100} />
                             </div>
+                        </div>
+                        <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">Role / Title</label>
-                                <input className="form-input" value={form.role || ''} onChange={e => set('role', e.target.value)} placeholder="e.g. Frontend Dev" />
+                                <label className="form-label">Primary Role</label>
+                                <input className="form-input" value={form.role || ''}
+                                    onChange={e => set('role', e.target.value)} placeholder="e.g. Senior Frontend Dev" maxLength={100} />
                             </div>
                         </div>
                         <div className="form-row">
@@ -262,10 +282,25 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     };
 
     useEffect(() => {
-        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
-        window.addEventListener('keydown', handleEsc);
+        const handleKeys = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') handleClose();
+            if (e.key === 'Tab') {
+                const focusable = modalRef.current?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') as NodeListOf<HTMLElement>;
+                if (!focusable || focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeys);
         modalRef.current?.querySelector('input')?.focus();
-        return () => window.removeEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleKeys);
     }, [isDirty]);
 
     const handleProjectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,7 +389,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                     >
                         <div className="form-group">
                             <label className="form-label">Project Name *</label>
-                            <input className="form-input" required value={form.name || ''} onChange={e => set('name', e.target.value)} placeholder="e.g. Project Apollo" />
+                            <input className="form-input" required value={form.name || ''}
+                                onChange={e => set('name', e.target.value)} placeholder="e.g. Project Apollo" maxLength={200} />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Description</label>
@@ -440,10 +476,25 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onCo
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', handleEsc);
+        const handleKeys = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+            if (e.key === 'Tab') {
+                const focusable = modalRef.current?.querySelectorAll('button, [tabindex]:not([tabindex="-1"])') as NodeListOf<HTMLElement>;
+                if (!focusable || focusable.length === 0) return;
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeys);
         modalRef.current?.querySelector('button')?.focus();
-        return () => window.removeEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleKeys);
     }, []);
 
     return (

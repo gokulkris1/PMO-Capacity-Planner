@@ -16,6 +16,7 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<any[]>([]);
     const [error, setError] = useState<string>('');
+    const [processedData, setProcessedData] = useState<{ resources: Resource[], projects: Project[], allocations: Allocation[] } | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -44,24 +45,47 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
         const newResources = [...currentResources];
         const newProjects = [...currentProjects];
         let newAllocations = [...currentAllocations];
-
         const generateId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
+        const skippedRows: number[] = [];
+        const requiredHeaders = {
+            resource: ['resource', 'resource name', 'name', 'individual', 'employee'],
+            project: ['project', 'project name', 'project title', 'initiative'],
+            allocation: ['allocation %', 'allocation', 'percentage', 'utilization', 'alloc %', 'fte %', 'util %']
+        };
+
+        // Check for missing required headers (BUG #9)
+        const sampleRow = preview[0];
+        const keys = Object.keys(sampleRow).map(k => k.trim().toLowerCase());
+        const missing = Object.entries(requiredHeaders).filter(([_, matches]) =>
+            !matches.some(m => keys.includes(m))
+        ).map(([name]) => name);
+
+        if (missing.length > 0) {
+            setError(`Missing required columns: ${missing.join(', ')}`);
+            return;
+        }
+
         preview.forEach((row, i) => {
-            // Flexible column matching to handle Excel whitespace
             const getCol = (keyMatches: string[]) => {
                 const foundKey = Object.keys(row).find(k => keyMatches.includes(k.trim().toLowerCase()));
                 return foundKey ? row[foundKey]?.trim() : '';
             };
 
-            const resName = getCol(['resource', 'resource name', 'name', 'individual', 'employee']);
-            const projName = getCol(['project', 'project name', 'project title', 'initiative']);
-            const percentStr = getCol(['allocation %', 'allocation', 'percentage', 'utilization', 'alloc %', 'fte %', 'util %']);
+            const resName = getCol(requiredHeaders.resource);
+            const projName = getCol(requiredHeaders.project);
+            const percentStr = getCol(requiredHeaders.allocation);
 
-            if (!resName || !projName || !percentStr) return; // Skip invalid rows
+            if (!resName || !projName || !percentStr) {
+                skippedRows.push(i + 1);
+                return;
+            }
 
             const percentage = parseInt(percentStr, 10);
-            if (isNaN(percentage)) return;
+            if (isNaN(percentage)) {
+                skippedRows.push(i + 1);
+                return;
+            }
 
             // Find or create resource
             let res = newResources.find(r => r.name.toLowerCase() === resName.toLowerCase());
@@ -115,7 +139,14 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
             }
         });
 
-        onConfirm(newResources, newProjects, newAllocations);
+        setProcessedData({ resources: newResources, projects: newProjects, allocations: newAllocations });
+
+        if (skippedRows.length > 0) {
+            setError(`Imported successfully, but ${skippedRows.length} rows were skipped due to malformed data (Rows: ${skippedRows.slice(0, 5).join(', ')}${skippedRows.length > 5 ? '...' : ''})`);
+        } else {
+            onConfirm(newResources, newProjects, newAllocations);
+            onClose();
+        }
     };
 
     return (
@@ -136,7 +167,19 @@ export const ImportCSVModal: React.FC<ImportCSVModalProps> = ({
                         <button className="btn btn-secondary" onClick={processFile} disabled={!file}>Preview Data</button>
                     </div>
 
-                    {error && <div style={{ color: '#ef4444', fontSize: '14px' }}>{error}</div>}
+                    {error && (
+                        <div style={{ padding: 12, background: '#fef2f2', color: '#b91c1c', borderRadius: 8, fontSize: 13, marginBottom: 16, border: '1px solid #fee2e2' }}>
+                            {error}
+                            {error.includes('skipped') && processedData && (
+                                <button
+                                    onClick={() => { onConfirm(processedData.resources, processedData.projects, processedData.allocations); onClose(); }}
+                                    style={{ display: 'block', marginTop: 8, background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    Proceed Anyway
+                                </button>
+                            )}
+                        </div>
+                    )}
 
                     {preview.length > 0 && (
                         <div style={{ marginTop: '1rem' }}>
