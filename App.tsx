@@ -185,6 +185,8 @@ const AppShell: React.FC = () => {
       setResources([]);
       setProjects([]);
       setAllocations([]);
+      setScenarioMode(false);
+      setScenarioAllocations(null);
 
       const token = localStorage.getItem('pcp_token');
 
@@ -262,8 +264,22 @@ const AppShell: React.FC = () => {
         const token = localStorage.getItem('pcp_token');
         if (!token) return;
 
-        // Use activeWorkspace.id if available so save goes to the right workspace
-        const saveBody: any = { resources, projects, allocations };
+        // Audit fix: Referential Integrity cleanup before save
+        const validResIds = new Set(resources.map(r => r.id));
+        const validProjIds = new Set(projects.map(p => p.id));
+        const cleanAllocations = allocations.filter(a => validResIds.has(a.resourceId) && validProjIds.has(a.projectId));
+
+        // Audit fix: Frontend Sync Validation
+        const invalidRes = resources.filter(r => !r.name || r.name.trim() === '');
+        const invalidProj = projects.filter(p => !p.name || p.name.trim() === '');
+        const invalidAlloc = cleanAllocations.filter(a => a.percentage < 0 || a.percentage > 500);
+
+        if (invalidRes.length > 0 || invalidProj.length > 0 || invalidAlloc.length > 0) {
+          console.warn('Sync blocked: local state has validation errors', { invalidRes, invalidProj, invalidAlloc });
+          return; // Don't sync junk data to the server
+        }
+
+        const saveBody: any = { resources, projects, allocations: cleanAllocations };
         if (activeWorkspace?.id) saveBody.workspaceId = activeWorkspace.id;
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -484,9 +500,18 @@ const AppShell: React.FC = () => {
 
   /* ── bulk import ────────────────────────────────────────── */
   const handleBulkImport = (newRes: Resource[], newProj: Project[], newAlloc: Allocation[]) => {
-    setResources(newRes);
-    setProjects(newProj);
-    setAllocations(newAlloc);
+    // Audit fix: Merge instead of overwrite
+    setResources(prev => {
+      const existingIds = new Set(prev.map(r => r.id));
+      const filteredNew = newRes.filter(r => !existingIds.has(r.id));
+      return [...prev, ...filteredNew];
+    });
+    setProjects(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const filteredNew = newProj.filter(p => !existingIds.has(p.id));
+      return [...prev, ...filteredNew];
+    });
+    setAllocations(prev => [...prev, ...newAlloc]); // Allocations are usually fresh associations
     setModal({ type: 'none' });
   };
 

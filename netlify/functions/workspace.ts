@@ -1,5 +1,5 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
+import { neon, Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
@@ -20,6 +20,13 @@ const getDb = () => neon(
     process.env.NETLIFY_DATABASE_URL ||
     process.env.NEON_DATABASE_URL || ''
 );
+
+const getPool = () => new Pool({
+    connectionString:
+        process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
+        process.env.NETLIFY_DATABASE_URL ||
+        process.env.NEON_DATABASE_URL || ''
+});
 
 export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
@@ -212,6 +219,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (resources.length > lim.resources) return fail(`${plan} plan allows max ${lim.resources} resources`, 403);
             if (projects.length > lim.projects) return fail(`${plan} plan allows max ${lim.projects} projects`, 403);
 
+            // Audit fix: Backend Data Validation
+            for (const r of resources) {
+                if (!r.name || r.name.trim() === '') return fail(`Resource name is required (ID: ${r.id})`, 400);
+            }
+            for (const p of projects) {
+                if (!p.name || p.name.trim() === '') return fail(`Project name is required (ID: ${p.id})`, 400);
+            }
+            for (const a of allocations) {
+                if (a.percentage < 0 || a.percentage > 500) return fail(`Invalid allocation percentage: ${a.percentage}% (max 500%)`, 400);
+            }
+
             // Backend Safety Guard: Prevent accidental full wipe from frontend race conditions
             if (!forceWipe && resources.length === 0 && projects.length === 0) {
                 const existingDb = await sql`
@@ -224,51 +242,60 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 }
             }
 
-            // Clear + re-insert (transactional save)
-            await sql`DELETE FROM allocations WHERE workspace_id = ${wsId}`;
-            await sql`DELETE FROM resources WHERE workspace_id = ${wsId}`;
-            await sql`DELETE FROM projects WHERE workspace_id = ${wsId}`;
+            // Atomic Transaction Save using Pool
+            const pool = getPool();
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
 
-            for (const r of resources) {
-                try {
-                    await sql`
-                        INSERT INTO resources (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
-                        VALUES (${r.id}, ${wsId}, ${r.name}, ${r.role || ''}, ${r.type || 'Permanent'}, ${r.department || ''}, ${r.teamId || null},
-                                ${r.totalCapacity ?? 100}, ${r.avatarInitials || null}, ${r.email || null}, ${r.location || null}, ${r.dailyRate || null}, ${r.skills || []})
-                    `;
-                } catch (err: any) {
-                    console.error(`Failed to insert resource ${r.id}:`, err);
-                    throw new Error(`Resource insert failed for ${r.name}: ${err.message}`);
+                // Clear existing
+                await client.query('DELETE FROM allocations WHERE workspace_id = $1', [wsId]);
+                await client.query('DELETE FROM resources WHERE workspace_id = $1', [wsId]);
+                await client.query('DELETE FROM projects WHERE workspace_id = $1', [wsId]);
+
+                // Insert resources
+                for (const r of resources) {
+                    await client.query(
+                        `INSERT INTO resources 
+                         (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                        [r.id, wsId, r.name, r.role || '', r.type || 'Permanent', r.department || '', r.teamId || null,
+                        r.totalCapacity ?? 100, r.avatarInitials || null, r.email || null, r.location || null, r.dailyRate || null, r.skills || []]
+                    );
                 }
-            }
 
-            for (const p of projects) {
-                try {
-                    await sql`
-                        INSERT INTO projects (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-                        VALUES (${p.id}, ${wsId}, ${p.name}, ${p.status || 'Active'}, ${p.priority || 'Medium'}, ${p.description || ''},
-                                ${p.startDate || null}, ${p.endDate || null}, ${p.clientName || null}, ${p.budget || null}, ${p.color || null})
-                    `;
-                } catch (err: any) {
-                    console.error(`Failed to insert project ${p.id}:`, err);
-                    throw new Error(`Project insert failed for ${p.name}: ${err.message}`);
+                // Insert projects
+                for (const p of projects) {
+                    await client.query(
+                        `INSERT INTO projects 
+                         (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                        [p.id, wsId, p.name, p.status || 'Active', p.priority || 'Medium', p.description || '',
+                        p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null]
+                    );
                 }
-            }
 
-            for (const a of allocations) {
-                if (!a.percentage || a.percentage <= 0) continue;
-                try {
-                    await sql`
-                        INSERT INTO allocations (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
-                        VALUES (${a.id}, ${wsId}, ${a.resourceId}, ${a.projectId}, ${a.percentage}, ${a.startDate || null}, ${a.endDate || null})
-                    `;
-                } catch (err: any) {
-                    console.error(`Failed to insert allocation ${a.id}:`, err);
-                    throw new Error(`Allocation insert failed: ${err.message}`);
+                // Insert allocations
+                for (const a of allocations) {
+                    if (!a.percentage || a.percentage <= 0) continue;
+                    await client.query(
+                        `INSERT INTO allocations 
+                         (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [a.id, wsId, a.resourceId, a.projectId, a.percentage, a.startDate || null, a.endDate || null]
+                    );
                 }
-            }
 
-            return ok({ success: true });
+                await client.query('COMMIT');
+                return ok({ success: true });
+            } catch (err: any) {
+                await client.query('ROLLBACK');
+                console.error(`Save Transaction Failed:`, err);
+                return fail(`Save failed: ${err.message}`, 500);
+            } finally {
+                client.release();
+                await pool.end();
+            }
         } catch (e: any) {
             console.error(e);
             return fail('Save failed: ' + e.message, 500);
