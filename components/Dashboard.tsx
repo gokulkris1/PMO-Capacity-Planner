@@ -7,6 +7,8 @@ import { CapacityChart } from './CapacityChart';
 import { Heatmap } from './Heatmap';
 import { RiskScanner } from './RiskScanner';
 import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getRollingQuarters } from '../utils/quarters';
+import { quarterSummary } from '../utils/craftEngine';
 
 interface Props {
     resources: Resource[];
@@ -53,7 +55,11 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
         const avgUtil = resources.length ? Math.round(totalPct / resources.length) : 0;
         const now = new Date();
         const totalFte = liveAllocations.filter(a => isAllocActiveOn(a, now)).reduce((s, a) => s + a.percentage, 0) / 100;
-        return { totalResources, activeProjects, overAllocated, underAllocated, avgUtil, totalFte };
+        // Real outlook instead of a hard-coded trend: compare the next quarter with the current one
+        const [q1, q2] = getRollingQuarters(new Date(), 2);
+        const s1 = quarterSummary(q1, resources, projects, liveAllocations);
+        const s2 = quarterSummary(q2, resources, projects, liveAllocations);
+        return { totalResources, activeProjects, overAllocated, underAllocated, avgUtil, totalFte, q1Label: q1.label, q2Label: q2.label, q1Util: s1.avgUtil, q2Util: s2.avgUtil, unstaffed: s1.unstaffedFte };
     }, [resources, projects, liveAllocations]);
 
     // resource util breakdown for donut-like summary
@@ -94,8 +100,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                     icon="📊"
                     iconBg="#DEEBFF"
                     glowColor="#0052CC"
-                    trend="+2.4% vs last month"
-                    trendType="up"
+                    trend={`${stats.q1Label} ${stats.q1Util}% → ${stats.q2Label} ${stats.q2Util}%`}
+                    trendType={stats.q2Util >= stats.q1Util ? 'up' : 'warn'}
                 />
                 <StatCard
                     label="Active Projects"
@@ -103,8 +109,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                     icon="🚀"
                     iconBg="#DEEBFF"
                     glowColor="#0065FF"
-                    trend={`${projects.length} total`}
-                    trendType="neu"
+                    trend={stats.unstaffed > 0 ? `${stats.unstaffed.toFixed(1)} FTE unstaffed in ${stats.q1Label}` : `${projects.length} total · demand staffed`}
+                    trendType={stats.unstaffed > 0 ? 'warn' : 'neu'}
                 />
                 <StatCard
                     label="Over Allocated"

@@ -30,7 +30,45 @@ export type ViewTab =
   | 'by-team'
   | 'by-tribe'
   | 'what-if'
-  | 'qbr';
+  | 'qbr'
+  | 'crafts'
+  | 'demand'
+  | 'marketplace'
+  | 'utilisation'
+  | 'integrations';
+
+/* ═══════════════════════════════════════════════════════════════
+   PMO Crafts — "above the table" (primary, reported craft) and
+   "below the table" (secondary crafts a person can also serve)
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface Craft {
+  id: string;
+  name: string;
+  short: string;      // 2–4 letter chip label, e.g. 'PM', 'SM'
+  color: string;
+  description?: string;
+}
+
+/** 1 = can assist, 2 = can own with support, 3 = can own independently */
+export type CraftProficiency = 1 | 2 | 3;
+
+export interface SecondaryCraft {
+  craftId: string;
+  proficiency: CraftProficiency;
+  /** Max share of a person's capacity they are willing/able to give to this craft (default 40) */
+  maxPct?: number;
+}
+
+export type ProjectStage = 'Pipeline' | 'Initiated' | 'Mobilising' | 'In Flight' | 'Closing';
+
+/** Anticipated need for a craft on a project in a given quarter, in FTE (1.0 = one full person) */
+export interface CraftDemand {
+  quarterKey: string;   // e.g. '2026-Q4'
+  craftId: string;
+  fte: number;
+  note?: string;
+}
 
 export interface Team {
   id: string;
@@ -52,6 +90,14 @@ export interface Resource {
   email?: string;
   location?: string;
   dailyRate?: number; // optional cost per day in EUR/USD
+  /** Above-the-table craft: the role the person is hired and reported for */
+  primaryCraft?: string;
+  /** Below-the-table crafts: what else the person can credibly contribute */
+  secondaryCrafts?: SecondaryCraft[];
+  /** Tribes the person has history with (used to rank marketplace matches) */
+  tribeAffinity?: string[];
+  /** Utilisation target for this person (default 100) */
+  targetUtil?: number;
 }
 
 export interface Project {
@@ -63,8 +109,13 @@ export interface Project {
   startDate?: string; // ISO date string
   endDate?: string;   // ISO date string
   budget?: number;
-  clientName?: string;
+  clientName?: string; // used as the Tribe / owner name across the app
   color?: string;
+  stage?: ProjectStage;
+  initiatedOn?: string;     // ISO date the project was initiated / entered the pipeline
+  craftDemand?: CraftDemand[];
+  jiraKey?: string;         // linked Jira project key
+  planviewId?: string;      // linked Planview external id
 }
 
 export interface Allocation {
@@ -75,6 +126,10 @@ export interface Allocation {
   startDate?: string;
   endDate?: string;
   notes?: string;
+  /** Craft the person performs on this project. Omitted = their primary (above-the-table) craft */
+  craftId?: string;
+  /** Where this allocation came from */
+  source?: 'manual' | 'marketplace' | 'planview' | 'jira';
 }
 
 export interface WhatIfScenario {

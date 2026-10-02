@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Resource, Project, Allocation } from '../types';
+import { PMO_CRAFTS } from '../constants';
 
 interface AllocationModalProps {
     resource: Resource;
@@ -12,8 +13,13 @@ interface AllocationModalProps {
 export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, project, allocations, onSave, onClose }) => {
     // If no allocations exist yet, start with a 0% entry
     const [slices, setSlices] = useState<Partial<Allocation>[]>(
-        allocations.length > 0 ? allocations : [{ percentage: 0, startDate: '', endDate: '' }]
+        allocations.length > 0 ? allocations : [{ percentage: 0, startDate: '', endDate: '', craftId: resource.primaryCraft }]
     );
+    const craftOptions = [
+        ...(resource.primaryCraft ? [{ id: resource.primaryCraft, label: `${PMO_CRAFTS.find(c => c.id === resource.primaryCraft)?.name || resource.primaryCraft} (above the table)` }] : []),
+        ...(resource.secondaryCrafts || []).map(s => ({ id: s.craftId, label: `${PMO_CRAFTS.find(c => c.id === s.craftId)?.name || s.craftId} (below the table · L${s.proficiency})` })),
+    ];
+    const otherCrafts = PMO_CRAFTS.filter(c => !craftOptions.some(o => o.id === c.id));
 
     const updateSlice = (idx: number, key: string, value: any) => {
         const newSlices = [...slices];
@@ -21,7 +27,7 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
         setSlices(newSlices);
     };
 
-    const addSlice = () => setSlices([...slices, { percentage: 0, startDate: '', endDate: '' }]);
+    const addSlice = () => setSlices([...slices, { percentage: 0, startDate: '', endDate: '', craftId: resource.primaryCraft }]);
 
     const removeSlice = (idx: number) => {
         const newSlices = [...slices];
@@ -46,7 +52,9 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
                 projectId: project.id,
                 percentage: s.percentage!,
                 startDate: s.startDate || undefined,
-                endDate: finalEndDate || undefined
+                endDate: finalEndDate || undefined,
+                craftId: s.craftId || resource.primaryCraft || undefined,
+                source: s.source || 'manual',
             };
         });
 
@@ -67,7 +75,15 @@ export const AllocationModal: React.FC<AllocationModalProps> = ({ resource, proj
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {slices.map((slice, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                        <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#f8fafc', padding: 12, borderRadius: 8, flexWrap: 'wrap' }}>
+                            <div style={{ flexBasis: '100%' }}>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Craft performed on this project</label>
+                                <select className="form-select" value={slice.craftId || ''} onChange={e => updateSlice(i, 'craftId', e.target.value || undefined)}>
+                                    {craftOptions.length === 0 && <option value="">— no craft set on this person —</option>}
+                                    {craftOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                                    {otherCrafts.length > 0 && <optgroup label="Other (not declared on this person)">{otherCrafts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>}
+                                </select>
+                            </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>% Allocated</label>
                                 <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0 8px', overflow: 'hidden' }}>

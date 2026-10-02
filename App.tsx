@@ -2,7 +2,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import './index.css';
 
-import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus, ResourceType } from './types';
+import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus, ResourceType, CraftDemand } from './types';
+import { getRollingQuarters, Quarter } from './utils/quarters';
+import { DemandLine, MatchSuggestion } from './utils/craftEngine';
+import { CraftProfilesView } from './components/crafts/CraftProfilesView';
+import { DemandRoadmapView } from './components/crafts/DemandRoadmapView';
+import { SquadMarketplaceView } from './components/crafts/SquadMarketplaceView';
+import { UtilisationView } from './components/crafts/UtilisationView';
+import { IntegrationsHub } from './components/integrations/IntegrationsHub';
 import { MOCK_RESOURCES, MOCK_PROJECTS, MOCK_ALLOCATIONS, TEAMS, PLAN_LIMITS } from './constants';
 import { getCapacityInsights } from './services/geminiService';
 
@@ -16,7 +23,6 @@ import { TribeView } from './components/TribeView';
 import { WhatIfPanel } from './components/WhatIfPanel';
 import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { AllocationModal } from './components/AllocationModal';
-import { JiraImportModal } from './components/JiraImportModal';
 import { TourOverlay } from './components/TourOverlay';
 import { useAuth, canWrite } from './context/AuthContext';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher';
@@ -32,7 +38,7 @@ import { SettingsHub } from './components/SettingsHub';
 import { DirectoryProfile } from './components/DirectoryProfile';
 import { QBRPlanner } from './components/qbr/QBRPlanner';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'public';
 
 /* ── helpers ──────────────────────────────────────────────── */
@@ -67,8 +73,13 @@ const NAV_ITEMS: { id: ViewTab; label: string; icon: string; section?: string }[
   { id: 'by-resource', label: 'By Individual', icon: '👤' },
   { id: 'by-skills', label: 'By Skills', icon: '🧩' },
   { id: 'by-team', label: 'By Team', icon: '👥' },
+  { id: 'utilisation', label: 'Utilisation Outlook', icon: '🎯', section: 'PMO Crafts' },
+  { id: 'crafts', label: 'Craft Profiles', icon: '🎓', section: 'PMO Crafts' },
+  { id: 'demand', label: 'Demand Roadmap', icon: '🗺️', section: 'PMO Crafts' },
+  { id: 'marketplace', label: 'Squad Marketplace', icon: '🤝', section: 'PMO Crafts' },
   { id: 'what-if', label: 'What-If Scenarios', icon: '🔬', section: 'Planning' },
-  { id: 'qbr', label: 'QBR Planning', icon: '📋', section: 'Planning' },
+  { id: 'qbr', label: 'QBR Sprint Planning', icon: '📋', section: 'Planning' },
+  { id: 'integrations', label: 'Jira & Planview', icon: '🔌', section: 'Integrations' },
 ];
 
 /* ── TYPES for modal state ─────────────────────────────────── */
@@ -82,6 +93,9 @@ type ModalState =
   | { type: 'deleteProject'; project: Project }
   | { type: 'importCSV' }
   | { type: 'login' };
+
+/** Quarter window for the rolling plan: QBR1 = current calendar quarter. */
+const ROLLING_QUARTERS: Quarter[] = getRollingQuarters(new Date(), 4);
 
 /* ─────────────────────────────────────────────────────────── */
 const AppShell: React.FC = () => {
@@ -378,6 +392,7 @@ const AppShell: React.FC = () => {
 
   /* ── derived stats ──────────────────────────────────────── */
   const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
+  const canWriteData = !!user && canWrite(user, workspaceRole);
 
   const overAllocCount = useMemo(() =>
     resources.filter(r => getUtil(liveAlloc, r.id) > 100).length
@@ -506,6 +521,53 @@ const AppShell: React.FC = () => {
     setAllocations(prev => prev.filter(a => a.projectId !== id));
   };
 
+  /* ── craft planning handlers ────────────────────────────── */
+  const updateProjectDemand = useCallback((projectId: string, craftDemand: CraftDemand[]) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, craftDemand } : p));
+  }, []);
+
+  const linkProject = useCallback((projectId: string, link: { jiraKey?: string; planviewId?: string }) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...link } : p));
+  }, []);
+
+  /** Marketplace: book a suggested person onto a project for one quarter, clipped to the project window. */
+  const proposeAllocation = useCallback((m: MatchSuggestion, line: DemandLine, quarter: Quarter) => {
+    const project = projects.find(p => p.id === line.projectId);
+    const qStart = quarter.start.toISOString().slice(0, 10);
+    const qEnd = quarter.end.toISOString().slice(0, 10);
+    const startDate = project?.startDate && project.startDate > qStart ? project.startDate : qStart;
+    const endDate = project?.endDate && project.endDate < qEnd ? project.endDate : qEnd;
+    const who = resources.find(r => r.id === m.resourceId)?.name || 'this person';
+    if (!confirm(`Propose ${who} at ${m.proposedPct}% on ${line.projectName} (${quarter.label}, ${startDate} → ${endDate}) as ${m.via === 'primary' ? 'their above-the-table craft' : 'a below-the-table craft'}?`)) return;
+    const next: Allocation = {
+      id: `a-${crypto.randomUUID()}`, resourceId: m.resourceId, projectId: line.projectId,
+      percentage: m.proposedPct, startDate, endDate, craftId: m.craftId, source: 'marketplace',
+      notes: `Marketplace match (score ${m.score})`,
+    };
+    const setTarget = scenarioMode
+      ? (fn: (a: Allocation[]) => Allocation[]) => setScenarioAllocations(prev => fn(prev ?? allocations))
+      : (fn: (a: Allocation[]) => Allocation[]) => setAllocations(fn);
+    setTarget(prev => [...prev, next]);
+  }, [projects, resources, scenarioMode, allocations]);
+
+  const importProjects = useCallback((incoming: Project[]) => {
+    const limits = PLAN_LIMITS[user?.plan || 'BASIC'];
+    if (projects.length + incoming.length > limits.maxProjects) {
+      alert(`Plan limit reached. Your ${user?.plan || 'BASIC'} plan allows a maximum of ${limits.maxProjects} projects.`);
+      return;
+    }
+    setProjects(prev => [...incoming.filter(p => !prev.some(x => x.id === p.id)), ...prev]);
+  }, [projects.length, user?.plan]);
+
+  const importAllocations = useCallback((incoming: Allocation[]) => {
+    setAllocations(prev => {
+      // Replace any earlier Planview import for the same person/project pair so re-imports do not stack
+      const keys = new Set(incoming.map(a => `${a.resourceId}|${a.projectId}`));
+      const kept = prev.filter(a => !(a.source === 'planview' && keys.has(`${a.resourceId}|${a.projectId}`)));
+      return [...kept, ...incoming];
+    });
+  }, []);
+
   /* ── bulk import CSV modals ─────────────────────────────── */
   const bulkSaveResources = (data: Partial<Resource>[]) => {
     if (!data.length) return;
@@ -602,7 +664,12 @@ const AppShell: React.FC = () => {
     'by-skills': { title: 'By Skills', subtitle: 'Group resources by skills and spot utilization by capability' },
     'by-team': { title: 'By Team', subtitle: 'Team-level allocation heatmap' },
     'what-if': { title: 'What-If Scenarios', subtitle: 'Explore hypothetical reallocation scenarios' },
-    'qbr': { title: 'QBR Planning', subtitle: 'Quarterly Business Review — resource booking & horse trading' },
+    'qbr': { title: 'QBR Sprint Planning', subtitle: 'Sprint-level bookings, squads and OKRs for a quarter' },
+    'utilisation': { title: 'Utilisation Outlook', subtitle: `Are we on track for a fully used PMO squad across ${ROLLING_QUARTERS[0].label}–${ROLLING_QUARTERS[ROLLING_QUARTERS.length - 1].label}?` },
+    'crafts': { title: 'Craft Profiles', subtitle: 'Above-the-table and below-the-table crafts per individual, with their four-quarter load' },
+    'demand': { title: 'Demand Roadmap', subtitle: 'Project requirement roadmap: anticipated craft demand per quarter vs. what is staffed' },
+    'marketplace': { title: 'Squad Marketplace', subtitle: 'Showcase the PMO squad to tribes and projects; match open demand to free capacity' },
+    'integrations': { title: 'Jira & Planview', subtitle: 'End-to-end visibility: connect delivery tooling, calibrate story points, import plans' },
   };
 
   const current = PAGE_TITLES[activeTab];
@@ -1077,12 +1144,58 @@ const AppShell: React.FC = () => {
                 />
               )}
 
+              {activeTab === 'utilisation' && (
+                <UtilisationView resources={resources} projects={projects} allocations={liveAlloc} quarters={ROLLING_QUARTERS} teams={effectiveTeams} onGoTo={t => setActiveTab(t)} />
+              )}
+
+              {activeTab === 'crafts' && (
+                <CraftProfilesView resources={resources} projects={projects} allocations={liveAlloc} quarters={ROLLING_QUARTERS} onEditResource={(res) => authGate(() => setModal({ type: 'editResource', resource: res }), true)} />
+              )}
+
+              {activeTab === 'demand' && (
+                <DemandRoadmapView
+                  resources={resources} projects={projects} allocations={liveAlloc} quarters={ROLLING_QUARTERS}
+                  canWrite={!user || canWriteData}
+                  onAddProject={() => authGate(() => setModal({ type: 'addProject' }), true)}
+                  onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
+                  onUpdateDemand={(pid, d) => authGate(() => updateProjectDemand(pid, d), true)}
+                />
+              )}
+
+              {activeTab === 'marketplace' && (
+                <SquadMarketplaceView resources={resources} projects={projects} allocations={liveAlloc} quarters={ROLLING_QUARTERS} canWrite={!user || canWriteData} onPropose={(m, l, q) => authGate(() => proposeAllocation(m, l, q), true)} />
+              )}
+
+              {activeTab === 'integrations' && (
+                user && activeWorkspace ? (
+                  <IntegrationsHub
+                    token={localStorage.getItem('pcp_token') || ''} wsId={activeWorkspace.id} canWrite={canWriteData}
+                    resources={resources} projects={projects} allocations={allocations} quarters={ROLLING_QUARTERS}
+                    onImportProjects={importProjects} onImportAllocations={importAllocations} onLinkProject={linkProject}
+                  />
+                ) : (
+                  <div className="empty-state page-enter">
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>🔌</div>
+                    <h3>Log in to connect Jira and Planview</h3>
+                    <p>Integration credentials are stored encrypted per workspace, so this page needs an authenticated workspace.</p>
+                    <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModal({ type: 'login' })}>Log in</button>
+                  </div>
+                )
+              )}
+
               {activeTab === 'qbr' && user && activeWorkspace && (
                 <QBRPlanner
                   token={localStorage.getItem('pcp_token') || ''}
                   wsId={activeWorkspace.id}
                   orgId={activeWorkspace.org_id}
                 />
+              )}
+              {activeTab === 'qbr' && !(user && activeWorkspace) && (
+                <div className="empty-state page-enter">
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+                  <h3>Log in to use sprint-level QBR planning</h3>
+                  <p>The quarter-level plan (Utilisation Outlook, Demand Roadmap, Marketplace) works in demo mode; sprint bookings are stored per workspace.</p>
+                </div>
               )}
             </>
           )}
@@ -1125,11 +1238,6 @@ const AppShell: React.FC = () => {
       {
         modal.type === 'addProject' && (
           <ProjectModal onSave={saveProject} onBulkSave={bulkSaveProjects} onClose={() => setModal({ type: 'none' })} />
-        )
-      }
-      {
-        modal.type === 'syncJira' && (
-          <JiraImportModal onClose={() => setModal({ type: 'none' })} />
         )
       }
       {

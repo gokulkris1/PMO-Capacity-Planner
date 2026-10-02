@@ -2,6 +2,9 @@
 import { Resource, Project, Allocation } from "../types";
 
 import { User, WorkspaceInfo, WorkspaceRole } from "../context/AuthContext";
+import { CRAFT_BY_ID } from "../constants";
+import { getRollingQuarters } from "../utils/quarters";
+import { quarterSummary, demandLines } from "../utils/craftEngine";
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 
@@ -20,8 +23,18 @@ function buildSystemPrompt(
       const p = projects.find(pr => pr.id === a.projectId);
       return p ? `${p.name}(${a.percentage}%)` : null;
     }).filter(Boolean).join(', ');
-    return `  - ${r.name} | Dept: ${r.department} | Role: ${r.role} | Utilisation: ${totalPct}%${totalPct > 100 ? ' ⚠️ OVER' : totalPct < 50 ? ' (under-used)' : ''} | Projects: ${projectNames || 'unassigned'}`;
+    const craft = (id?: string) => (id && CRAFT_BY_ID[id]?.name) || id || 'n/a';
+    const below = (r.secondaryCrafts || []).map(sc => `${craft(sc.craftId)} L${sc.proficiency}`).join('/') || 'none';
+    return `  - ${r.name} | Dept: ${r.department} | Role: ${r.role} | Above-the-table craft: ${craft(r.primaryCraft)} | Below-the-table: ${below} | Utilisation: ${totalPct}%${totalPct > 100 ? ' ⚠️ OVER' : totalPct < 50 ? ' (under-used)' : ''} | Projects: ${projectNames || 'unassigned'}`;
   }).join('\n');
+
+  const quarters = getRollingQuarters(new Date(), 4);
+  const outlook = quarters.map(q => {
+    const s = quarterSummary(q, resources, projects, allocations);
+    return `  - ${q.label} (${q.name}): ${s.avgUtil}% utilised, bench ${s.benchFte} FTE, below-the-table ${s.belowTableFte} FTE, demand ${s.demandFte} FTE of which ${s.unstaffedFte} unstaffed`;
+  }).join('\n');
+  const openDemand = demandLines(projects, resources, allocations, quarters).filter(l => l.gapFte > 0.05)
+    .map(l => `  - ${l.projectName} (${l.tribe || 'no tribe'}) needs ${l.gapFte} FTE more ${(CRAFT_BY_ID[l.craftId]?.name) || l.craftId} in ${quarters.find(q => q.key === l.quarterKey)?.label}`).join('\n');
 
   const projectSummary = projects.map(p => {
     const pAllocs = allocations.filter(a => a.projectId === p.id);
@@ -54,6 +67,12 @@ ${resourceSummary || '  (No resources yet)'}
 PROJECTS:
 ${projectSummary || '  (No projects yet)'}
 
+FOUR-QUARTER OUTLOOK (QBR1 = current quarter; target is 100% utilisation of the PMO squad):
+${outlook}
+
+OPEN CRAFT DEMAND (unstaffed project requirements):
+${openDemand || '  (none)'}
+
 BURN & RISK METRICS:
 - Over-allocated Risks: ${overAllocated.length} individuals (${overAllocated.map(r => r.name).join(', ') || 'none'})
 - Bench / Unutilized: ${unassigned.length} individuals (${unassigned.map(r => r.name).join(', ') || 'none'})
@@ -61,7 +80,7 @@ BURN & RISK METRICS:
 🎯 YOUR DIRECTIVES:
 1. DELIVER HARD TRUTHS: Be direct, analytical, and executive. Do not use fluff. Address the user directly by their name occasionally.
 2. ROLE AWARENESS: ${roleDirectives}
-3. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching roles/departments.
+3. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching above-the-table or below-the-table crafts. When demand is unstaffed, propose a below-the-table match before suggesting external hires.
 4. ALIGN WITH PRIORITIES: Call out strategic misalignment if low-priority projects consume critical resources.
 5. FORMATTING: Use Markdown flawlessly. Use *Bold* for names and projects. Use clear headers.
 

@@ -28,6 +28,28 @@ const getPool = () => new Pool({
         process.env.NEON_DATABASE_URL || ''
 });
 
+/**
+ * Craft-planning columns (see scripts/migrate_crafts.sql). Applied once per Lambda
+ * cold start; every statement is idempotent so this is safe to run repeatedly.
+ */
+let schemaReady = false;
+async function ensureCraftSchema(sql: ReturnType<typeof neon>) {
+    if (schemaReady) return;
+    try {
+        await sql`ALTER TABLE resources ADD COLUMN IF NOT EXISTS craft_profile JSONB DEFAULT '{}'::jsonb`;
+        await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS stage TEXT`;
+        await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS initiated_on DATE`;
+        await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS craft_demand JSONB DEFAULT '[]'::jsonb`;
+        await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS jira_key TEXT`;
+        await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS planview_id TEXT`;
+        await sql`ALTER TABLE allocations ADD COLUMN IF NOT EXISTS craft_id TEXT`;
+        await sql`ALTER TABLE allocations ADD COLUMN IF NOT EXISTS source TEXT`;
+        schemaReady = true;
+    } catch (e: any) {
+        console.warn('[workspace] craft schema upgrade skipped:', e.message);
+    }
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
@@ -46,6 +68,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     let orgSlug = event.queryStringParameters?.orgSlug;
     const sql = getDb();
+    await ensureCraftSchema(sql);
 
     // ── GET — load workspace data ────────────────────────────────────────
     if (event.httpMethod === 'GET') {
@@ -126,17 +149,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 teamId: r.team_id, totalCapacity: Number(r.total_capacity),
                 avatarInitials: r.avatar_initials, email: r.email, location: r.location,
                 dailyRate: r.daily_rate_eur ? Number(r.daily_rate_eur) : undefined,
-                skills: r.skills || []
+                skills: r.skills || [],
+                primaryCraft: r.craft_profile?.primaryCraft || undefined,
+                secondaryCrafts: Array.isArray(r.craft_profile?.secondaryCrafts) ? r.craft_profile.secondaryCrafts : [],
+                tribeAffinity: Array.isArray(r.craft_profile?.tribeAffinity) ? r.craft_profile.tribeAffinity : [],
+                targetUtil: r.craft_profile?.targetUtil ? Number(r.craft_profile.targetUtil) : undefined,
             }));
             const mapProj = projects.map((p: any) => ({
                 id: p.id, name: p.name, status: p.status, priority: p.priority,
                 description: p.description || '', startDate: p.start_date, endDate: p.end_date,
                 clientName: p.client_name, budget: p.budget ? Number(p.budget) : undefined,
-                color: p.color
+                color: p.color,
+                stage: p.stage || undefined,
+                initiatedOn: p.initiated_on || undefined,
+                craftDemand: Array.isArray(p.craft_demand) ? p.craft_demand : [],
+                jiraKey: p.jira_key || undefined,
+                planviewId: p.planview_id || undefined,
             }));
             const mapAlloc = allocations.map((a: any) => ({
                 id: a.id, resourceId: a.resource_id, projectId: a.project_id,
-                percentage: Number(a.percentage), startDate: a.start_date, endDate: a.end_date
+                percentage: Number(a.percentage), startDate: a.start_date, endDate: a.end_date,
+                craftId: a.craft_id || undefined, source: a.source || undefined,
             }));
 
             return ok({
@@ -241,6 +274,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             for (const p of projects) {
                 if (!p.name || p.name.trim() === '') return fail(`Project name is required (ID: ${p.id})`, 400);
             }
+            for (const p of projects) {
+                for (const d of (p.craftDemand || [])) {
+                    if (!/^\d{4}-Q[1-4]$/.test(String(d.quarterKey || ''))) return fail(`Invalid demand quarter "${d.quarterKey}" on project ${p.name}`, 400);
+                    if (typeof d.fte !== 'number' || d.fte < 0 || d.fte > 50) return fail(`Invalid demand FTE "${d.fte}" on project ${p.name}`, 400);
+                }
+            }
             for (const a of allocations) {
                 if (a.percentage < 0 || a.percentage > 500) return fail(`Invalid allocation percentage: ${a.percentage}% (max 500%)`, 400);
                 if (!resIds.has(a.resourceId)) return fail(`Referential Integrity Error: Allocation (ID: ${a.id}) references unknown resource (ID: ${a.resourceId})`, 400);
@@ -275,10 +314,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     for (const r of resources) {
                         await client.query(
                             `INSERT INTO resources 
-                             (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                             (id, workspace_id, name, role, type, department, team_id, total_capacity, avatar_initials, email, location, daily_rate_eur, skills, craft_profile)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
                             [r.id, wsId, r.name, r.role || '', r.type || 'Permanent', r.department || '', r.teamId || null,
-                            r.totalCapacity ?? 100, r.avatarInitials || null, r.email || null, r.location || null, r.dailyRate || null, r.skills || []]
+                            r.totalCapacity ?? 100, r.avatarInitials || null, r.email || null, r.location || null, r.dailyRate || null, r.skills || [],
+                            JSON.stringify({
+                                primaryCraft: r.primaryCraft || null,
+                                secondaryCrafts: Array.isArray(r.secondaryCrafts) ? r.secondaryCrafts : [],
+                                tribeAffinity: Array.isArray(r.tribeAffinity) ? r.tribeAffinity : [],
+                                targetUtil: r.targetUtil || null,
+                            })]
                         );
                     }
                 }
@@ -288,10 +333,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     for (const p of projects) {
                         await client.query(
                             `INSERT INTO projects 
-                             (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                             (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color, stage, initiated_on, craft_demand, jira_key, planview_id)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
                             [p.id, wsId, p.name, p.status || 'Active', p.priority || 'Medium', p.description || '',
-                            p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null]
+                            p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null,
+                            p.stage || null, p.initiatedOn || null, JSON.stringify(Array.isArray(p.craftDemand) ? p.craftDemand : []),
+                            p.jiraKey || null, p.planviewId || null]
                         );
                     }
                 }
@@ -302,9 +349,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
                         if (!a.percentage || a.percentage <= 0) continue;
                         await client.query(
                             `INSERT INTO allocations 
-                             (id, workspace_id, resource_id, project_id, percentage, start_date, end_date)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                            [a.id, wsId, a.resourceId, a.projectId, a.percentage, a.startDate || null, a.endDate || null]
+                             (id, workspace_id, resource_id, project_id, percentage, start_date, end_date, craft_id, source)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                            [a.id, wsId, a.resourceId, a.projectId, a.percentage, a.startDate || null, a.endDate || null, a.craftId || null, a.source || null]
                         );
                     }
                 }

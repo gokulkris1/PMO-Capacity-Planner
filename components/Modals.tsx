@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Resource, Project, ResourceType, ProjectStatus } from '../types';
+import { Resource, Project, ResourceType, ProjectStatus, SecondaryCraft, CraftProficiency, CraftDemand } from '../types';
+import { PMO_CRAFTS, PROJECT_STAGES } from '../constants';
+import { getRollingQuarters } from '../utils/quarters';
+import { upsertDemand } from '../utils/craftEngine';
 
 /* ── Add/Edit Resource Modal ─────────────────────────────────── */
 interface ResourceModalProps {
@@ -21,8 +24,21 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
     const [teamMode, setTeamMode] = useState<'preset' | 'custom'>(() => initial?.teamId ? 'preset' : (initial?.teamName ? 'custom' : 'preset'));
     const [customTeam, setCustomTeam] = useState(initial?.teamId ? '' : (initial?.teamName || ''));
     const [skillsText, setSkillsText] = useState((initial?.skills || []).join(', '));
+    const [tribeText, setTribeText] = useState((initial?.tribeAffinity || []).join(', '));
+    const [secondary, setSecondary] = useState<SecondaryCraft[]>(initial?.secondaryCrafts || []);
     const [csvMode, setCsvMode] = useState(false);
     const [csvError, setCsvError] = useState('');
+
+    const addSecondary = (craftId: string) => {
+        if (!craftId || secondary.some(s => s.craftId === craftId) || craftId === form.primaryCraft) return;
+        setSecondary(prev => [...prev, { craftId, proficiency: 2, maxPct: 40 }]);
+        setIsDirty(true);
+    };
+    const updateSecondary = (craftId: string, patch: Partial<SecondaryCraft>) => {
+        setSecondary(prev => prev.map(s => s.craftId === craftId ? { ...s, ...patch } : s));
+        setIsDirty(true);
+    };
+    const removeSecondary = (craftId: string) => { setSecondary(prev => prev.filter(s => s.craftId !== craftId)); setIsDirty(true); };
 
     const set = (k: keyof Resource, v: any) => {
         setForm(f => ({ ...f, [k]: v }));
@@ -150,6 +166,10 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                                 teamId: teamMode === 'preset' ? (form.teamId || undefined) : undefined,
                                 teamName: normalizedTeamName || undefined,
                                 skills: parsedSkills,
+                                primaryCraft: form.primaryCraft || undefined,
+                                secondaryCrafts: secondary.filter(s => s.craftId !== form.primaryCraft),
+                                tribeAffinity: tribeText.split(',').map(t => t.trim()).filter(Boolean),
+                                targetUtil: form.targetUtil ? Math.max(10, Math.min(120, Number(form.targetUtil))) : undefined,
                             });
                         }}
                     >
@@ -165,6 +185,49 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({ initial, teams, on
                                 <label className="form-label">Primary Role</label>
                                 <input className="form-input" value={form.role || ''}
                                     onChange={e => set('role', e.target.value)} placeholder="e.g. Senior Frontend Dev" maxLength={100} />
+                            </div>
+                        </div>
+
+                        {/* ── Crafts: above the table / below the table ── */}
+                        <div style={{ background: 'var(--n-100)', border: '1px solid var(--n-300)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--n-800)', marginBottom: 8 }}>🎓 Crafts</div>
+                            <div className="form-row">
+                                <div className="form-group" style={{ marginBottom: 8 }}>
+                                    <label className="form-label">Above the table (primary craft)</label>
+                                    <select className="form-select" value={form.primaryCraft || ''} onChange={e => { set('primaryCraft', e.target.value || undefined); setSecondary(prev => prev.filter(s => s.craftId !== e.target.value)); }}>
+                                        <option value="">— not set —</option>
+                                        {PMO_CRAFTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 8 }}>
+                                    <label className="form-label">Utilisation target %</label>
+                                    <input className="form-input" type="number" min={10} max={120} value={form.targetUtil ?? ''} placeholder="100" onChange={e => set('targetUtil', e.target.value ? Number(e.target.value) : undefined)} />
+                                </div>
+                            </div>
+                            <label className="form-label">Below the table (what else they can serve)</label>
+                            {secondary.map(sc => {
+                                const c = PMO_CRAFTS.find(x => x.id === sc.craftId);
+                                return (
+                                    <div key={sc.craftId} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: c?.color || 'var(--n-700)' }}>{c?.name || sc.craftId}</span>
+                                        <select className="form-select" style={{ width: 'auto', fontSize: 11, padding: '5px 8px' }} value={sc.proficiency} onChange={e => updateSecondary(sc.craftId, { proficiency: Number(e.target.value) as CraftProficiency })} title="1 = can assist · 2 = can own with support · 3 = can own independently">
+                                            <option value={1}>L1 assist</option><option value={2}>L2 own w/ support</option><option value={3}>L3 own</option>
+                                        </select>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Max share of their capacity for this craft">
+                                            <input className="form-input" type="number" min={5} max={100} style={{ width: 62, fontSize: 11, padding: '5px 8px' }} value={sc.maxPct ?? 40} onChange={e => updateSecondary(sc.craftId, { maxPct: Math.max(5, Math.min(100, Number(e.target.value) || 40)) })} />
+                                            <span style={{ fontSize: 11, color: 'var(--n-500)' }}>% max</span>
+                                        </div>
+                                        <button type="button" onClick={() => removeSecondary(sc.craftId)} style={{ background: 'none', border: 'none', color: 'var(--over)', cursor: 'pointer', fontSize: 16 }}>×</button>
+                                    </div>
+                                );
+                            })}
+                            <select className="form-select" value="" onChange={e => addSecondary(e.target.value)} style={{ fontSize: 12 }}>
+                                <option value="">+ add a below-the-table craft…</option>
+                                {PMO_CRAFTS.filter(c => c.id !== form.primaryCraft && !secondary.some(s => s.craftId === c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <div className="form-group" style={{ marginTop: 10, marginBottom: 0 }}>
+                                <label className="form-label">Tribe familiarity</label>
+                                <input className="form-input" value={tribeText} onChange={e => { setTribeText(e.target.value); setIsDirty(true); }} placeholder="e.g. Payments, Digital (comma-separated)" />
                             </div>
                         </div>
                         <div className="form-row">
@@ -266,8 +329,19 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     const [form, setForm] = useState<Partial<Project>>({
         name: '', description: '', status: ProjectStatus.PLANNING, priority: 'Medium',
         startDate: '', endDate: '', clientName: '', budget: undefined, color: '#6366f1',
+        stage: 'Pipeline', initiatedOn: new Date().toISOString().slice(0, 10), craftDemand: [],
         ...(initial || {}),
     });
+    const quarters = getRollingQuarters(new Date(), 4);
+    const [demandQuarter, setDemandQuarter] = useState(quarters[0]?.key || '');
+    const [demandCraft, setDemandCraft] = useState(PMO_CRAFTS[1].id);
+    const [demandFte, setDemandFte] = useState('0.5');
+    const addDemand = () => {
+        const fte = Math.max(0, Math.min(50, parseFloat(demandFte) || 0));
+        if (!demandQuarter || !demandCraft || fte <= 0) return;
+        set('craftDemand', upsertDemand(form.craftDemand, { quarterKey: demandQuarter, craftId: demandCraft, fte }));
+    };
+    const removeDemand = (d: CraftDemand) => set('craftDemand', upsertDemand(form.craftDemand, { ...d, fte: 0 }));
     const [csvMode, setCsvMode] = useState(false);
     const [csvError, setCsvError] = useState('');
     const [isDirty, setIsDirty] = useState(false);
@@ -436,6 +510,60 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                             <div className="form-group">
                                 <label className="form-label">Budget ($)</label>
                                 <input className="form-input" type="number" min={0} value={form.budget || ''} onChange={e => set('budget', Number(e.target.value) || undefined)} placeholder="e.g. 150000" />
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Stage</label>
+                                <select className="form-select" value={form.stage || 'Pipeline'} onChange={e => set('stage', e.target.value)}>
+                                    {PROJECT_STAGES.map(st => <option key={st.id} value={st.id}>{st.id} — {st.hint}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Initiated on</label>
+                                <input className="form-input" type="date" value={form.initiatedOn || ''} onChange={e => set('initiatedOn', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Jira project key</label>
+                                <input className="form-input" value={form.jiraKey || ''} onChange={e => set('jiraKey', e.target.value.toUpperCase().trim())} placeholder="e.g. APOLLO" maxLength={20} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Planview id</label>
+                                <input className="form-input" value={form.planviewId || ''} onChange={e => set('planviewId', e.target.value.trim())} placeholder="e.g. PRJ-00123" maxLength={60} />
+                            </div>
+                        </div>
+
+                        {/* ── Craft demand per quarter ── */}
+                        <div style={{ background: 'var(--n-100)', border: '1px solid var(--n-300)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--n-800)', marginBottom: 2 }}>📣 Anticipated craft requirements</div>
+                            <div style={{ fontSize: 11, color: 'var(--n-600)', marginBottom: 8 }}>FTE needed from the PMO squad per quarter. 1.0 = one full person.</div>
+                            {(form.craftDemand || []).length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                                    {(form.craftDemand || []).map(d => {
+                                        const q = quarters.find(x => x.key === d.quarterKey);
+                                        const c = PMO_CRAFTS.find(x => x.id === d.craftId);
+                                        return (
+                                            <div key={`${d.quarterKey}-${d.craftId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, background: '#fff', border: '1px solid var(--n-300)', borderRadius: 6, padding: '4px 8px' }}>
+                                                <span style={{ fontWeight: 800, color: 'var(--n-700)', minWidth: 110 }}>{q ? `${q.label} · ${q.name}` : d.quarterKey}</span>
+                                                <span style={{ flex: 1, color: c?.color || 'var(--n-700)', fontWeight: 700 }}>{c?.name || d.craftId}</span>
+                                                <span style={{ fontWeight: 800 }}>{d.fte} FTE</span>
+                                                <button type="button" onClick={() => removeDemand(d)} style={{ background: 'none', border: 'none', color: 'var(--over)', cursor: 'pointer', fontSize: 15 }}>×</button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 70px auto', gap: 6, alignItems: 'center' }}>
+                                <select className="form-select" style={{ fontSize: 11, padding: '5px 8px' }} value={demandQuarter} onChange={e => setDemandQuarter(e.target.value)}>
+                                    {quarters.map(q => <option key={q.key} value={q.key}>{q.label} · {q.name}</option>)}
+                                </select>
+                                <select className="form-select" style={{ fontSize: 11, padding: '5px 8px' }} value={demandCraft} onChange={e => setDemandCraft(e.target.value)}>
+                                    {PMO_CRAFTS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <input className="form-input" type="number" step="0.1" min={0} max={50} style={{ fontSize: 11, padding: '5px 8px' }} value={demandFte} onChange={e => setDemandFte(e.target.value)} />
+                                <button type="button" className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: 12 }} onClick={addDemand}>+ Add</button>
                             </div>
                         </div>
                         <div className="form-group">

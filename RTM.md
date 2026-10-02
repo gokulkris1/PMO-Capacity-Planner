@@ -1,6 +1,6 @@
-# PMO Capacity Planner - Requirements Traceability Matrix (v1.0)
+# PMO Capacity Planner - Requirements Traceability Matrix (v1.1)
 
-This document captures all core requirements provided and implemented up to version 1.0.
+This document captures all core requirements provided and implemented up to version 1.1. Design and roadmap: `docs/CURRENT_STATE_AND_ROADMAP.md`.
 
 | Req ID | Requirement Description | Implementation Status | Component / Module |
 |---|---|---|---|
@@ -42,4 +42,20 @@ This document captures all core requirements provided and implemented up to vers
 | REQ-008.4 | Stripe webhook implementation to automatically upgrade organizational plans in Postgres. | ✅ Implemented | `webhook.ts` |
 | REQ-008.5 | Transactional Email Receipts via Resend (Welcome & Upgrade emails). | ✅ Implemented | `email_receipt.ts` |
 | **REQ-009** | **Integrations** |
-| REQ-009.1 | Jira Mock Integration UI to simulate importing from external boards. | ✅ Implemented | `JiraImportModal.tsx` |
+| REQ-009.1 | Jira Cloud connection with server-side encrypted credentials, story-points field auto-detection, usage by project/sprint/assignee/quarter. | ✅ Implemented (v1.1) | `netlify/functions/integrations.ts`, `IntegrationsHub.tsx` |
+| REQ-009.2 | Per-tribe story point → capacity calibration and a planned-vs-implied FTE "delivery signal". | ✅ Implemented (v1.1) | `IntegrationsHub.tsx` (Calibration tab) |
+| REQ-009.3 | Planview connection (AdaptiveWork REST v2 and generic REST/OData adapter), project import and assignment import into allocations. | ✅ Implemented (v1.1) | `integrations.ts`, `IntegrationsHub.tsx` |
+| **REQ-010** | **PMO Crafts & Demand (v1.1)** |
+| REQ-010.1 | Capture per individual an above-the-table (primary) craft and below-the-table (secondary) crafts with proficiency and capacity cap. | ✅ Implemented | `types.ts`, `Modals.tsx` (ResourceModal), `CraftProfilesView.tsx` |
+| REQ-010.2 | Record the craft performed on every allocation. | ✅ Implemented | `AllocationModal.tsx`, `workspace.ts` |
+| REQ-010.3 | Rolling four-quarter view (QBR1–QBR4) of each person's above/below-the-table load and bench. | ✅ Implemented | `utils/quarters.ts`, `utils/craftEngine.ts`, `CraftProfilesView.tsx` |
+| REQ-010.4 | Project requirement roadmap: stage, initiation date and anticipated craft demand (FTE) per quarter, with staffed vs gap. | ✅ Implemented | `DemandRoadmapView.tsx`, `Modals.tsx` (ProjectModal) |
+| REQ-010.5 | Supply vs demand per craft per quarter including secondary-craft reach. | ✅ Implemented | `craftEngine.ts` (`craftBalance`), `DemandRoadmapView.tsx` |
+| REQ-010.6 | Squad marketplace: open demand, ranked match suggestions, one-click proposal; service catalogue of what the squad can offer each tribe. | ✅ Implemented | `SquadMarketplaceView.tsx`, `craftEngine.ts` (`suggestMatches`) |
+| REQ-010.7 | Utilisation outlook towards 100% target: four-quarter capacity vs demand, under-used and strained people, by person/team/tribe. | ✅ Implemented | `UtilisationView.tsx` |
+| REQ-010.8 | Persist craft profile, demand, stage and links per workspace. | ✅ Implemented | `workspace.ts`, `scripts/migrate_crafts.sql` |
+| REQ-010.9 | AI advisor aware of crafts, outlook and open demand. | ✅ Implemented | `services/geminiService.ts` |
+| **REQ-011** | **Defect fixes (v1.1)** |
+| REQ-011.1 | QBR module readable on the light theme; scenario bookings refresh; quarter selection stable; errors surfaced. | ✅ Fixed | `components/qbr/*` |
+| REQ-011.2 | Remove unreachable Jira modal and localStorage-stored API tokens. | ✅ Fixed | `App.tsx`, `netlify/functions/jira.ts` (410) |
+| REQ-011.3 | Dashboard trend derived from data (QBR1 → QBR2), not hard-coded. | ✅ Fixed | `Dashboard.tsx` |
