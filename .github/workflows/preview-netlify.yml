@@ -43,6 +43,16 @@ jobs:
           echo "alias=$alias" >> "$GITHUB_OUTPUT"
           echo "Preview alias: $alias"
 
+      - name: Check Netlify secrets
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID repository secrets are not set, so this branch cannot be deployed from Actions. Add them under Settings → Secrets and variables → Actions (token: Netlify → User settings → Applications → Personal access tokens; site id: Netlify → Project → Project configuration → General), or enable branch deploys for this branch in Netlify → Project configuration → Build & deploy → Branches and deploy contexts."
+            exit 1
+          fi
+
       - name: Deploy preview to Netlify
         uses: netlify/actions/cli@master
         with:
