@@ -1,0 +1,57 @@
+name: Netlify branch preview
+
+# Deploys any non-main branch to a non-production alias on the existing Netlify site:
+#   https://<alias>--pmocapacityplanner.netlify.app
+# Production (pmocapacityplanner.netlify.app) is untouched; use deploy-netlify.yml for that.
+on:
+  push:
+    branches-ignore: [ "main", "master" ]
+  workflow_dispatch:
+    inputs:
+      alias:
+        description: "Alias subdomain for the preview (lowercase, hyphens)"
+        required: false
+        default: ""
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Derive alias from branch
+        id: alias
+        run: |
+          raw="${{ github.event.inputs.alias }}"
+          if [ -z "$raw" ]; then raw="${GITHUB_REF_NAME}"; fi
+          # Netlify aliases: lowercase alphanumerics and hyphens, keep it short
+          alias=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | sed -E 's#[^a-z0-9]+#-#g; s#^-+##; s#-+$##' | cut -c1-37 | sed -E 's#-+$##')
+          echo "alias=$alias" >> "$GITHUB_OUTPUT"
+          echo "Preview alias: $alias"
+
+      - name: Deploy preview to Netlify
+        uses: netlify/actions/cli@master
+        with:
+          args: deploy --dir=dist --alias=${{ steps.alias.outputs.alias }} --site=$NETLIFY_SITE_ID --message="Preview of ${{ github.ref_name }} @ ${{ github.sha }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Preview URL
+        run: |
+          echo "### Netlify preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://${{ steps.alias.outputs.alias }}--pmocapacityplanner.netlify.app" >> "$GITHUB_STEP_SUMMARY"
