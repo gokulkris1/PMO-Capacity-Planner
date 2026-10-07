@@ -102,9 +102,11 @@ export function fetchPinnedPublicHttps(
 
     return new Promise((resolve, reject) => {
         let settled = false;
+        let deadline: ReturnType<typeof setTimeout> | undefined;
         const settle = (callback: () => void) => {
             if (settled) return;
             settled = true;
+            if (deadline) clearTimeout(deadline);
             callback();
         };
 
@@ -123,8 +125,9 @@ export function fetchPinnedPublicHttps(
             const contentLengthHeader = response.headers['content-length'];
             const contentLength = Number(Array.isArray(contentLengthHeader) ? contentLengthHeader[0] : contentLengthHeader || 0);
             if (Number.isFinite(contentLength) && contentLength > options.maxBytes) {
-                response.resume();
-                settle(() => reject(new PublicHttpsError('Website response is too large', 502)));
+                const error = new PublicHttpsError('Website response is too large', 502);
+                requestHandle.destroy(error);
+                settle(() => reject(error));
                 return;
             }
 
@@ -149,9 +152,9 @@ export function fetchPinnedPublicHttps(
         requestHandle.once('error', error => settle(() => reject(
             error instanceof PublicHttpsError ? error : new PublicHttpsError('Outbound HTTPS request failed', 502),
         )));
-        requestHandle.setTimeout(options.timeoutMs, () => {
+        deadline = setTimeout(() => {
             requestHandle.destroy(new PublicHttpsError('Outbound request timed out', 504));
-        });
+        }, options.timeoutMs);
         requestHandle.end();
     });
 }

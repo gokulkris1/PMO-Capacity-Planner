@@ -14,10 +14,12 @@ export interface MonthForecast {
  */
 export function parseLocalDateBoundary(value: unknown, endOfDay: boolean): Date | undefined {
     const text = String(value).trim();
-    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=$|[T\s])/);
     if (match) {
         const [, year, month, day] = match.map(Number);
-        return new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+        const date = new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+        if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) return date;
+        return undefined;
     }
 
     const parsed = new Date(text);

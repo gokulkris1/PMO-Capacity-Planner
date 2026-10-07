@@ -78,10 +78,26 @@ describe('timeGrid utility functions', () => {
                 console.log(JSON.stringify([
                     parseLocalDateBoundary('2026-10-01', false).toISOString(),
                     parseLocalDateBoundary('2026-10-01', true).toISOString(),
+                    parseLocalDateBoundary('2026-03-10T00:00:00.000Z', true).toISOString(),
+                    parseLocalDateBoundary('2026-03-10 00:00:00+00', true).toISOString(),
                 ]));
             `)).toBe(JSON.stringify([
                 '2026-10-01T07:00:00.000Z',
                 '2026-10-02T06:59:59.000Z',
+                '2026-03-11T06:59:59.000Z',
+                '2026-03-11T06:59:59.000Z',
+            ]));
+        });
+
+        it('keeps the end day for ISO allocation timestamps in a western timezone', () => {
+            expect(runInLosAngeles(`
+                import { buildMonthDayForecast } from './utils/timeGrid.ts';
+                const result = buildMonthDayForecast(2026, 2, [
+                    { id: 'allocation-1', resourceId: 'resource-1', projectId: 'project-1', percentage: 100, startDate: '2026-03-05T00:00:00.000Z', endDate: '2026-03-10T00:00:00.000Z' },
+                ], [{ id: 'project-1', name: 'Roadmap', status: 'Active' }]);
+                console.log(JSON.stringify(result.filter(({ dayOfMonth }) => dayOfMonth >= 4 && dayOfMonth <= 11).map(({ dayOfMonth, utilization }) => [dayOfMonth, utilization])));
+            `)).toBe(JSON.stringify([
+                [4, 0], [5, 100], [6, 100], [7, 100], [8, 100], [9, 100], [10, 100], [11, 0],
             ]));
         });
 
