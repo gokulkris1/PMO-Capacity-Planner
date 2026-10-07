@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, getProjectCapacityImpact } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
 import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
+import { getProjectTeamSummary, StaffingScenarioPlan } from '../utils/capacityPlanning';
+import { ProjectStaffingPanel } from './ProjectStaffingPanel';
 
 interface Props {
     resources: Resource[];
@@ -11,6 +14,7 @@ interface Props {
     onAddProject?: () => void;
     onEditProject?: (proj: Project) => void;
     onDeleteProject?: (proj: Project) => void;
+    onPreviewStaffingScenario?: (plan: StaffingScenarioPlan) => void;
 }
 
 function utilColor(pct: number) {
@@ -36,6 +40,7 @@ export const ProjectView: React.FC<Props> = ({
     onAddProject,
     onEditProject,
     onDeleteProject,
+    onPreviewStaffingScenario,
 }) => {
     const [selectedProj, setSelectedProj] = useState<string>(projects[0]?.id || '');
     const liveAlloc = scenarioAllocations ?? allocations;
@@ -53,7 +58,7 @@ export const ProjectView: React.FC<Props> = ({
     const project = projects.find(p => p.id === selectedProj);
     const now = new Date();
     const projAllocs = liveAlloc.filter(a => a.projectId === selectedProj && isAllocActiveOn(a, now));
-    const totalFte = projAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
+    const teamSummary = getProjectTeamSummary(selectedProj, liveAlloc, now);
     const totalMonthlyCost = projAllocs.reduce((s, a) => {
         const res = resources.find(r => r.id === a.resourceId);
         const rate = res?.dailyRate || 0;
@@ -65,7 +70,10 @@ export const ProjectView: React.FC<Props> = ({
             Active: 'badge badge-active',
             Planning: 'badge badge-planning',
             'On Hold': 'badge badge-hold',
+            Suspended: 'badge badge-suspended',
             Completed: 'badge badge-completed',
+            'Called Off': 'badge badge-called-off',
+            Archived: 'badge badge-archived',
         };
         return map[status] || 'badge badge-hold';
     }
@@ -127,9 +135,9 @@ export const ProjectView: React.FC<Props> = ({
                                 <span className={getProjStatusBadge(project.status)}>{project.status}</span>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>FTE Committed</div>
-                                <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--n-800)' }}>{totalFte.toFixed(1)}</span>
-                                <span style={{ fontSize: 12, color: 'var(--n-500)', marginLeft: 4 }}>FTE</span>
+                                <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Team capacity</div>
+                                <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--n-800)' }}>{teamSummary.memberCount} {teamSummary.memberCount === 1 ? 'person' : 'people'}</span>
+                                <div style={{ fontSize: 12, color: 'var(--n-500)', marginTop: 2 }}>{teamSummary.fte.toFixed(1)} FTE committed</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: 11, color: 'var(--n-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Est. Monthly Cost</div>
@@ -150,8 +158,13 @@ export const ProjectView: React.FC<Props> = ({
                         <div className="panel-header">
                             <div>
                                 <div className="panel-title">Capacity Allocated - {project.name}</div>
-                                <div className="panel-subtitle">{projAllocs.length} resources committed</div>
+                                <div className="panel-subtitle">{teamSummary.memberCount} {teamSummary.memberCount === 1 ? 'person' : 'people'} · {teamSummary.fte.toFixed(1)} FTE</div>
                             </div>
+                            <span style={{ fontSize: 11, color: 'var(--n-600)', fontWeight: 600 }}>
+                                {getProjectCapacityImpact(project.status) === 'committed' || getProjectCapacityImpact(project.status) === 'planned'
+                                    ? 'Counts toward availability'
+                                    : 'Visible, not counted against availability'}
+                            </span>
                         </div>
                         {projAllocs.length === 0 ? (
                             <div className="empty-state">
@@ -163,7 +176,7 @@ export const ProjectView: React.FC<Props> = ({
                                 {projAllocs.map(a => {
                                     const res = resources.find(r => r.id === a.resourceId);
                                     if (!res) return null;
-                                    const totalUtil = getCurrentUtil(liveAlloc, res.id);
+                                    const totalUtil = getCurrentUtil(liveAlloc, res.id, projects);
                                     const statusS = getAllocationStatus(totalUtil);
                                     return (
                                         <div key={a.id} style={{
@@ -182,7 +195,7 @@ export const ProjectView: React.FC<Props> = ({
                                                     background: res.type === 'Permanent' ? '#eef2ff' : '#fdf4ff',
                                                     color: res.type === 'Permanent' ? '#4338ca' : '#7c3aed',
                                                 }}>
-                                                    {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                    {getAvatarInitials(res.name)}
                                                 </div>
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--n-800)' }}>
@@ -224,6 +237,15 @@ export const ProjectView: React.FC<Props> = ({
                             </div>
                         )}
                     </div>
+
+                    <ProjectStaffingPanel
+                        project={project}
+                        resources={resources}
+                        projects={projects}
+                        allocations={liveAlloc}
+                        onPreviewScenario={onPreviewStaffingScenario}
+                        onEditProject={onEditProject ? () => onEditProject(project) : undefined}
+                    />
                 </>
             )}
         </div>

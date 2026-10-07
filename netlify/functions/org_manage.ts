@@ -1,9 +1,13 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'node:crypto';
+import { Resend } from 'resend';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Orbit Space <noreply@orbitspace.io>';
 
 const CORS = {
     'Access-Control-Allow-Origin': process.env.URL || '*',
@@ -22,7 +26,35 @@ const getDb = () => neon(
 );
 
 function generateSlug(name: string) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Math.floor(Math.random() * 1000);
+    const base = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'organization';
+    return `${base}-${randomBytes(3).toString('hex')}`;
+}
+
+function escapeHtml(value: string): string {
+    return value.replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+    }[character] || character));
+}
+
+async function sendAdminInvitation(email: string, orgName: string) {
+    if (!RESEND_API_KEY) {
+        console.warn('[Invitation email disabled] An organization administrator account was created without an email invitation.');
+        return;
+    }
+    const loginUrl = process.env.URL || 'https://orbitspace.io';
+    const escapedOrgName = escapeHtml(orgName);
+    const resend = new Resend(RESEND_API_KEY);
+    await resend.emails.send({
+        from: FROM_EMAIL,
+        to: email,
+        subject: `You've been invited to administer ${orgName} on Orbit Space`,
+        html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;color:#172b4d">
+            <h1 style="font-size:22px;margin:0 0 12px">Welcome to Orbit Space</h1>
+            <p>You have been invited to administer <strong>${escapedOrgName}</strong>.</p>
+            <p>Use password reset to set your own password before signing in. No password is included in this invitation.</p>
+            <p><a href="${loginUrl}" style="display:inline-block;background:#0052cc;color:#fff;padding:12px 16px;border-radius:4px;text-decoration:none;font-weight:700">Set password and sign in</a></p>
+        </div>`,
+    });
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -41,6 +73,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const sql = getDb();
 
     try {
+        const [currentUser] = await sql`SELECT role, org_id FROM users WHERE id = ${userId}`;
+        if (!currentUser) return fail('Unauthorized', 401);
+        userRole = currentUser.role === 'ADMIN' ? 'ORG_ADMIN' : currentUser.role || 'USER';
+
         // ── GET: List all orgs (SUPERUSER only) ──────────────────────
         if (event.httpMethod === 'GET') {
             if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
@@ -86,19 +122,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (subpath.match(/^\/[^/]+\/workspace$/)) {
                 const orgId = subpath.split('/')[1];
                 const { name } = JSON.parse(event.body || '{}');
-                if (!name) return fail('Workspace name required');
+                const workspaceName = typeof name === 'string' ? name.trim() : '';
+                if (!workspaceName || workspaceName.length > 120) return fail('A workspace name of up to 120 characters is required');
 
-                // Permission: SUPERUSER, ORG_ADMIN (own org), PMO_ADMIN (own org)
+                // Creating a workspace is organization-level administration.
                 if (userRole !== 'SUPERUSER') {
                     const [caller] = await sql`SELECT org_id, role FROM users WHERE id = ${userId}`;
-                    if (caller.org_id !== orgId && !['ORG_ADMIN', 'ADMIN', 'PMO_ADMIN'].includes(caller.role)) {
+                    if (!caller || caller.org_id !== orgId || !['ORG_ADMIN', 'ADMIN'].includes(caller.role)) {
                         return fail('Forbidden', 403);
                     }
                 }
 
                 const [ws] = await sql`
                     INSERT INTO workspaces (id, org_id, name)
-                    VALUES (gen_random_uuid(), ${orgId}, ${name})
+                    VALUES (gen_random_uuid(), ${orgId}, ${workspaceName})
                     RETURNING id, name
                 `;
 
@@ -118,6 +155,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const [, orgId, , adminId] = subpath.split('/');
                 const { workspaceId, role } = JSON.parse(event.body || '{}');
                 if (!workspaceId) return fail('Workspace ID required');
+                if (!['PMO_ADMIN', 'WORKSPACE_OWNER', 'USER'].includes(role || 'PMO_ADMIN')) return fail('Invalid workspace role');
+
+                const [workspace] = await sql`SELECT org_id FROM workspaces WHERE id = ${workspaceId}`;
+                const [admin] = await sql`SELECT org_id FROM users WHERE id = ${adminId}`;
+                if (!workspace || !admin || workspace.org_id !== orgId || admin.org_id !== orgId) {
+                    return fail('Administrator and workspace must belong to the selected organization', 400);
+                }
 
                 await sql`
                     INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
@@ -132,7 +176,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             // POST /api/org_manage — create org
             const { orgName, adminEmail, plan, logoUrl, primaryColor } = JSON.parse(event.body || '{}');
-            if (!orgName) return fail('Organization name required');
+            const normalizedOrgName = typeof orgName === 'string' ? orgName.trim() : '';
+            if (!normalizedOrgName || normalizedOrgName.length > 120) return fail('An organization name of up to 120 characters is required');
+            if (plan && !['BASIC', 'PRO', 'MAX'].includes(plan)) return fail('Invalid plan');
+            if (logoUrl && (typeof logoUrl !== 'string' || !/^https:\/\//i.test(logoUrl))) return fail('Logo URL must use HTTPS');
+            if (primaryColor && (typeof primaryColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(primaryColor))) return fail('Primary color must be a six-digit hex color');
+            if (adminEmail && (typeof adminEmail !== 'string' || !/^\S+@\S+\.\S+$/.test(adminEmail.trim()))) return fail('A valid administrator email is required');
 
             // Bottom-up: any user without org. Top-down: superuser only
             const [caller] = await sql`SELECT org_id, role FROM users WHERE id = ${userId}`;
@@ -140,12 +189,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return fail('You already belong to an organization', 400);
             }
 
-            const orgSlug = generateSlug(orgName);
+            const orgSlug = generateSlug(normalizedOrgName);
 
             // Create org
             const [org] = await sql`
                 INSERT INTO organizations (id, name, slug, logo_url, primary_color)
-                VALUES (gen_random_uuid(), ${orgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null})
+                VALUES (gen_random_uuid(), ${normalizedOrgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null})
                 RETURNING id, slug, name
             `;
 
@@ -168,15 +217,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 } else {
                     // Auto-create admin
                     const bcrypt = await import('bcryptjs');
-                    const tempPw = 'Orbit' + Math.random().toString(36).slice(2, 8) + '!';
-                    const hash = await bcrypt.hash(tempPw, 10);
+                    const initialSecret = randomBytes(32).toString('base64url');
+                    const hash = await bcrypt.hash(initialSecret, 10);
                     const [newUser] = await sql`
                         INSERT INTO users (email, password_hash, name, role, plan, org_id)
                         VALUES (${cleanEmail}, ${hash}, ${cleanEmail.split('@')[0]}, 'ORG_ADMIN', ${plan || 'BASIC'}, ${org.id})
                         RETURNING id
                     `;
                     adminId = newUser.id;
-                    console.log(`[DEV] Created admin ${cleanEmail} with temp password: ${tempPw}`);
+                    await sendAdminInvitation(cleanEmail, org.name);
                 }
 
                 // Add admin as PMO_ADMIN in default workspace
@@ -208,11 +257,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { plan, name } = JSON.parse(event.body || '{}');
 
             if (plan) {
+                if (!['BASIC', 'PRO', 'MAX'].includes(plan)) return fail('Invalid plan');
                 // Update all users in this org to the new plan
                 await sql`UPDATE users SET plan = ${plan} WHERE org_id = ${orgId}`;
             }
             if (name) {
-                await sql`UPDATE organizations SET name = ${name} WHERE id = ${orgId}`;
+                const normalizedName = typeof name === 'string' ? name.trim() : '';
+                if (!normalizedName || normalizedName.length > 120) return fail('An organization name of up to 120 characters is required');
+                await sql`UPDATE organizations SET name = ${normalizedName} WHERE id = ${orgId}`;
             }
 
             return ok({ success: true });
@@ -227,31 +279,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
                 const [, orgId, , adminId, , workspaceId] = subpath.split('/');
 
+                const [workspace] = await sql`SELECT org_id FROM workspaces WHERE id = ${workspaceId}`;
+                const [admin] = await sql`SELECT org_id FROM users WHERE id = ${adminId}`;
+                if (!workspace || !admin || workspace.org_id !== orgId || admin.org_id !== orgId) {
+                    return fail('Administrator and workspace must belong to the selected organization', 400);
+                }
+
                 await sql`DELETE FROM workspace_members WHERE user_id = ${adminId} AND workspace_id = ${workspaceId}`;
                 return ok({ success: true });
             }
 
             const orgId = subpath.replace(/^\//, '');
             if (!orgId) return fail('Org ID required');
-
-            // Cascade: members → allocations → resources → projects → workspaces → users.org_id → org
-            await sql`DELETE FROM workspace_members WHERE org_id = ${orgId}`;
-            const wsIds = await sql`SELECT id FROM workspaces WHERE org_id = ${orgId}`;
-            for (const ws of wsIds) {
-                await sql`DELETE FROM allocations WHERE workspace_id = ${ws.id}`;
-                await sql`DELETE FROM resources WHERE workspace_id = ${ws.id}`;
-                await sql`DELETE FROM projects WHERE workspace_id = ${ws.id}`;
-            }
-            await sql`DELETE FROM workspaces WHERE org_id = ${orgId}`;
-            await sql`UPDATE users SET org_id = NULL, role = 'USER' WHERE org_id = ${orgId}`;
-            await sql`DELETE FROM organizations WHERE id = ${orgId}`;
-
-            return ok({ success: true });
+            return fail('Permanent organization deletion is disabled. Use an audited archive workflow instead.', 410);
         }
 
         return fail('Method not allowed', 405);
     } catch (e: any) {
-        console.error('[org_manage]', e);
-        return fail('Failed: ' + e.message, 500);
+        console.error('[org_manage]', e?.message);
+        return fail('Server error', 500);
     }
 };

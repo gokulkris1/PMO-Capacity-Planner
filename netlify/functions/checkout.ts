@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
 
@@ -52,14 +53,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // 2. Validate tenant access
         const sql = getDb();
         const rows = await sql`
-            SELECT u.email, u.org_id 
+            SELECT u.email, u.org_id, u.role
             FROM users u
             JOIN organizations o ON u.org_id = o.id
             WHERE u.id = ${userId} AND o.slug = ${orgSlug}
         `;
 
         if (rows.length === 0) return fail('Unauthorized for this tenant', 403);
-        const { email, org_id } = rows[0];
+        const { email, org_id, role } = rows[0];
+        if (!['SUPERUSER', 'ORG_ADMIN'].includes(role)) return fail('Organization administrator permission required', 403);
+        if (!STRIPE_SECRET_KEY || !process.env[`STRIPE_PRICE_${plan}`]) {
+            return fail('Billing checkout is not configured for this plan', 503);
+        }
 
         // 3. Generate Stripe Checkout Session
         const session = await stripe.checkout.sessions.create({
@@ -88,7 +93,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             body: JSON.stringify({ url: session.url })
         };
     } catch (e: any) {
-        console.error('Checkout error:', e);
-        return fail('Failed to create checkout session: ' + e.message, 500);
+        console.error('Checkout error:', e?.message);
+        return fail('Failed to create checkout session', 500);
     }
 };

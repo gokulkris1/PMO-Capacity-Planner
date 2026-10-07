@@ -1,21 +1,17 @@
 services:
-  # Backend Express API
+  # Retired legacy service. The application API is served by Netlify Functions.
+  # This deployment intentionally exposes only /health and returns 410 for /api/*.
   - type: web
     name: pmo-capacity-planner-api
     runtime: node
     plan: free
-    buildCommand: npm install
-    startCommand: npx tsx server/index.ts
+    buildCommand: npm ci --include=dev
+    startCommand: ./node_modules/.bin/tsx server/index.ts
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 4000
-      - key: NEON_DATABASE_URL
-        sync: false   # Set in Render dashboard
-      - key: JWT_SECRET
-        sync: false   # Set in Render dashboard
-      - key: OPENAI_API_KEY
-        sync: false   # Set in Render dashboard
-    healthCheckPath: /api/resources
-    autoDeploy: true
+    healthCheckPath: /health
+    # Keep the retired compatibility service from receiving automatic releases.
+    autoDeploy: false

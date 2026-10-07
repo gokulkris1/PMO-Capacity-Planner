@@ -1,20 +1,22 @@
 import React, { useMemo } from 'react';
-import { Resource, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface HeatmapProps {
     resources: Resource[];
+    projects: Project[];
     allocations: Allocation[];
 }
 
-export const Heatmap: React.FC<HeatmapProps> = ({ resources, allocations }) => {
+export const Heatmap: React.FC<HeatmapProps> = ({ resources, projects, allocations }) => {
     // Aggregate total percentage per resource
     const resourceLoads = useMemo(() => {
         return resources.map(res => {
-            const total = getCurrentUtil(allocations, res.id);
+            const total = getCurrentUtil(allocations, res.id, projects);
             return { resource: res, total };
         }).sort((a, b) => b.total - a.total); // Highest load first
-    }, [resources, allocations]);
+    }, [resources, projects, allocations]);
 
     const getColor = (pct: number) => {
         const s = getAllocationStatus(pct);
@@ -25,37 +27,63 @@ export const Heatmap: React.FC<HeatmapProps> = ({ resources, allocations }) => {
     };
 
     return (
-        <div style={{ background: 'var(--bg-panel)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-bright)' }}>Resource Load Heatmap</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {resourceLoads.map(({ resource, total }) => (
-                    <div
-                        key={resource.id}
-                        title={`${resource.name} - ${total}%`}
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '6px',
-                            background: getColor(total),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            border: total > 100 ? '2px solid #fff' : 'none'
-                        }}
-                    >
-                        {resource.avatarInitials || resource.name.slice(0, 2).toUpperCase()}
-                    </div>
-                ))}
+        <div className="panel">
+            <div className="panel-header" style={{ alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                    <div className="panel-title">Resource load heatmap</div>
+                    <div className="panel-subtitle">Live Active and Planning capacity, ordered by highest load</div>
+                </div>
+                <div className="legend" style={{ marginLeft: 'auto' }}>
+                    {[
+                        { label: 'Under', color: 'rgba(107, 114, 128, 0.5)' },
+                        { label: 'Optimal', color: 'rgba(16, 185, 129, 0.8)' },
+                        { label: 'High', color: 'rgba(245, 158, 11, 0.8)' },
+                        { label: 'Over', color: 'rgba(239, 68, 68, 0.8)' },
+                    ].map(item => (
+                        <span key={item.label} className="legend-item">
+                            <span className="legend-dot" style={{ background: item.color }} />
+                            {item.label}
+                        </span>
+                    ))}
+                </div>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', fontSize: '12px', color: 'var(--text-muted)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 12, background: 'rgba(107, 114, 128, 0.5)', borderRadius: 2 }} /> Under</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 12, background: 'rgba(16, 185, 129, 0.8)', borderRadius: 2 }} /> Optimal (60-80%)</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 12, background: 'rgba(245, 158, 11, 0.8)', borderRadius: 2 }} /> High (80-100%)</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 12, background: 'rgba(239, 68, 68, 0.8)', borderRadius: 2 }} /> Overly Allocated (&gt;100%)</div>
+            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+                {resourceLoads.map(({ resource, total }) => {
+                    const status = getAllocationStatus(total);
+                    const color = getColor(total);
+                    return (
+                        <div
+                            key={resource.id}
+                            title={`${resource.name} — ${total}% live load`}
+                            aria-label={`${resource.name}: ${total}% live load, ${status.toLowerCase()}`}
+                            style={{
+                                minHeight: 74,
+                                borderRadius: 10,
+                                padding: '11px 12px',
+                                border: total > 100 ? '1px solid #fecaca' : '1px solid var(--n-300)',
+                                borderLeft: `4px solid ${color}`,
+                                background: total > 100 ? '#fffafa' : '#fff',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                <div className="avatar" style={{ width: 32, height: 32, fontSize: 11, background: color, color: '#fff' }}>
+                                    {getAvatarInitials(resource.name)}
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 12, color: 'var(--n-800)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.name}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--n-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.role}</div>
+                                </div>
+                                <strong style={{ color, fontSize: 17 }}>{total}%</strong>
+                            </div>
+                            <div style={{ height: 5, background: 'var(--n-200)', borderRadius: 99, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, background: color, borderRadius: 99 }} />
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

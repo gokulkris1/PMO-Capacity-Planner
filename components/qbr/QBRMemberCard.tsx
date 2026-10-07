@@ -1,5 +1,6 @@
 import React from 'react';
 import { QBRMember, QBRBooking, QBRSprint, QBRProject } from '../../types';
+import { getAvatarInitials } from '../../utils/avatarInitials';
 
 const c = {
     bg: '#0a0a0f', card: '#12121a', border: '#1e1e2e',
@@ -50,7 +51,7 @@ export function QBRMemberCard({ member, bookings, sprints, projects, onClose }: 
                         background: member.avatar_color + '25', color: member.avatar_color,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 16, fontWeight: 900,
-                    }}>{member.name.slice(0, 2).toUpperCase()}</div>
+                    }}>{getAvatarInitials(member.name)}</div>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 800 }}>{member.name}</div>
                         <div style={{ fontSize: 11, color: c.muted }}>{member.role_title}</div>

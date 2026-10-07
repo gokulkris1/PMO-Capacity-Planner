@@ -1,4 +1,4 @@
-import { Allocation, Project, getAllocationStatus, AllocationStatus } from '../types';
+import { Allocation, Project, getAllocationStatus, AllocationStatus, projectConsumesCapacity } from '../types';
 
 export interface MonthForecast {
     label: string;      // e.g. "Jan", "Feb", "Mar 2026"
@@ -17,8 +17,9 @@ export function buildTimeForecast(allocations: Allocation[], projects: Project[]
     const now = new Date();
 
     // Normalize allocation dates
-    const normalizedAllocs = allocations.map(a => {
+    const normalizedAllocs = allocations.flatMap(a => {
         const proj = projects.find(p => p.id === a.projectId);
+        if (proj && !projectConsumesCapacity(proj.status)) return [];
         const effStart = a.startDate || proj?.startDate;
         const effEnd = a.endDate || proj?.endDate;
         const start = effStart ? new Date(effStart) : new Date('2000-01-01');
@@ -89,8 +90,9 @@ export function buildMonthDayForecast(
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const forecast: DayForecast[] = [];
 
-    const normalizedAllocs = allocations.map(a => {
+    const normalizedAllocs = allocations.flatMap(a => {
         const proj = projects.find(p => p.id === a.projectId);
+        if (proj && !projectConsumesCapacity(proj.status)) return [];
         // Netlify might be returning raw Postgres rows with snake_case
         const effStart = a.startDate || (a as any).start_date || proj?.startDate || (proj as any)?.start_date;
         const effEnd = a.endDate || (a as any).end_date || proj?.endDate || (proj as any)?.end_date;

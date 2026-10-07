@@ -26,8 +26,8 @@ function utilColor(pct: number) {
     return '#94a3b8';
 }
 
-function getUtil(allocs: Allocation[], resId: string) {
-    return getCurrentUtil(allocs, resId);
+function getUtil(allocs: Allocation[], resId: string, projects: Project[]) {
+    return getCurrentUtil(allocs, resId, projects);
 }
 
 const PRESETS = [
@@ -104,7 +104,7 @@ export const WhatIfPanel: React.FC<Props> = ({
                                 </thead>
                                 <tbody>
                                     {resources.map(res => {
-                                        const util = getUtil(liveAlloc, res.id);
+                                        const util = getUtil(liveAlloc, res.id, projects);
                                         return (
                                             <tr key={res.id} style={{ background: util > 100 ? '#fef2f2' : 'transparent' }}>
                                                 <td style={{ position: 'sticky', left: 0, background: util > 100 ? '#fef2f2' : '#fff', zIndex: 4, fontSize: 12, fontWeight: 600 }}>
@@ -188,8 +188,8 @@ export const WhatIfPanel: React.FC<Props> = ({
                     </div>
                     <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 12 }}>
                         {resources.map(res => {
-                            const before = getUtil(baseAllocations, res.id);
-                            const after = getUtil(liveAlloc, res.id);
+                            const before = getUtil(baseAllocations, res.id, projects);
+                            const after = getUtil(liveAlloc, res.id, projects);
                             const delta = after - before;
                             return (
                                 <div key={res.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 14px' }}>

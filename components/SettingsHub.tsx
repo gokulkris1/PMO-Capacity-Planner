@@ -1,230 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { canAccessSettings, canManageMembers, useAuth } from '../context/AuthContext';
+import MemberManagement from './MemberManagement';
 
-interface ManagedUser {
-    id: string; email: string; name: string;
-    role: 'PMO' | 'PM' | 'VIEWER' | 'SUPERUSER';
-    plan: 'FREE' | 'BASIC' | 'PRO' | 'MAX';
-    created_at: string;
-}
+const platformRoleLabel: Record<string, string> = {
+    SUPERUSER: 'Superuser',
+    ORG_ADMIN: 'Organization admin',
+    PMO_ADMIN: 'PMO admin',
+    WORKSPACE_OWNER: 'Workspace owner',
+    USER: 'Member',
+};
 
-const ROLE_COLORS: Record<string, string> = { SUPERUSER: '#f43f5e', PMO: '#8b5cf6', PM: '#f59e0b', VIEWER: '#64748b' };
-const PLAN_COLORS: Record<string, string> = { FREE: '#64748b', BASIC: '#6366f1', PRO: '#f59e0b', MAX: '#10b981' };
+const workspaceRoleLabel: Record<string, string> = {
+    PMO_ADMIN: 'PMO admin',
+    WORKSPACE_OWNER: 'Workspace owner',
+    USER: 'Member',
+};
 
 export const SettingsHub: React.FC = () => {
-    const { token, user: currentUser } = useAuth();
-    const [users, setUsers] = useState<ManagedUser[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState<string | null>(null);
-    const [error, setError] = useState('');
+    const { user, activeWorkspace, workspaceRole } = useAuth();
+    const mayManageMembers = canManageMembers(user, workspaceRole);
+    const mayAccessSettings = canAccessSettings(user) || mayManageMembers;
 
-    // Invite state
-    const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState<'ORG_ADMIN' | 'PMO_ADMIN' | 'USER'>('USER');
-    const [inviting, setInviting] = useState(false);
-    const [inviteSuccess, setInviteSuccess] = useState('');
-
-    useEffect(() => { fetchUsers(); }, []);
-
-    const fetchUsers = async () => {
-        setLoading(true); setError('');
-        try {
-            const res = await fetch('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to load users');
-            setUsers(data.users);
-        } catch (e: any) { setError(e.message); } finally { setLoading(false); }
-    };
-
-    const updateUser = async (userId: string, field: 'plan' | 'role', value: string) => {
-        setSaving(userId + field);
-        setError('');
-        try {
-            const res = await fetch(`/api/auth/users/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ [field]: value }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...data.user } : u));
-        } catch (e: any) { setError('Error: ' + e.message); } finally { setSaving(null); }
-    };
-
-    const deleteUser = async (userId: string) => {
-        if (!confirm('Are you sure you want to permanently remove this user?')) return;
-        setSaving(userId + 'delete');
-        setError('');
-        try {
-            const res = await fetch(`/api/auth/admin/users/${userId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            setUsers(prev => prev.filter(u => u.id !== userId));
-        } catch (e: any) { setError('Error: ' + e.message); } finally { setSaving(null); }
-    };
-
-    const inviteUser = async () => {
-        if (!inviteEmail.trim()) return;
-        setInviting(true); setError(''); setInviteSuccess('');
-        try {
-            const res = await fetch('/api/auth/users/invite', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Invite failed');
-            setInviteSuccess(data.password ? `Invited! Temp password: ${data.password}` : `Added to workspace!`);
-            setInviteEmail('');
-            if (data.user) {
-                setUsers(prev => [data.user, ...prev.filter(u => u.id !== data.user.id)]);
-            }
-        } catch (e: any) { setError(e.message); } finally { setInviting(false); }
-    };
+    if (!mayAccessSettings) {
+        return (
+            <section className="page-enter" style={{ maxWidth: 760, margin: '48px auto', textAlign: 'center' }}>
+                <div className="glass-card" style={{ padding: 32 }}>
+                    <h1 style={{ fontSize: 22, color: 'var(--n-800)', marginBottom: 8 }}>Workspace access</h1>
+                    <p style={{ color: 'var(--n-600)', lineHeight: 1.6 }}>
+                        Workspace settings and member access are managed by an organization or PMO administrator.
+                    </p>
+                </div>
+            </section>
+        );
+    }
 
     return (
-        <div style={{ padding: 40, background: 'var(--n-100)', minHeight: '100%', borderRadius: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                <span style={{ fontSize: 32 }}>{currentUser?.role === 'SUPERUSER' ? '🚀' : '⚙️'}</span>
+        <section className="page-enter" style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                 <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--n-800)', margin: 0 }}>
-                        {currentUser?.role === 'SUPERUSER' ? 'Superuser Cockpit' : 'Workspace Settings'}
-                    </h2>
-                    <p style={{ color: 'var(--n-600)', margin: 0, fontSize: 14 }}>Manage your B2B workspace, billing, and teams</p>
+                    <div style={{ color: 'var(--brand-500)', fontWeight: 800, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Governance</div>
+                    <h1 style={{ fontSize: 26, lineHeight: 1.2, color: 'var(--n-800)', margin: 0 }}>Organization & workspace controls</h1>
+                    <p style={{ color: 'var(--n-600)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                        Review the active workspace and manage member access with scoped, least-privilege roles.
+                    </p>
                 </div>
+                {user?.role === 'SUPERUSER' && (
+                    <Link to="/cockpit" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+                        Open platform cockpit
+                    </Link>
+                )}
+            </header>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                <article className="glass-card" style={{ padding: 18 }}>
+                    <div style={{ color: 'var(--n-600)', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Active workspace</div>
+                    <div style={{ color: 'var(--n-800)', fontSize: 17, fontWeight: 800, marginTop: 7 }}>{activeWorkspace?.name || 'No workspace selected'}</div>
+                    <div style={{ color: 'var(--n-600)', fontSize: 12, marginTop: 5 }}>{activeWorkspace?.org_name || '—'}</div>
+                </article>
+                <article className="glass-card" style={{ padding: 18 }}>
+                    <div style={{ color: 'var(--n-600)', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Platform role</div>
+                    <div style={{ color: 'var(--n-800)', fontSize: 17, fontWeight: 800, marginTop: 7 }}>{platformRoleLabel[user?.role || 'USER']}</div>
+                    <div style={{ color: 'var(--n-600)', fontSize: 12, marginTop: 5 }}>Organization-wide authority</div>
+                </article>
+                <article className="glass-card" style={{ padding: 18 }}>
+                    <div style={{ color: 'var(--n-600)', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>Workspace role</div>
+                    <div style={{ color: 'var(--n-800)', fontSize: 17, fontWeight: 800, marginTop: 7 }}>{workspaceRoleLabel[workspaceRole || 'USER']}</div>
+                    <div style={{ color: 'var(--n-600)', fontSize: 12, marginTop: 5 }}>Authority in this workspace only</div>
+                </article>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24, alignItems: 'start' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
-                        <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 16 }}>Workspace Details</h3>
-                        <p style={{ fontSize: 14, color: 'var(--n-600)' }}>Configure global workspace attributes. Orbit custom domains coming soon.</p>
-                        {currentUser?.email === 'gokulkris1@gmail.com' && (
-                            <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
-                                🦸 Global Superuser Active
-                            </div>
-                        )}
+            <div className="glass-card" style={{ padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 16 }}>
+                    <div>
+                        <h2 style={{ color: 'var(--n-800)', fontSize: 18, margin: 0 }}>Member access</h2>
+                        <p style={{ color: 'var(--n-600)', fontSize: 13, margin: '5px 0 0' }}>
+                            Invite members only into this workspace. New members receive secure instructions to set their own password.
+                        </p>
                     </div>
-
-                    <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
-                        <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 16 }}>Billing & Quotas</h3>
-                        <p style={{ fontSize: 14, color: 'var(--n-600)' }}>Review seat usage, upgrade plans, and manage Stripe subscriptions.</p>
-                    </div>
+                    <span className="badge badge-perm">Scoped to active workspace</span>
                 </div>
-
-                <div className="glass-card" style={{ padding: 24, borderRadius: 8, border: '1px solid var(--n-400)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                        <div>
-                            <h3 style={{ fontSize: 18, color: 'var(--n-800)', marginBottom: 4 }}>User Directory</h3>
-                            <p style={{ fontSize: 14, color: 'var(--n-600)', margin: 0 }}>Invite members and manage row-level access controls</p>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 8, background: 'var(--n-50)', padding: '6px', borderRadius: 6, border: '1px solid var(--n-300)' }}>
-                            <input
-                                value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                                placeholder="name@company.com"
-                                style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--n-400)', outline: 'none', fontSize: 13, width: 200, color: 'var(--n-800)' }}
-                            />
-                            <select
-                                value={inviteRole} onChange={e => setInviteRole(e.target.value as any)}
-                                style={{ padding: '8px 24px 8px 12px', borderRadius: 4, border: '1px solid var(--n-400)', outline: 'none', fontSize: 13, cursor: 'pointer', appearance: 'none', background: '#fff', color: 'var(--n-800)' }}
-                            >
-                                <option value="USER">User</option>
-                                <option value="PMO_ADMIN">PMO Admin</option>
-                                <option value="ORG_ADMIN">Org Admin</option>
-                            </select>
-                            <button onClick={inviteUser} disabled={inviting || !inviteEmail} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>
-                                {inviting ? '...' : '+ Invite'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {inviteSuccess && (
-                        <div style={{ padding: 12, background: '#ecfdf5', color: '#047857', border: '1px solid #10b981', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
-                            {inviteSuccess}
-                        </div>
-                    )}
-                    {error && (
-                        <div style={{ padding: 12, background: '#fef2f2', color: '#b91c1c', border: '1px solid #f87171', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
-                            {error}
-                        </div>
-                    )}
-
-                    {loading ? (
-                        <div style={{ padding: 24, textAlign: 'center', color: 'var(--n-600)' }}>Loading roster...</div>
-                    ) : (
-                        <div style={{ border: '1px solid var(--n-400)', borderRadius: 8, overflow: 'hidden' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ background: 'var(--n-100)', borderBottom: '1px solid var(--n-400)' }}>
-                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Member</th>
-                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Role</th>
-                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Plan Seats</th>
-                                        <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Joined</th>
-                                        {currentUser?.role === 'SUPERUSER' && (
-                                            <th style={{ padding: '12px 16px', color: 'var(--n-700)', fontWeight: 600 }}>Actions</th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {users.map(u => (
-                                        <tr key={u.id} style={{ borderBottom: '1px solid var(--n-300)', background: '#fff' }}>
-                                            <td style={{ padding: '16px' }}>
-                                                <div style={{ fontWeight: 600, color: 'var(--n-800)' }}>{u.name || 'Pending Invite'}</div>
-                                                <div style={{ color: 'var(--n-600)', fontSize: 12 }}>{u.email}</div>
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                <select
-                                                    value={u.role} disabled={saving === u.id + 'role' || u.id === currentUser?.id}
-                                                    onChange={e => updateUser(u.id, 'role', e.target.value)}
-                                                    style={{ background: 'var(--n-50)', border: '1px solid var(--n-400)', borderRadius: 4, color: ROLE_COLORS[u.role] || 'var(--n-600)', padding: '6px 10px', fontSize: 12, fontWeight: 600, outline: 'none' }}
-                                                >
-                                                    <option value="SUPERUSER" disabled>Superuser</option>
-                                                    <option value="ORG_ADMIN">Org Admin</option>
-                                                    <option value="PMO_ADMIN">PMO Admin</option>
-                                                    <option value="USER">User</option>
-                                                </select>
-                                            </td>
-                                            <td style={{ padding: '16px' }}>
-                                                {currentUser?.role === 'SUPERUSER' ? (
-                                                    <select
-                                                        value={u.plan || 'BASIC'} disabled={saving === u.id + 'plan'}
-                                                        onChange={e => updateUser(u.id, 'plan', e.target.value)}
-                                                        style={{ background: 'var(--n-50)', border: '1px solid var(--n-400)', borderRadius: 4, color: PLAN_COLORS[u.plan || 'BASIC'], padding: '6px 10px', fontSize: 12, fontWeight: 700, outline: 'none' }}
-                                                    >
-                                                        <option value="BASIC">Basic</option>
-                                                        <option value="PRO">Pro</option>
-                                                        <option value="MAX">Max</option>
-                                                    </select>
-                                                ) : (
-                                                    <span style={{ fontWeight: 700, color: PLAN_COLORS[u.plan || 'BASIC'] }}>{u.plan || 'BASIC'}</span>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '16px', color: 'var(--n-600)' }}>
-                                                {new Date(u.created_at).toLocaleDateString()}
-                                            </td>
-                                            {currentUser?.role === 'SUPERUSER' && (
-                                                <td style={{ padding: '16px' }}>
-                                                    <button
-                                                        disabled={u.id === currentUser?.id || saving === u.id + 'delete'}
-                                                        onClick={() => deleteUser(u.id)}
-                                                        style={{ padding: '6px 10px', background: 'var(--over-bg)', color: 'var(--over)', border: '1px solid var(--over)', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: (u.id === currentUser?.id) ? 'not-allowed' : 'pointer', opacity: (u.id === currentUser?.id) ? 0.5 : 1 }}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                <MemberManagement />
             </div>
-        </div>
+
+            <aside style={{ border: '1px solid var(--brand-100)', background: 'var(--brand-50)', borderRadius: 8, padding: '13px 16px', color: 'var(--brand-700)', fontSize: 13, lineHeight: 1.55 }}>
+                <strong>Access rule:</strong> PMO admins can manage members only in workspaces they administer. Organization admins retain organization-scoped authority; platform administration is available only in the platform cockpit.
+            </aside>
+        </section>
     );
 };

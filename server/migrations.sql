@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS projects (
     start_date DATE,
     end_date DATE,
     budget NUMERIC,
-    color TEXT
+    color TEXT,
+    required_skills TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
 );
 
 -- Allocations (many‑to‑many between resources and projects)

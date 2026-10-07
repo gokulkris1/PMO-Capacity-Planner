@@ -1,11 +1,12 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
-import { Resource, Allocation } from '../types';
+import { Resource, Project, Allocation } from '../types';
 import { getCurrentUtil } from '../utils/dateFilteredUtil';
 
 interface Props {
   resources: Resource[];
+  projects: Project[];
   allocations: Allocation[];
   scenarioAllocations?: Allocation[] | null;
 }
@@ -40,11 +41,11 @@ const CustomTooltip = ({ active, payload }: any) => {
   );
 };
 
-export const CapacityChart: React.FC<Props> = ({ resources, allocations, scenarioAllocations }) => {
+export const CapacityChart: React.FC<Props> = ({ resources, projects, allocations, scenarioAllocations }) => {
   const data = resources.map(r => {
-    const current = getCurrentUtil(allocations, r.id);
+    const current = getCurrentUtil(allocations, r.id, projects);
     const scenario = scenarioAllocations
-      ? getCurrentUtil(scenarioAllocations, r.id)
+      ? getCurrentUtil(scenarioAllocations, r.id, projects)
       : undefined;
     return { name: r.name.split(' ')[0], fullName: r.name, current, scenario };
   });

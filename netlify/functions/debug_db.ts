@@ -1,20 +1,11 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
+import type { Handler } from '@netlify/functions';
 
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-
-export const handler: Handler = async (event: HandlerEvent) => {
-    const sql = getDb();
-    try {
-        const users = await sql`SELECT email, role, org_id FROM users WHERE email LIKE '%tom%' OR email LIKE '%gokul%'`;
-        const wm = await sql`SELECT user_id, workspace_id, role, org_id FROM workspace_members`;
-        const ws = await sql`SELECT id, name, org_id FROM workspaces`;
-        return { statusCode: 200, body: JSON.stringify({ users, wm, ws }) };
-    } catch (e: any) {
-        return { statusCode: 500, body: e.message };
-    }
-}
+/**
+ * Retired: this endpoint previously returned unscoped database records.
+ * Production diagnostics must use authenticated, audit-logged tooling.
+ */
+export const handler: Handler = async () => ({
+    statusCode: 410,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ error: 'This diagnostic endpoint is retired.' }),
+});

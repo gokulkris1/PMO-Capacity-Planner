@@ -1,8 +1,14 @@
 import { neon } from '@neondatabase/serverless';
+import dotenv from 'dotenv';
 
-// Use same unpooled URL
-const UNPOOLED = 'postgresql://neondb_owner:npg_yngIoS2H9Kmz@ep-soft-mode-ai5mxefw.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
-const sql = neon(UNPOOLED);
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local' });
+
+const connectionString = process.env.NETLIFY_DATABASE_URL_UNPOOLED || process.env.NETLIFY_DATABASE_URL || process.env.NEON_DATABASE_URL;
+if (!connectionString) {
+  throw new Error('Set NETLIFY_DATABASE_URL_UNPOOLED, NETLIFY_DATABASE_URL, or NEON_DATABASE_URL before running this diagnostic.');
+}
+const sql = neon(connectionString);
 
 async function check() {
     console.log('=== Checking tables ===');

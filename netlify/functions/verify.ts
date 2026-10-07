@@ -1,9 +1,14 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import { Resend } from 'resend';
+import bcrypt from 'bcryptjs';
+import { randomInt } from 'node:crypto';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'PMO Planner <noreply@pmo-planner.com>';
+const OTP_TTL_MS = 15 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
 
 const getDb = () => neon(
     process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
@@ -29,7 +34,7 @@ function fail(event: HandlerEvent, msg: string, status = 400) {
 }
 
 function generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return randomInt(100000, 1_000_000).toString();
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -47,25 +52,33 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (!email) return fail(event, 'Email required');
 
         const cleanEmail = email.toLowerCase().trim();
+        if (!RESEND_API_KEY) {
+            return fail(event, 'Verification email delivery is unavailable. Contact support.', 503);
+        }
+
+        const existing = await sql`SELECT expires_at FROM otps WHERE email = ${cleanEmail}`;
+        if (existing.length > 0) {
+            const lastSentAt = Number(existing[0].expires_at) - OTP_TTL_MS;
+            if (Date.now() - lastSentAt < OTP_RESEND_COOLDOWN_MS) {
+                return fail(event, 'Please wait 60 seconds before requesting another code.', 429);
+            }
+        }
+
         const otp = generateOTP();
-        const expires = Date.now() + 15 * 60 * 1000; // 15 minutes
+        const otpHash = await bcrypt.hash(otp, 10);
+        const expires = Date.now() + OTP_TTL_MS;
 
         // Store in Postgres safely (Upsert)
         try {
             await sql`
         INSERT INTO otps (email, otp, expires_at, attempts) 
-        VALUES (${cleanEmail}, ${otp}, ${expires}, 0)
+        VALUES (${cleanEmail}, ${otpHash}, ${expires}, 0)
         ON CONFLICT (email) 
         DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, attempts = 0
       `;
         } catch (dbErr: any) {
-            console.error('DB OTP Save Error:', dbErr);
+            console.error('DB OTP save error:', dbErr?.message);
             return fail(event, 'Database error securely storing OTP', 500);
-        }
-
-        if (!RESEND_API_KEY) {
-            console.log(`[DEV] OTP for ${cleanEmail}: ${otp}`);
-            return ok(event, { sent: true, dev: true, otp });
         }
 
         try {
@@ -92,8 +105,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
             return ok(event, { sent: true });
         } catch (e: any) {
-            console.error('Email send error:', e.message);
-            return fail(event, 'Failed to send verification email: ' + e.message, 500);
+            try {
+                await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+            } catch (cleanupErr: any) {
+                console.error('Failed to remove undelivered OTP:', cleanupErr?.message);
+            }
+            console.error('Email send error:', e?.message);
+            return fail(event, 'Failed to send verification email', 500);
         }
     }
 
@@ -115,17 +133,31 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return fail(event, 'Code expired. Request a new one.', 410);
             }
 
-            const attempts = stored.attempts || 0;
-            if (stored.otp !== otp.trim()) {
-                await sql`UPDATE otps SET attempts = attempts + 1 WHERE email = ${cleanEmail}`;
-                return fail(event, 'Incorrect code. ' + Math.max(0, 3 - attempts - 1) + ' attempts remaining.', 400);
+            const attempts = Number(stored.attempts || 0);
+            if (attempts >= MAX_OTP_ATTEMPTS) {
+                await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+                return fail(event, 'Too many incorrect attempts. Request a new code.', 429);
+            }
+
+            const storedOtp = String(stored.otp || '');
+            const matches = storedOtp.startsWith('$2')
+                ? await bcrypt.compare(otp.trim(), storedOtp)
+                : storedOtp === otp.trim(); // Allows existing pre-hardening codes to expire naturally.
+            if (!matches) {
+                const nextAttempts = attempts + 1;
+                if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+                    await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+                    return fail(event, 'Too many incorrect attempts. Request a new code.', 429);
+                }
+                await sql`UPDATE otps SET attempts = ${nextAttempts} WHERE email = ${cleanEmail}`;
+                return fail(event, 'Incorrect code.', 400);
             }
 
             await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
             return ok(event, { verified: true });
 
         } catch (dbErr: any) {
-            console.error('DB OTP Verify Error:', dbErr);
+            console.error('DB OTP verify error:', dbErr?.message);
             return fail(event, 'Database error during OTP verification', 500);
         }
     }

@@ -92,6 +92,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+*:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
 /* ---- Scrollbars ---- */
 ::-webkit-scrollbar {
   width: 8px;
@@ -789,12 +794,31 @@ body {
 
 .badge-hold {
   background: #f3f4f6;
-  color: #4b5563;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.badge-suspended {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
 }
 
 .badge-completed {
   background: #f5f3ff;
   color: #7c3aed;
+}
+
+.badge-called-off {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.badge-archived {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
 .badge-critical {

@@ -2,7 +2,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions';
 import Stripe from 'stripe';
 import { neon } from '@neondatabase/serverless';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_dummy';
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 const getDb = () => neon(
     process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
@@ -13,6 +13,7 @@ const getDb = () => neon(
 export const handler: Handler = async (event: HandlerEvent) => {
     // 1. Stripe Webhooks must be POST requests
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Make a POST request' };
+    if (!endpointSecret || !process.env.STRIPE_SECRET_KEY) return { statusCode: 503, body: 'Webhook is not configured' };
 
     const sig = event.headers['stripe-signature'];
     if (!sig || !event.body) return { statusCode: 400, body: 'Missing signature or body' };
@@ -24,7 +25,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         stripeEvent = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
     } catch (err: any) {
         console.error(`Webhook Error: ${err.message}`);
-        return { statusCode: 400, body: `Webhook Error: ${err.message}` };
+        return { statusCode: 400, body: 'Invalid webhook signature' };
     }
 
     // 3. Handle specific event types
@@ -34,7 +35,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // Retrieve custom metadata passed during Checkout creation
         const { orgId, plan } = session.metadata || {};
 
-        if (orgId && plan) {
+        if (orgId && plan && ['BASIC', 'PRO', 'MAX'].includes(plan.toUpperCase())) {
             try {
                 const sql = getDb();
                 console.log(`[SUBSCRIPTION UPGRADE] Upgrading org ${orgId} to plan ${plan}`);

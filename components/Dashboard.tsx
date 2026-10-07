@@ -1,12 +1,13 @@
 
 import React, { useMemo } from 'react';
-import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, ProjectStatus } from '../types';
+import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, projectIsInFlight } from '../types';
 import { Team } from '../types';
 import { StatCard } from './StatCard';
 import { CapacityChart } from './CapacityChart';
 import { Heatmap } from './Heatmap';
 import { RiskScanner } from './RiskScanner';
-import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getProjectTeamSummary } from '../utils/capacityPlanning';
 
 interface Props {
     resources: Resource[];
@@ -17,8 +18,8 @@ interface Props {
     teams: Team[];
 }
 
-function getUtil(allocations: Allocation[], resourceId: string) {
-    return getCurrentUtil(allocations, resourceId);
+function getUtil(allocations: Allocation[], resourceId: string, projects: Project[]) {
+    return getCurrentUtil(allocations, resourceId, projects);
 }
 
 function projectStatusBadge(status: string) {
@@ -26,7 +27,10 @@ function projectStatusBadge(status: string) {
         Active: 'badge badge-active',
         Planning: 'badge badge-planning',
         'On Hold': 'badge badge-hold',
+        Suspended: 'badge badge-suspended',
         Completed: 'badge badge-completed',
+        'Called Off': 'badge badge-called-off',
+        Archived: 'badge badge-archived',
     };
     return map[status] || 'badge badge-hold';
 }
@@ -46,13 +50,12 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
 
     const stats = useMemo(() => {
         const totalResources = resources.length;
-        const activeProjects = projects.filter(p => p.status === ProjectStatus.ACTIVE).length;
-        const overAllocated = resources.filter(r => getUtil(liveAllocations, r.id) > 100);
-        const underAllocated = resources.filter(r => getUtil(liveAllocations, r.id) < 60);
-        const totalPct = resources.reduce((s, r) => s + getUtil(liveAllocations, r.id), 0);
+        const activeProjects = projects.filter(p => projectIsInFlight(p.status)).length;
+        const overAllocated = resources.filter(r => getUtil(liveAllocations, r.id, projects) > 100);
+        const underAllocated = resources.filter(r => getUtil(liveAllocations, r.id, projects) < 60);
+        const totalPct = resources.reduce((s, r) => s + getUtil(liveAllocations, r.id, projects), 0);
         const avgUtil = resources.length ? Math.round(totalPct / resources.length) : 0;
-        const now = new Date();
-        const totalFte = liveAllocations.filter(a => isAllocActiveOn(a, now)).reduce((s, a) => s + a.percentage, 0) / 100;
+        const totalFte = totalPct / 100;
         return { totalResources, activeProjects, overAllocated, underAllocated, avgUtil, totalFte };
     }, [resources, projects, liveAllocations]);
 
@@ -60,7 +63,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
     const utilBuckets = useMemo(() => {
         const b = { over: 0, high: 0, optimal: 0, under: 0 };
         resources.forEach(r => {
-            const u = getUtil(liveAllocations, r.id);
+            const u = getUtil(liveAllocations, r.id, projects);
             const s = getAllocationStatus(u);
             if (s === AllocationStatus.OVER) b.over++;
             else if (s === AllocationStatus.HIGH) b.high++;
@@ -68,7 +71,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
             else b.under++;
         });
         return b;
-    }, [resources, liveAllocations]);
+    }, [resources, liveAllocations, projects]);
 
     if (resources.length === 0 && projects.length === 0) {
         return (
@@ -98,7 +101,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                     trendType="up"
                 />
                 <StatCard
-                    label="Active Projects"
+                    label="In-flight Projects"
                     value={stats.activeProjects}
                     icon="🚀"
                     iconBg="#DEEBFF"
@@ -161,7 +164,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                         </div>
                     </div>
                     <div className="panel-body">
-                        <CapacityChart resources={resources} allocations={liveAllocations} scenarioAllocations={scenarioAllocations ?? undefined} />
+                        <CapacityChart resources={resources} projects={projects} allocations={liveAllocations} scenarioAllocations={scenarioAllocations ?? undefined} />
                     </div>
                 </div>
 
@@ -202,7 +205,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
             </div>
 
             {/* Heatmap Section */}
-            <Heatmap resources={resources} allocations={liveAllocations} />
+            <Heatmap resources={resources} projects={projects} allocations={liveAllocations} />
 
             {/* Project Staffing Summary */}
             <div className="panel">
@@ -230,8 +233,8 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                         </thead>
                         <tbody>
                             {projects.map(proj => {
-                                const pAllocs = liveAllocations.filter(a => a.projectId === proj.id && isAllocActiveOn(a, new Date()));
-                                const fte = pAllocs.reduce((s, a) => s + a.percentage, 0) / 100;
+                                const teamSummary = getProjectTeamSummary(proj.id, liveAllocations);
+                                const fte = teamSummary.fte;
                                 const barPct = Math.min(100, fte * 33);
                                 return (
                                     <tr key={proj.id}>
@@ -243,7 +246,7 @@ export const Dashboard: React.FC<Props> = ({ resources, projects, allocations, s
                                         </td>
                                         <td><span className={projectStatusBadge(proj.status)}>{proj.status}</span></td>
                                         <td><span className={priorityBadge(proj.priority)}>{proj.priority}</span></td>
-                                        <td style={{ fontWeight: 600, color: '#475569' }}>{pAllocs.length} members</td>
+                                        <td style={{ fontWeight: 600, color: '#475569' }}>{teamSummary.memberCount} {teamSummary.memberCount === 1 ? 'person' : 'people'}</td>
                                         <td style={{ fontWeight: 700 }}>{fte.toFixed(1)} FTE</td>
                                         <td style={{ minWidth: 140 }}>
                                             <div className="alloc-bar-wrap">

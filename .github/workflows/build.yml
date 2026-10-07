@@ -2,9 +2,9 @@ name: CI Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, develop ]
 
 jobs:
   build:
@@ -16,10 +16,10 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Test
         run: npm test
@@ -27,33 +27,4 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Show environment and build output
-        run: |
-          echo "Node and npm versions:";
-          node -v || true;
-          npm -v || true;
-          echo "-- package.json --";
-          cat package.json || true;
-          echo "-- repo root listing --";
-          ls -la || true;
-          echo "-- dist listing (if any) --";
-          if [ -d dist ]; then ls -la dist || true; else echo "dist directory not found"; fi
-
-      - name: Install Netlify CLI
-        run: npm install -g netlify-cli
-
-      - name: Deploy to Netlify
-        if: env.NETLIFY_AUTH_TOKEN != '' && env.NETLIFY_SITE_ID != ''
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: |
-          echo "Deploying to Netlify site $NETLIFY_SITE_ID"
-          netlify deploy --site $NETLIFY_SITE_ID --auth $NETLIFY_AUTH_TOKEN --prod --dir=dist
-
-      - name: Upload dist artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist
+# Production deployment is performed only by deploy-netlify.yml.

@@ -36,43 +36,81 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     let userId: string;
     let userRole = 'USER';
-    let userOrgId: string | null = null;
     try {
         const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { id: string; role?: string; org_id?: string };
         userId = decoded.id;
         userRole = decoded.role || 'USER';
-        userOrgId = decoded.org_id || null;
     } catch { return fail('Invalid token', 401); }
 
     let orgSlug = event.queryStringParameters?.orgSlug;
     const sql = getDb();
+    let userOrgId: string | null = null;
+
+    // JWTs are identity credentials, not an authorization source of truth.
+    // Resolve the current database role for every request so removals and role
+    // changes take effect immediately.
+    try {
+        const [currentUser] = await sql`SELECT role, org_id FROM users WHERE id = ${userId}`;
+        if (!currentUser) return fail('Unauthorized', 401);
+        userRole = currentUser.role === 'ADMIN' ? 'ORG_ADMIN' : currentUser.role || 'USER';
+        userOrgId = currentUser.org_id || null;
+    } catch (e: any) {
+        console.error('Unable to resolve current user role', e);
+        return fail('Unauthorized', 401);
+    }
 
     // ── GET — load workspace data ────────────────────────────────────────
     if (event.httpMethod === 'GET') {
         if (!orgSlug) return fail('Organization slug required', 400);
         try {
-            // Resolve workspace from slug
+            const requestedWorkspaceId = event.queryStringParameters?.workspaceId;
             let wsRows;
             if (userRole === 'SUPERUSER') {
-                // Superuser can access any org
-                wsRows = await sql`
-                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id
-                    FROM workspaces w JOIN organizations o ON o.id = w.org_id
-                    WHERE o.slug = ${orgSlug} LIMIT 1
-                `;
+                wsRows = requestedWorkspaceId
+                    ? await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, 'PMO_ADMIN' as workspace_role
+                        FROM workspaces w JOIN organizations o ON o.id = w.org_id
+                        WHERE o.slug = ${orgSlug} AND w.id = ${requestedWorkspaceId} LIMIT 1
+                      `
+                    : await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, 'PMO_ADMIN' as workspace_role
+                        FROM workspaces w JOIN organizations o ON o.id = w.org_id
+                        WHERE o.slug = ${orgSlug} ORDER BY w.name LIMIT 1
+                      `;
+            } else if (userRole === 'ORG_ADMIN') {
+                if (!userOrgId) return fail('Workspace not found or unauthorized', 403);
+                wsRows = requestedWorkspaceId
+                    ? await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, 'PMO_ADMIN' as workspace_role
+                        FROM workspaces w JOIN organizations o ON o.id = w.org_id
+                        WHERE o.slug = ${orgSlug} AND w.org_id = ${userOrgId} AND w.id = ${requestedWorkspaceId} LIMIT 1
+                      `
+                    : await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, 'PMO_ADMIN' as workspace_role
+                        FROM workspaces w JOIN organizations o ON o.id = w.org_id
+                        WHERE o.slug = ${orgSlug} AND w.org_id = ${userOrgId} ORDER BY w.name LIMIT 1
+                      `;
             } else {
-                // Everyone else must belong to this org
-                wsRows = await sql`
-                    SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, u.role as db_role
-                    FROM workspaces w
-                    JOIN users u ON u.org_id = w.org_id
-                    JOIN organizations o ON o.id = w.org_id
-                    WHERE u.id = ${userId} AND o.slug = ${orgSlug}
-                    LIMIT 1
-                `;
+                wsRows = requestedWorkspaceId
+                    ? await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, wm.role as workspace_role
+                        FROM workspace_members wm
+                        JOIN workspaces w ON w.id = wm.workspace_id
+                        JOIN organizations o ON o.id = w.org_id
+                        WHERE wm.user_id = ${userId} AND wm.org_id = w.org_id AND o.slug = ${orgSlug} AND wm.workspace_id = ${requestedWorkspaceId}
+                        LIMIT 1
+                      `
+                    : await sql`
+                        SELECT w.id, w.name as ws_name, o.name as org_name, o.slug, o.logo_url, o.primary_color, o.id as org_id, wm.role as workspace_role
+                        FROM workspace_members wm
+                        JOIN workspaces w ON w.id = wm.workspace_id
+                        JOIN organizations o ON o.id = w.org_id
+                        WHERE wm.user_id = ${userId} AND wm.org_id = w.org_id AND o.slug = ${orgSlug}
+                        ORDER BY w.name LIMIT 1
+                      `;
             }
 
-            if (wsRows.length === 0) return fail('Unauthorized for this organization', 403);
+            if (wsRows.length === 0) return fail('Workspace not found or unauthorized', 403);
 
             const wsId = wsRows[0].id;
             const wsName = wsRows[0].ws_name;
@@ -80,28 +118,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const logoUrl = wsRows[0].logo_url;
             const primaryColor = wsRows[0].primary_color;
 
-            // Sync userRole with DB if available (fixes stale JWTs with legacy 'ADMIN' role)
-            if (wsRows[0].db_role) {
-                userRole = wsRows[0].db_role;
-            } else if (userRole === 'ADMIN') {
-                userRole = 'ORG_ADMIN';
-            }
-
             // Resolve workspace role
-            let workspaceRole: string = 'USER';
+            let workspaceRole: string = wsRows[0].workspace_role || 'USER';
             if (userRole === 'SUPERUSER' || userRole === 'ORG_ADMIN') {
                 workspaceRole = 'PMO_ADMIN'; // Full access
-            } else {
-                const memberRows = await sql`
-                    SELECT role FROM workspace_members
-                    WHERE user_id = ${userId} AND workspace_id = ${wsId}
-                `;
-                if (memberRows.length > 0) {
-                    workspaceRole = memberRows[0].role;
-                } else {
-                    // Not in workspace_members but belongs to org — default to USER
-                    workspaceRole = 'USER';
-                }
             }
 
             const canWriteData = ['SUPERUSER', 'ORG_ADMIN', 'ADMIN'].includes(userRole) ||
@@ -132,7 +152,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 id: p.id, name: p.name, status: p.status, priority: p.priority,
                 description: p.description || '', startDate: p.start_date, endDate: p.end_date,
                 clientName: p.client_name, budget: p.budget ? Number(p.budget) : undefined,
-                color: p.color
+                color: p.color, requiredSkills: p.required_skills || []
             }));
             const mapAlloc = allocations.map((a: any) => ({
                 id: a.id, resourceId: a.resource_id, projectId: a.project_id,
@@ -145,8 +165,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 workspaceRole, canWrite: canWriteData, members
             });
         } catch (e: any) {
-            console.error(e);
-            return fail('Failed to fetch workspace: ' + e.message, 500);
+            console.error('Workspace load failed:', e?.message);
+            return fail('Failed to fetch workspace', 500);
         }
     }
 
@@ -207,11 +227,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (userRole === 'SUPERUSER') {
                 hasWriteAccess = true;
             } else {
-                const [callerUser] = await sql`SELECT org_id FROM users WHERE id = ${userId}`;
-                if (['ORG_ADMIN', 'ADMIN'].includes(userRole) && callerUser?.org_id === wsRows[0].org_id) {
+                if (userRole === 'ORG_ADMIN' && userOrgId === wsRows[0].org_id) {
                     hasWriteAccess = true;
                 } else {
-                    const memberRows = await sql`SELECT role FROM workspace_members WHERE user_id = ${userId} AND workspace_id = ${wsId}`;
+                    const memberRows = await sql`
+                        SELECT role FROM workspace_members
+                        WHERE user_id = ${userId} AND workspace_id = ${wsId} AND org_id = ${wsRows[0].org_id}`;
                     const wsRole = memberRows[0]?.role || 'USER';
                     if (['PMO_ADMIN', 'WORKSPACE_OWNER'].includes(wsRole)) {
                         hasWriteAccess = true;
@@ -240,6 +261,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
             }
             for (const p of projects) {
                 if (!p.name || p.name.trim() === '') return fail(`Project name is required (ID: ${p.id})`, 400);
+                if (p.requiredSkills !== undefined && !Array.isArray(p.requiredSkills)) {
+                    return fail(`Project requiredSkills must be an array (ID: ${p.id})`, 400);
+                }
             }
             for (const a of allocations) {
                 if (a.percentage < 0 || a.percentage > 500) return fail(`Invalid allocation percentage: ${a.percentage}% (max 500%)`, 400);
@@ -288,10 +312,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     for (const p of projects) {
                         await client.query(
                             `INSERT INTO projects 
-                             (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                             (id, workspace_id, name, status, priority, description, start_date, end_date, client_name, budget, color, required_skills)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
                             [p.id, wsId, p.name, p.status || 'Active', p.priority || 'Medium', p.description || '',
-                            p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null]
+                            p.startDate || null, p.endDate || null, p.clientName || null, p.budget || null, p.color || null, p.requiredSkills || []]
                         );
                     }
                 }
@@ -313,15 +337,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return ok({ success: true });
             } catch (err: any) {
                 await client.query('ROLLBACK');
-                console.error(`Save Transaction Failed:`, err);
-                return fail(`Save failed: ${err.message}`, 500);
+                console.error('Save transaction failed:', err?.message);
+                return fail('Save failed', 500);
             } finally {
                 client.release();
                 await pool.end();
             }
         } catch (e: any) {
-            console.error(e);
-            return fail('Save failed: ' + e.message, 500);
+            console.error('Workspace save failed:', e?.message);
+            return fail('Save failed', 500);
         }
     }
 

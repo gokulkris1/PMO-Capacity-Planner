@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import './index.css';
 
 import { Resource, Project, Allocation, ViewTab, getAllocationStatus, AllocationStatus, ResourceType } from './types';
@@ -7,13 +7,6 @@ import { MOCK_RESOURCES, MOCK_PROJECTS, MOCK_ALLOCATIONS, TEAMS, PLAN_LIMITS } f
 import { getCapacityInsights } from './services/geminiService';
 
 import { Dashboard } from './components/Dashboard';
-import { AllocationMatrix } from './components/AllocationMatrix';
-import { ProjectView } from './components/ProjectView';
-import { ResourceView } from './components/ResourceView';
-import { SkillsView } from './components/SkillsView';
-import { TeamView } from './components/TeamView';
-import { TribeView } from './components/TribeView';
-import { WhatIfPanel } from './components/WhatIfPanel';
 import { ResourceModal, ProjectModal, ConfirmModal } from './components/Modals';
 import { AllocationModal } from './components/AllocationModal';
 import { JiraImportModal } from './components/JiraImportModal';
@@ -24,30 +17,27 @@ import { Login } from './components/Login';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { PricingPage } from './components/PricingPage';
 import { Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom';
-import { exportExecSummaryPDF } from './utils/pdfExport';
-import { AdminPanel } from './components/AdminPanel';
-import { SuperAdminPanel } from './components/SuperAdminPanel';
-import { SuperuserCockpit } from './components/SuperuserCockpit';
-import { SettingsHub } from './components/SettingsHub';
-import { DirectoryProfile } from './components/DirectoryProfile';
-import { QBRPlanner } from './components/qbr/QBRPlanner';
+import { StaffingScenarioPlan } from './utils/capacityPlanning';
+import { getCurrentUtil } from './utils/dateFilteredUtil';
+
+const QBRPlanner = React.lazy(() => import('./components/qbr/QBRPlanner').then(module => ({ default: module.QBRPlanner })));
+const SuperuserCockpit = React.lazy(() => import('./components/SuperuserCockpit').then(module => ({ default: module.SuperuserCockpit })));
+const AllocationMatrix = React.lazy(() => import('./components/AllocationMatrix').then(module => ({ default: module.AllocationMatrix })));
+const ProjectView = React.lazy(() => import('./components/ProjectView').then(module => ({ default: module.ProjectView })));
+const ResourceView = React.lazy(() => import('./components/ResourceView').then(module => ({ default: module.ResourceView })));
+const SkillsView = React.lazy(() => import('./components/SkillsView').then(module => ({ default: module.SkillsView })));
+const TeamView = React.lazy(() => import('./components/TeamView').then(module => ({ default: module.TeamView })));
+const TribeView = React.lazy(() => import('./components/TribeView').then(module => ({ default: module.TribeView })));
+const WhatIfPanel = React.lazy(() => import('./components/WhatIfPanel').then(module => ({ default: module.WhatIfPanel })));
+const SettingsHub = React.lazy(() => import('./components/SettingsHub').then(module => ({ default: module.SettingsHub })));
+const DirectoryProfile = React.lazy(() => import('./components/DirectoryProfile').then(module => ({ default: module.DirectoryProfile })));
 
 const APP_VERSION = '1.0.0';
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'public';
 
 /* ── helpers ──────────────────────────────────────────────── */
-function getUtil(allocs: Allocation[], resId: string) {
-  const now = new Date();
-  return allocs
-    .filter(a => {
-      if (a.resourceId !== resId) return false;
-      if (!a.startDate && !a.endDate) return true;
-      const start = a.startDate ? new Date(a.startDate) : new Date('2000-01-01');
-      // Set end date boundary to 23:59:59 to include the whole day
-      const end = a.endDate ? new Date(a.endDate + 'T23:59:59') : new Date('2099-12-31T23:59:59');
-      return start <= now && end >= now;
-    })
-    .reduce((s, a) => s + a.percentage, 0);
+function getUtil(allocs: Allocation[], resId: string, projects?: Project[]) {
+  return getCurrentUtil(allocs, resId, projects);
 }
 
 function utilColor(pct: number) {
@@ -88,7 +78,7 @@ const AppShell: React.FC = () => {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading, workspaceRole, activeWorkspace, availableWorkspaces, setAvailableWorkspaces, switchWorkspace } = useAuth();
+  const { user, logout, isLoading, workspaceRole, activeWorkspace, availableWorkspaces, setAvailableWorkspaces, setWorkspaceRole, switchWorkspace } = useAuth();
   // Guests see demo data; logged-in users get their own scoped workspace
   const storageKey = useCallback((key: string) =>
     user ? `pcp_${user.id}_${key}` : `pcp_${key}`
@@ -106,8 +96,6 @@ const AppShell: React.FC = () => {
   const [activeAllocationModal, setActiveAllocationModal] = useState<{ resId: string, projId: string } | null>(null);
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showSuperAdmin, setShowSuperAdmin] = useState(false);
 
   /* tenant state */
   const [workspaceName, setWorkspaceName] = useState<string>('Default Workspace');
@@ -201,9 +189,14 @@ const AppShell: React.FC = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const overrideOrg = urlParams.get('org');
 
-      // Append orgSlug context to the workspace fetch
-      const targetSlug = overrideOrg ? encodeURIComponent(overrideOrg) : orgSlug;
-      fetch(`/api/workspace?orgSlug=${targetSlug}`, {
+      // Always ask for the active workspace explicitly. Do not carry a stale
+      // workspace ID across a superuser "view as organization" override.
+      const targetSlug = overrideOrg || activeWorkspace?.org_slug || orgSlug;
+      if (!targetSlug) return;
+      const workspaceParams = new URLSearchParams({ orgSlug: targetSlug });
+      if (!overrideOrg && activeWorkspace?.id) workspaceParams.set('workspaceId', activeWorkspace.id);
+
+      fetch(`/api/workspace?${workspaceParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -218,8 +211,7 @@ const AppShell: React.FC = () => {
           if (data.orgName) setOrgName(data.orgName);
           if (data.workspaceName) setWorkspaceName(data.workspaceName);
           if (data.logoUrl) setWorkspaceLogo(data.logoUrl);
-          // workspaceRole is automatically set via the workspace_members check in the API
-          // (the context updates on activeWorkspace change)
+          if (data.workspaceRole) setWorkspaceRole(data.workspaceRole);
 
           if (data.primaryColor) {
             document.documentElement.style.setProperty('--color-primary', data.primaryColor);
@@ -256,7 +248,7 @@ const AppShell: React.FC = () => {
     if (!localStorage.getItem('pcp_tour_done')) {
       setTimeout(() => setShowTour(true), 600);
     }
-  }, [user?.id, activeWorkspace?.id]);
+  }, [user?.id, activeWorkspace?.id, activeWorkspace?.org_slug, orgSlug, setWorkspaceRole]);
 
   // Persist data — sync to Postgres when authenticated, localStorage when guest
   useEffect(() => {
@@ -380,8 +372,8 @@ const AppShell: React.FC = () => {
   const liveAlloc = scenarioMode && scenarioAllocations ? scenarioAllocations : allocations;
 
   const overAllocCount = useMemo(() =>
-    resources.filter(r => getUtil(liveAlloc, r.id) > 100).length
-    , [resources, liveAlloc]);
+    resources.filter(r => getUtil(liveAlloc, r.id, projects) > 100).length
+    , [resources, liveAlloc, projects]);
 
   const effectiveTeams = useMemo(() => {
     const base = [...TEAMS];
@@ -458,6 +450,69 @@ const AppShell: React.FC = () => {
     setScenarioAllocations(null);
     setScenarioMode(false);
   };
+
+  const previewStaffingScenario = useCallback((plan: StaffingScenarioPlan) => {
+    const addAllocation = (
+      current: Allocation[],
+      resourceId: string,
+      projectId: string,
+      percentage: number,
+      window: Pick<Allocation, 'startDate' | 'endDate'> = {},
+    ): Allocation[] => percentage > 0
+      ? [...current, {
+        id: `a-${crypto.randomUUID()}`,
+        resourceId,
+        projectId,
+        percentage,
+        startDate: window.startDate,
+        endDate: window.endDate,
+      }]
+      : current;
+
+    const reduceAllocation = (current: Allocation[], allocationId: string, percentage: number) => {
+      const allocation = current.find(candidate => candidate.id === allocationId);
+      if (!allocation || percentage <= 0) return { allocations: current, reduced: 0 };
+
+      const reduced = Math.min(allocation.percentage, percentage);
+      const remaining = allocation.percentage - reduced;
+      return {
+        allocations: remaining > 0
+          ? current.map(candidate => candidate.id === allocationId ? { ...candidate, percentage: remaining } : candidate)
+          : current.filter(candidate => candidate.id !== allocationId),
+        reduced,
+      };
+    };
+
+    setScenarioAllocations(previous => {
+      let next = JSON.parse(JSON.stringify(previous ?? allocations)) as Allocation[];
+      let targetIncrease = plan.targetAllocationIncrease;
+
+      if (plan.reallocation) {
+        const reduction = reduceAllocation(next, plan.reallocation.sourceAllocationId, plan.reallocation.transferredPercentage);
+        next = reduction.allocations;
+        const transfer = Math.min(reduction.reduced, plan.reallocation.transferredPercentage);
+        next = addAllocation(
+          next,
+          plan.reallocation.replacementResourceId,
+          plan.reallocation.sourceProjectId,
+          transfer,
+          {
+            startDate: plan.reallocation.sourceStartDate,
+            endDate: plan.reallocation.sourceEndDate,
+          },
+        );
+        targetIncrease = Math.min(targetIncrease, transfer);
+      }
+
+      const targetProject = projects.find(project => project.id === plan.targetProjectId);
+      return addAllocation(next, plan.targetResourceId, plan.targetProjectId, targetIncrease, {
+        startDate: targetProject?.startDate,
+        endDate: targetProject?.endDate,
+      });
+    });
+    setScenarioMode(true);
+    setActiveTab('what-if');
+  }, [allocations, projects]);
 
   /* ── resource CRUD ──────────────────────────────────────── */
   const saveResource = (data: Partial<Resource>) => {
@@ -551,7 +606,8 @@ const AppShell: React.FC = () => {
       endDate: d.endDate || '',
       clientName: d.clientName || '',
       budget: d.budget,
-      color: d.color || '#6366f1'
+      color: d.color || '#6366f1',
+      requiredSkills: d.requiredSkills || [],
     }));
     setProjects(prev => [...newProjects, ...prev]);
     setModal({ type: 'none' });
@@ -590,6 +646,16 @@ const AppShell: React.FC = () => {
     a.download = `pmo_export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);
+  };
+
+  const exportPdf = async () => {
+    try {
+      const { exportExecSummaryPDF } = await import('./utils/pdfExport');
+      exportExecSummaryPDF(resources, projects, liveAlloc);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Unable to generate the PDF summary. Please try again.');
+    }
   };
 
   /* ── render helpers ─────────────────────────────────────── */
@@ -659,18 +725,10 @@ const AppShell: React.FC = () => {
               <div style={{ display: 'flex', gap: 4 }}>
                 {user.role === 'SUPERUSER' && (
                   <button
-                    onClick={() => setShowSuperAdmin(true)}
+                    onClick={() => navigate('/cockpit')}
                     title="Superuser Console"
                     style={{ background: 'var(--brand-500)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
                     Super
-                  </button>
-                )}
-                {user.role === 'ADMIN' && (
-                  <button
-                    onClick={() => setShowAdmin(true)}
-                    title="Workspace Admin"
-                    style={{ background: 'var(--n-600)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '4px 8px', cursor: 'pointer', flexShrink: 0 }}>
-                    Admin
                   </button>
                 )}
                 <button
@@ -807,7 +865,7 @@ const AppShell: React.FC = () => {
           {/* Data Management */}
           <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 14 }}>
             <div className="nav-section-label">Data</div>
-            <button className="nav-item" onClick={() => exportExecSummaryPDF(resources, projects, liveAlloc)}>
+            <button className="nav-item" onClick={() => void exportPdf()}>
               <span style={{ fontSize: 15 }}>📄</span><span>Exec Summary (PDF)</span>
             </button>
             <button
@@ -936,7 +994,7 @@ const AppShell: React.FC = () => {
                 <button className="btn btn-danger" onClick={discardScenario}>✕ Discard</button>
               </>
             )}
-            {user?.role !== 'USER' && (
+            {canWrite(user, workspaceRole) && (
               <>
                 <button
                   className="btn btn-primary"
@@ -983,6 +1041,7 @@ const AppShell: React.FC = () => {
 
         {/* Page body */}
         <div className="page-body">
+          <Suspense fallback={<div className="empty-state"><p>Loading workspace view…</p></div>}>
           {location.pathname.endsWith('/settings') ? (
             <SettingsHub />
           ) : location.pathname.endsWith('/directory') ? (
@@ -1025,6 +1084,7 @@ const AppShell: React.FC = () => {
                   onAddProject={() => authGate(() => setModal({ type: 'addProject' }), true)}
                   onEditProject={(proj) => authGate(() => setModal({ type: 'editProject', project: proj }), true)}
                   onDeleteProject={(proj) => authGate(() => setModal({ type: 'deleteProject', project: proj }), true)}
+                  onPreviewStaffingScenario={(plan) => authGate(() => previewStaffingScenario(plan), true)}
                 />
               )}
 
@@ -1078,14 +1138,18 @@ const AppShell: React.FC = () => {
               )}
 
               {activeTab === 'qbr' && user && activeWorkspace && (
-                <QBRPlanner
-                  token={localStorage.getItem('pcp_token') || ''}
-                  wsId={activeWorkspace.id}
-                  orgId={activeWorkspace.org_id}
-                />
+                <Suspense fallback={<div className="empty-state"><p>Loading QBR planner…</p></div>}>
+                  <QBRPlanner
+                    token={localStorage.getItem('pcp_token') || ''}
+                    wsId={activeWorkspace.id}
+                    canWrite={canWrite(user, workspaceRole)}
+                    canSeedDemo={import.meta.env.DEV && user.role === 'SUPERUSER'}
+                  />
+                </Suspense>
               )}
             </>
           )}
+          </Suspense>
         </div>
       </main>
 
@@ -1201,13 +1265,6 @@ const AppShell: React.FC = () => {
           currentPlan={user?.plan || 'Free'}
         />
       )}
-      {showAdmin && (
-        <AdminPanel onClose={() => setShowAdmin(false)} />
-      )}
-      {showSuperAdmin && (
-        <SuperAdminPanel onClose={() => setShowSuperAdmin(false)} />
-      )}
-
       {/* ── Orbit Floating AI Assistant ── */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
         {showAiChat && (
@@ -1313,7 +1370,7 @@ const Landing: React.FC = () => {
 /* ── Create Org Page ──────────────────────────────────────── */
 const CreateOrg: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [orgName, setOrgName] = useState('');
   const [website, setWebsite] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1330,7 +1387,7 @@ const CreateOrg: React.FC = () => {
       if (website.trim()) {
         const themeRes = await fetch('/api/theme_extract', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ url: website })
         });
         if (themeRes.ok) {
@@ -1338,7 +1395,6 @@ const CreateOrg: React.FC = () => {
         }
       }
 
-      const token = localStorage.getItem('pcp_token');
       const res = await fetch('/api/org_create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -1432,7 +1488,11 @@ const CockpitRoute: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   if (!user || user.role !== 'SUPERUSER') return <Navigate to="/" replace />;
-  return <SuperuserCockpit onViewOrg={(slug) => navigate(`/o/${slug}`)} />;
+  return (
+    <Suspense fallback={<div className="empty-state"><p>Loading administration console…</p></div>}>
+      <SuperuserCockpit onViewOrg={(slug) => navigate(`/o/${slug}`)} />
+    </Suspense>
+  );
 };
 
 /* ── Router Export ────────────────────────────────────────── */

@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Resource, Project, Allocation, Team, getAllocationStatus, AllocationStatus } from '../types';
-import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { Resource, Project, Allocation, Team, getAllocationStatus, AllocationStatus, getProjectCapacityImpact, projectConsumesCapacity } from '../types';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface Props {
     resources: Resource[];
@@ -78,7 +79,7 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
             </div>
 
             {teamGroups.map(({ team, members }) => {
-                const teamTotalAlloc = members.reduce((s, r) => s + getCurrentUtil(liveAlloc, r.id), 0);
+                const teamTotalAlloc = members.reduce((s, r) => s + getCurrentUtil(liveAlloc, r.id, projects), 0);
                 const teamAvgUtil = members.length ? Math.round(teamTotalAlloc / members.length) : 0;
 
                 return (
@@ -102,12 +103,13 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
                                 <thead>
                                     <tr>
                                         <th style={{ position: 'sticky', left: 0, background: '#f8fafc', zIndex: 5, minWidth: 160 }}>Member</th>
-                                        <th style={{ minWidth: 80 }}>Total %</th>
+                                        <th style={{ minWidth: 80 }}>Live load</th>
                                         {projects.map(p => (
                                             <th key={p.id} style={{ minWidth: 100, textAlign: 'center' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                                                     <div style={{ width: 6, height: 6, borderRadius: 2, background: p.color || '#6366f1' }} />
                                                     <span style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 90 }}>{p.name}</span>
+                                                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>{getProjectCapacityImpact(p.status)}</span>
                                                 </div>
                                             </th>
                                         ))}
@@ -115,14 +117,14 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
                                 </thead>
                                 <tbody>
                                     {members.map(res => {
-                                        const totalUtil = getCurrentUtil(liveAlloc, res.id);
+                                        const totalUtil = getCurrentUtil(liveAlloc, res.id, projects);
                                         const { bg, text } = heatColor(totalUtil);
                                         return (
                                             <tr key={res.id}>
                                                 <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 4 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                         <div className="avatar" style={{ width: 28, height: 28, fontSize: 10, background: team.color + '22', color: team.color, flexShrink: 0 }}>
-                                                            {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                            {getAvatarInitials(res.name)}
                                                         </div>
                                                         <div>
                                                             <div style={{ fontWeight: 600, fontSize: 12, color: '#1e293b' }}>{res.name}</div>
@@ -161,12 +163,23 @@ export const TeamView: React.FC<Props> = ({ resources, projects, allocations, te
                                             <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 3 }}>avg</span>
                                         </td>
                                         {projects.map(proj => {
-                                            const total = members.reduce((s, res) => {
-                                                return s + (liveAlloc.find(a => a.resourceId === res.id && a.projectId === proj.id)?.percentage || 0);
-                                            }, 0);
+                                            const projectAllocs = liveAlloc.filter(allocation =>
+                                                members.some(member => member.id === allocation.resourceId)
+                                                && allocation.projectId === proj.id
+                                                && allocation.percentage > 0
+                                                && isAllocActiveOn(allocation, new Date()),
+                                            );
+                                            const total = projectAllocs.reduce((sum, allocation) => sum + allocation.percentage, 0);
+                                            const people = new Set(projectAllocs.map(allocation => allocation.resourceId)).size;
+                                            const fte = total / 100;
                                             return (
-                                                <td key={proj.id} style={{ textAlign: 'center', fontWeight: 700, fontSize: 12, color: total > 0 ? (proj.color || '#6366f1') : '#cbd5e1' }}>
-                                                    {total > 0 ? `${total}%` : '—'}
+                                                <td key={proj.id} style={{ textAlign: 'center', fontWeight: 700, fontSize: 12, color: total > 0 ? (proj.color || '#6366f1') : '#cbd5e1', opacity: projectConsumesCapacity(proj.status) ? 1 : 0.7 }}>
+                                                    {total > 0 ? (
+                                                        <div>
+                                                            <div>{fte.toFixed(1)} FTE</div>
+                                                            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>{people} {people === 1 ? 'person' : 'people'}</div>
+                                                        </div>
+                                                    ) : '—'}
                                                 </td>
                                             );
                                         })}

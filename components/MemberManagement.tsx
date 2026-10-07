@@ -22,7 +22,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const MemberManagement: React.FC = () => {
-    const { user, token, activeWorkspace } = useAuth();
+    const { user, token, activeWorkspace, workspaceRole } = useAuth();
     const [members, setMembers] = useState<Member[]>([]);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<'PMO_ADMIN' | 'WORKSPACE_OWNER' | 'USER'>('USER');
@@ -32,17 +32,18 @@ const MemberManagement: React.FC = () => {
     const [err, setErr] = useState('');
 
     const authHdr = { Authorization: `Bearer ${token}` };
-    const isAdmin = canManageMembers(user);
+    const isAdmin = canManageMembers(user, workspaceRole);
     const orgSlug = activeWorkspace?.org_slug;
 
     // Fetch members from the workspace GET endpoint
     useEffect(() => {
         if (!activeWorkspace || !token || !orgSlug) return;
-        fetch(`/api/workspace?orgSlug=${orgSlug}`, { headers: authHdr })
+        const workspaceQuery = new URLSearchParams({ orgSlug, workspaceId: activeWorkspace.id });
+        fetch(`/api/workspace?${workspaceQuery.toString()}`, { headers: authHdr })
             .then(r => r.json())
             .then(data => { if (data.members) setMembers(data.members); })
             .catch(console.error);
-    }, [activeWorkspace?.id, token]);
+    }, [activeWorkspace?.id, orgSlug, token]);
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +65,8 @@ const MemberManagement: React.FC = () => {
             setMsg(`✅ ${inviteEmail} invited as ${ROLE_LABEL[inviteRole] || inviteRole}`);
             setInviteEmail('');
             // Re-fetch members
-            const updated = await fetch(`/api/workspace?orgSlug=${orgSlug}`, { headers: authHdr });
+            const workspaceQuery = new URLSearchParams({ orgSlug: orgSlug || '', workspaceId: activeWorkspace.id });
+            const updated = await fetch(`/api/workspace?${workspaceQuery.toString()}`, { headers: authHdr });
             const ud = await updated.json();
             if (ud.members) setMembers(ud.members);
         } catch (e: any) { setErr('❌ ' + e.message); }

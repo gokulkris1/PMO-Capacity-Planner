@@ -1,7 +1,14 @@
 import { neon } from '@neondatabase/serverless';
+import dotenv from 'dotenv';
 
-const DB_URL = 'postgresql://neondb_owner:npg_yngIoS2H9Kmz@ep-soft-mode-ai5mxefw-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
-const sql = neon(DB_URL);
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local' });
+
+const connectionString = process.env.NETLIFY_DATABASE_URL || process.env.NETLIFY_DATABASE_URL_UNPOOLED || process.env.NEON_DATABASE_URL;
+if (!connectionString) {
+    throw new Error('Set NETLIFY_DATABASE_URL, NETLIFY_DATABASE_URL_UNPOOLED, or NEON_DATABASE_URL before running this diagnostic.');
+}
+const sql = neon(connectionString);
 
 async function diagnose() {
     console.log('\n=== USERS ===');

@@ -1,56 +1,55 @@
-Netlify deployment guide for this project
+# Production and preproduction deployment
 
-Overview
-- This project builds with `npm run build` and outputs a `dist` folder. Upload `dist` to Netlify or connect the repo for CI builds.
+## Canonical topology
 
-Option A — Quick: Drag & Drop (fastest for demo)
-1. Run locally: `npm install` then `npm run build`.
-2. Open Netlify (app.netlify.com) and from Sites click "Add new site" → "Deploy manually" → Drag-and-drop the `dist` folder.
-3. Netlify will give you a live URL (e.g., `https://mystifying-name-12345.netlify.app`).
+Production is deployed only from `main` to the **pmocapacityplanner** Netlify site:
 
-Option B — GitHub integration (recommended for continuous deploy)
-1. Push this repo to GitHub (example commands):
+- Vite application: `dist`
+- API: Netlify Functions in `netlify/functions`
+- Browser API path: `/api/*`, routed by `netlify.toml`
+- Database: Neon PostgreSQL, accessed only from serverless functions
 
-```powershell
-# from project root
-git init
-git add .
-git commit -m "Add Netlify deployment files and CI workflow"
-git remote add origin <your-git-remote-url>
-git branch -M main
-git push -u origin main
-```
+Preproduction is deployed only from `develop` to a separate **pmocapacityplanner-preprod** Netlify site. It uses a separate Neon database with the same schema but no copied production data or credentials. This prevents test activity, test users, and schema experiments from reaching the production database.
 
-2. In Netlify app: "Add new site" → "Import from Git" → Choose Git provider (GitHub) and authorize Netlify.
-3. Select your repository and configure:
-   - Branch to deploy: `main`
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-4. Go to Site settings → Build & deploy → Environment → Edit variables and add `API_KEY` (if you want real Gemini responses).
-5. Click "Deploy site". Netlify will run the build and provide a URL once finished.
+The deployment lanes are intentionally separate:
 
-Option C — Use existing GitHub Actions artifact (if you used the provided workflow)
-1. After pushing, the workflow `.github/workflows/build.yml` runs on push and uploads a `dist` artifact.
-2. In GitHub: Go to Actions → "CI Build" → choose the run → Artifacts → download `dist` → upload to Netlify via drag-and-drop.
+| Branch | Netlify site | Database | Purpose |
+| --- | --- | --- | --- |
+| `main` | `pmocapacityplanner` | production Neon database | Production releases only |
+| `develop` | `pmocapacityplanner-preprod` | isolated preproduction Neon database | Integration and acceptance testing |
 
-Notes & troubleshooting
-- If you see build failures on Netlify about Node version, set `NODE_VERSION` in the Netlify UI or add an `.nvmrc` with `18` or configure `engines` in `package.json`.
-- Ensure `netlify.toml` exists (it does) with `publish = "dist"`.
-- For local testing, run `npm run dev` and open the local server (default Vite port `5173`).
+The GitHub workflow at `.github/workflows/deploy-netlify.yml` remains restricted to `main`. Netlify's Git integration builds the `develop` branch only in the preproduction site; it cannot publish to the production site.
 
-What I can do for you
-- If you provide the Git remote URL here, I can push the current workspace to that remote and trigger the GitHub Action.
-- I cannot perform the Netlify web UI steps from this environment — you'll get the final Netlify URL after connecting.
+The legacy Render Express service has been retired and exposes only `/health`.
+Vercel and Render are deliberately not deployed by GitHub Actions because their former API route targeted the retired service. Do not point a Vercel site at a guessed Netlify hostname; either retire the Vercel site or configure its replacement after confirming the production Netlify domain.
 
-If you want me to push, paste the Git remote (HTTPS or SSH) and confirm I should push to `main`.
+## Required Netlify environment variables
 
-GitHub Actions workflow
-- A workflow has been added at `.github/workflows/deploy-netlify.yml` that will:
-   - run `npm ci` and `npm run build`
-   - deploy the generated `dist` folder to Netlify using the Netlify CLI
+Configure the production and preproduction site values independently. Never put values in source control or variables prefixed with `VITE_`.
 
-Required GitHub repository secrets
-- `NETLIFY_AUTH_TOKEN`: a Netlify personal access token with deploy permissions
-- `NETLIFY_SITE_ID`: the Netlify site ID (found in Site settings → Site information)
+- `NETLIFY_DATABASE_URL_UNPOOLED` (preferred), `NETLIFY_DATABASE_URL`, or `NEON_DATABASE_URL`
+- `JWT_SECRET` — a long, random signing secret
+- `RESEND_API_KEY` and optional `FROM_EMAIL` — required for verification, account recovery, and invitations
+- `INTERNAL_API_SECRET` — required by server-to-server email receipts
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, and `STRIPE_PRICE_MAX` — required only for billing
+- Provider key required by the selected AI integration
+- `URL` — the exact public Netlify application origin; it must be different for production and preproduction
 
-After you add these secrets and push to `main`, the workflow will run and deploy automatically.
+For preproduction, use a newly generated `JWT_SECRET` and the preproduction database connection strings. Do not reuse production database URLs, JWT secrets, email-provider keys, Stripe keys, or AI-provider keys. Email, billing, and AI integrations remain intentionally unconfigured in preproduction unless separately approved.
+
+## Release safeguards
+
+1. Rotate the previously committed Neon credential and replace all deployment secrets before releasing this branch.
+2. Take a backup or verify point-in-time recovery before applying database migrations.
+3. Review and apply `scripts/migrate_v2_rbac.sql`, then `scripts/migrate_project_lifecycle_and_skills.sql`, to the intended database only.
+4. Confirm preproduction works with serverless functions, a new self-registered test account, workspace creation, and capacity planning.
+5. Promote reviewed work from `develop` to `main`; `main` is the only production deployment branch. The GitHub Netlify workflow runs tests and the production build first.
+
+## Local development
+
+Use a local Netlify-compatible environment when testing API behavior so `/api/*` resolves to functions. A Vite-only server builds the UI but does not emulate production functions.
+
+## Deprecated deployment files
+
+- `render.yaml` retains an auto-deploy-disabled, health-only compatibility service.
+- The obsolete Vercel routing configuration was removed so it cannot forward API traffic to the retired Render backend.
