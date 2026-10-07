@@ -36,25 +36,36 @@ function escapeHtml(value: string): string {
     }[character] || character));
 }
 
-async function sendAdminInvitation(email: string, orgName: string) {
+type InvitationDelivery = { sent: true } | { sent: false; error: string };
+
+async function sendAdminInvitation(email: string, orgName: string): Promise<InvitationDelivery> {
     if (!RESEND_API_KEY) {
-        console.warn('[Invitation email disabled] An organization administrator account was created without an email invitation.');
-        return;
+        return { sent: false, error: 'Email delivery is not configured' };
     }
     const loginUrl = process.env.URL || 'https://orbitspace.io';
     const escapedOrgName = escapeHtml(orgName);
     const resend = new Resend(RESEND_API_KEY);
-    await resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject: `You've been invited to administer ${orgName} on Orbit Space`,
-        html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;color:#172b4d">
-            <h1 style="font-size:22px;margin:0 0 12px">Welcome to Orbit Space</h1>
-            <p>You have been invited to administer <strong>${escapedOrgName}</strong>.</p>
-            <p>Use password reset to set your own password before signing in. No password is included in this invitation.</p>
-            <p><a href="${loginUrl}" style="display:inline-block;background:#0052cc;color:#fff;padding:12px 16px;border-radius:4px;text-decoration:none;font-weight:700">Set password and sign in</a></p>
-        </div>`,
-    });
+    try {
+        const result = await resend.emails.send({
+            from: FROM_EMAIL,
+            to: email,
+            subject: `You've been invited to administer ${orgName} on Orbit Space`,
+            html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;color:#172b4d">
+                <h1 style="font-size:22px;margin:0 0 12px">Welcome to Orbit Space</h1>
+                <p>You have been invited to administer <strong>${escapedOrgName}</strong>.</p>
+                <p>Use password reset to set your own password before signing in. No password is included in this invitation.</p>
+                <p><a href="${loginUrl}" style="display:inline-block;background:#0052cc;color:#fff;padding:12px 16px;border-radius:4px;text-decoration:none;font-weight:700">Set password and sign in</a></p>
+            </div>`,
+        });
+        if (!result || result.error || !result.data) {
+            console.error('[org_manage] administrator invitation failed:', result?.error?.message || 'No delivery confirmation returned');
+            return { sent: false, error: 'Email delivery failed' };
+        }
+        return { sent: true };
+    } catch (error) {
+        console.error('[org_manage] administrator invitation failed:', error instanceof Error ? error.message : 'Unknown error');
+        return { sent: false, error: 'Email delivery failed' };
+    }
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -189,6 +200,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 return fail('You already belong to an organization', 400);
             }
 
+            const cleanAdminEmail = userRole === 'SUPERUSER' && adminEmail
+                ? adminEmail.toLowerCase().trim()
+                : null;
+            const [existingAdmin] = cleanAdminEmail
+                ? await sql`SELECT id FROM users WHERE email = ${cleanAdminEmail}`
+                : [];
+            if (cleanAdminEmail && !existingAdmin && !RESEND_API_KEY) {
+                return fail('Administrator invitation delivery is unavailable; organization was not created', 503);
+            }
+
             const orgSlug = generateSlug(normalizedOrgName);
 
             // Create org
@@ -204,15 +225,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace')
                 RETURNING id
             `;
+            let invitationSent: boolean | null = null;
 
             if (userRole === 'SUPERUSER' && adminEmail) {
                 // Top-down: assign admin to this org
-                const cleanEmail = adminEmail.toLowerCase().trim();
-                const existing = await sql`SELECT id FROM users WHERE email = ${cleanEmail}`;
+                const cleanEmail = cleanAdminEmail!;
                 let adminId: string;
 
-                if (existing.length > 0) {
-                    adminId = existing[0].id;
+                if (existingAdmin) {
+                    adminId = existingAdmin.id;
                     await sql`UPDATE users SET org_id = ${org.id}, role = 'ORG_ADMIN' WHERE id = ${adminId}`;
                 } else {
                     // Auto-create admin
@@ -225,7 +246,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
                         RETURNING id
                     `;
                     adminId = newUser.id;
-                    await sendAdminInvitation(cleanEmail, org.name);
+                    const invitation = await sendAdminInvitation(cleanEmail, org.name);
+                    if (!invitation.sent) {
+                        let rollbackFailed = false;
+                        try {
+                            await sql`DELETE FROM users WHERE id = ${adminId}`;
+                            await sql`DELETE FROM organizations WHERE id = ${org.id}`;
+                        } catch (cleanupError) {
+                            rollbackFailed = true;
+                            console.error('[org_manage] failed to roll back undelivered administrator invitation:', cleanupError instanceof Error ? cleanupError.message : 'Unknown error');
+                        }
+                        return fail(
+                            rollbackFailed
+                                ? 'Administrator invitation could not be delivered; provisioning requires administrator remediation'
+                                : 'Administrator invitation could not be delivered; organization provisioning was rolled back',
+                            503,
+                        );
+                    }
+                    invitationSent = true;
                 }
 
                 // Add admin as PMO_ADMIN in default workspace
@@ -244,7 +282,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 `;
             }
 
-            return ok({ success: true, orgSlug: org.slug, orgId: org.id }, 201);
+            return ok({ success: true, orgSlug: org.slug, orgId: org.id, invitationSent }, 201);
         }
 
         // ── PUT: Update org (superuser) ──────────────────────────────

@@ -9,6 +9,24 @@ export interface MonthForecast {
 }
 
 /**
+ * Parses date-only values as local calendar boundaries. `new Date('YYYY-MM-DD')`
+ * is UTC-based and can shift the rendered day or month in a western timezone.
+ */
+export function parseLocalDateBoundary(value: unknown, endOfDay: boolean): Date | undefined {
+    const text = String(value).trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=$|[T\s])/);
+    if (match) {
+        const [, year, month, day] = match.map(Number);
+        const date = new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+        if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) return date;
+        return undefined;
+    }
+
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+/**
  * Returns an array of the next `monthsCount` months, starting from the current month + monthOffset.
  * Computes the total utilization for the given allocations in each month.
  */
@@ -22,8 +40,8 @@ export function buildTimeForecast(allocations: Allocation[], projects: Project[]
         if (proj && !projectConsumesCapacity(proj.status)) return [];
         const effStart = a.startDate || proj?.startDate;
         const effEnd = a.endDate || proj?.endDate;
-        const start = effStart ? new Date(effStart) : new Date('2000-01-01');
-        const end = effEnd ? new Date(effEnd + 'T23:59:59') : new Date('2099-12-31T23:59:59');
+        const start = effStart ? parseLocalDateBoundary(effStart, false) || new Date('2000-01-01T00:00:00') : new Date('2000-01-01T00:00:00');
+        const end = effEnd ? parseLocalDateBoundary(effEnd, true) || new Date('2099-12-31T23:59:59') : new Date('2099-12-31T23:59:59');
         return { ...a, start, end };
     });
 
@@ -97,24 +115,8 @@ export function buildMonthDayForecast(
         const effStart = a.startDate || (a as any).start_date || proj?.startDate || (proj as any)?.start_date;
         const effEnd = a.endDate || (a as any).end_date || proj?.endDate || (proj as any)?.end_date;
 
-        // Parse 'YYYY-MM-DD' exactly into local timezone so it aligns with our calendar days
-        let start = new Date('2000-01-01T00:00:00');
-        if (effStart) {
-            const match = String(effStart).match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (match) {
-                const [_, y, m, d] = match.map(Number);
-                start = new Date(y, m - 1, d, 0, 0, 0);
-            }
-        }
-
-        let end = new Date('2099-12-31T23:59:59');
-        if (effEnd) {
-            const match = String(effEnd).match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (match) {
-                const [_, y, m, d] = match.map(Number);
-                end = new Date(y, m - 1, d, 23, 59, 59);
-            }
-        }
+        const start = effStart ? parseLocalDateBoundary(effStart, false) || new Date('2000-01-01T00:00:00') : new Date('2000-01-01T00:00:00');
+        const end = effEnd ? parseLocalDateBoundary(effEnd, true) || new Date('2099-12-31T23:59:59') : new Date('2099-12-31T23:59:59');
 
         return { ...a, start, end, projName: proj?.name || 'Unknown Project' };
     });

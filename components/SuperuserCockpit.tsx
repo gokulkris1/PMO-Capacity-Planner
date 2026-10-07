@@ -250,7 +250,7 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                                                                 background: 'rgba(99,102,241,0.2)', color: '#a5b4fc',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                 fontSize: 10, fontWeight: 800,
-                                                            }}>{getAvatarInitials(a.name)}</div>
+                                                            }}>{getAvatarInitials(a.name || a.email)}</div>
                                                             <div>
                                                                 <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{a.name || a.email}</div>
                                                                 <div style={{ fontSize: 10, color: c.muted }}>{a.email} · {a.role}</div>

@@ -14,6 +14,7 @@ import { handler as jiraHandler } from '../../netlify/functions/jira';
 import { handler as qbrHandler } from '../../netlify/functions/qbr';
 import { handler as themeExtractHandler } from '../../netlify/functions/theme_extract';
 import { handler as webhookHandler } from '../../netlify/functions/webhook';
+import { handler as workspaceHandler } from '../../netlify/functions/workspace';
 
 const mockSql = jest.fn();
 
@@ -97,6 +98,30 @@ describe('serverless security boundaries', () => {
 
         expect(response.statusCode).toBe(400);
         expect(json(response).error).toMatch(/private network/i);
+    });
+
+    it('rejects non-string project required skills before workspace persistence', async () => {
+        mockSql.mockImplementation(async (strings: TemplateStringsArray) => {
+            const query = strings.join(' ');
+            if (query.includes('SELECT role, org_id FROM users')) return [{ role: 'ORG_ADMIN', org_id: 'org-1' }];
+            if (query.includes('FROM workspaces w') && query.includes('WHERE w.id')) return [{ id: 'workspace-1', org_id: 'org-1', plan: 'MAX' }];
+            if (query.includes('SELECT plan FROM users')) return [{ plan: 'MAX' }];
+            return [];
+        });
+
+        const response = await workspaceHandler({
+            httpMethod: 'POST',
+            headers: { authorization: `Bearer ${makeToken()}` },
+            body: JSON.stringify({
+                workspaceId: 'workspace-1',
+                resources: [],
+                projects: [{ id: 'project-1', name: 'Roadmap', requiredSkills: ['TypeScript', 42] }],
+                allocations: [],
+            }),
+        } as any, {} as any) as any;
+
+        expect(response.statusCode).toBe(400);
+        expect(json(response).error).toMatch(/requiredSkills must be an array of strings/i);
     });
 
     it('does not disclose a reset code when reset delivery is unavailable', async () => {
@@ -243,7 +268,9 @@ describe('serverless security boundaries', () => {
             if (query.includes('SELECT org_id FROM workspaces')) return [{ org_id: 'org-1' }];
             if (query.includes('FROM workspace_members')) return [{ role: 'WORKSPACE_OWNER' }];
             if (query.includes('FROM qbr_members m')) return [{ exists: 1 }];
-            if (query.includes('WITH removed_booking')) return [{ id: 'booking-1', percentage: 50 }];
+            if (query.includes('ON CONFLICT (member_id, project_id, sprint_id) WHERE scenario_id IS NULL')) {
+                return [{ id: 'booking-1', percentage: 50 }];
+            }
             return [];
         });
 
