@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
-import { isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface Props {
     resources: Resource[];
@@ -62,7 +63,7 @@ export const ResourceView: React.FC<Props> = ({
             {filtered.map(res => {
                 const now = new Date();
                 const resAllocs = liveAlloc.filter(a => a.resourceId === res.id && a.percentage > 0 && isAllocActiveOn(a, now));
-                const totalUtil = resAllocs.reduce((s, a) => s + a.percentage, 0);
+                const totalUtil = getCurrentUtil(liveAlloc, res.id, projects);
 
                 const typeMap: Record<string, string> = {
                     Permanent: 'badge badge-perm',
@@ -78,7 +79,7 @@ export const ResourceView: React.FC<Props> = ({
                                 background: res.type === 'Permanent' ? '#eef2ff' : res.type === 'Contractor' ? '#fdf4ff' : '#fff7ed',
                                 color: res.type === 'Permanent' ? '#4338ca' : res.type === 'Contractor' ? '#7c3aed' : '#c2410c',
                             }}>
-                                {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                {getAvatarInitials(res.name)}
                             </div>
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>

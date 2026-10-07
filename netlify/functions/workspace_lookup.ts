@@ -50,7 +50,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         return ok({ orgSlug: null });
     } catch (e: any) {
-        console.error('Lookup failed', e);
-        return fail('Failed to lookup workspace: ' + e.message, 500);
+        console.error('Lookup failed', e?.message);
+        return fail('Failed to lookup workspace', 500);
     }
 };

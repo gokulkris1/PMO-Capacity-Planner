@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Resource, Project, Allocation } from '../types';
-import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { Resource, Project, Allocation, projectConsumesCapacity } from '../types';
+import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
 
 interface RiskScannerProps {
     resources: Resource[];
@@ -14,7 +14,7 @@ export const RiskScanner: React.FC<RiskScannerProps> = ({ resources, projects, a
 
         // Check over-allocated resources
         resources.forEach(res => {
-            const load = getCurrentUtil(allocations, res.id);
+            const load = getCurrentUtil(allocations, res.id, projects);
             if (load > 110) {
                 list.push({ level: 'High', title: 'Severe Burnout Risk', desc: `${res.name} is allocated at ${load}% capacity.` });
             } else if (load > 90 && load <= 110) {
@@ -23,9 +23,11 @@ export const RiskScanner: React.FC<RiskScannerProps> = ({ resources, projects, a
         });
 
         // Check single point of failure (resource in Critical projects with >80% allocation)
-        const criticalProjectIds = projects.filter(p => p.priority === 'Critical').map(p => p.id);
+        const criticalProjectIds = projects
+            .filter(project => project.priority === 'Critical' && projectConsumesCapacity(project.status))
+            .map(project => project.id);
         allocations.forEach(alloc => {
-            if (criticalProjectIds.includes(alloc.projectId) && alloc.percentage >= 80) {
+            if (criticalProjectIds.includes(alloc.projectId) && alloc.percentage >= 80 && isAllocActiveOn(alloc, new Date())) {
                 const res = resources.find(r => r.id === alloc.resourceId);
                 const proj = projects.find(p => p.id === alloc.projectId);
                 if (res && proj) {

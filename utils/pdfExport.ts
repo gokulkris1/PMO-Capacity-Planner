@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, projectIsInFlight } from '../types';
 import { buildTimeForecast } from './timeGrid';
+import { getCurrentUtil } from './dateFilteredUtil';
 
 export const exportExecSummaryPDF = (resources: Resource[], projects: Project[], allocations: Allocation[]) => {
     const doc = new jsPDF();
@@ -25,7 +26,7 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
     currentY = 55;
 
     // --- High-Level Metrics ---
-    const totalFTE = allocations.reduce((sum, a) => sum + a.percentage, 0) / 100;
+    const totalFTE = resources.reduce((sum, resource) => sum + getCurrentUtil(allocations, resource.id, projects), 0) / 100;
     const estMonthlyCost = allocations.reduce((sum, a) => {
         const res = resources.find(r => r.id === a.resourceId);
         const rate = res?.dailyRate || 0;
@@ -40,7 +41,7 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text(`Active Projects: ${projects.filter(p => p.status === 'Active').length} / ${projects.length} Total`, 14, currentY);
+    doc.text(`In-flight Projects: ${projects.filter(p => projectIsInFlight(p.status)).length} / ${projects.length} Total`, 14, currentY);
     doc.text(`Total FTE Committed: ${totalFTE.toFixed(1)}`, 14, currentY + 6);
     doc.text(`Est. Monthly Run Rate: €${estMonthlyCost.toLocaleString()}`, 14, currentY + 12);
 
@@ -53,7 +54,7 @@ export const exportExecSummaryPDF = (resources: Resource[], projects: Project[],
     currentY += 6;
 
     const overAllocated = resources.map(res => {
-        const util = allocations.filter(a => a.resourceId === res.id).reduce((s, a) => s + a.percentage, 0);
+        const util = getCurrentUtil(allocations, res.id, projects);
         return { ...res, util };
     }).filter(r => r.util > 100).sort((a, b) => b.util - a.util);
 

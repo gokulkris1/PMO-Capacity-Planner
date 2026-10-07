@@ -271,6 +271,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     const [csvMode, setCsvMode] = useState(false);
     const [csvError, setCsvError] = useState('');
     const [isDirty, setIsDirty] = useState(false);
+    const [requiredSkillsText, setRequiredSkillsText] = useState((initial?.requiredSkills || []).join(', '));
     const modalRef = useRef<HTMLDivElement>(null);
 
     const set = (k: keyof Project, v: any) => {
@@ -331,7 +332,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                         endDate: cols[5] || '',
                         clientName: cols[6] || '',
                         budget: cols[7] ? parseFloat(cols[7]) : undefined,
-                        color: cols[8] || '#6366f1'
+                        color: cols[8] || '#6366f1',
+                        requiredSkills: cols[9]
+                            ? cols[9].split(';').map(skill => skill.trim()).filter(Boolean)
+                            : [],
                     });
                 }
             }
@@ -341,8 +345,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
     };
 
     const downloadProjectTemplate = () => {
-        const header = "Name,Description,Status,Priority,StartDate,EndDate,Tribe/Client,Budget,Color\n";
-        const example = "Website Redesign,Revamp corporate site,Planning,High,2024-01-01,2024-06-01,Marketing,50000,#ec4899\n";
+        const header = "Name,Description,Status,Priority,StartDate,EndDate,Tribe/Client,Budget,Color,Required Skills (semicolon-separated)\n";
+        const example = "Website Redesign,Revamp corporate site,Planning,High,2024-01-01,2024-06-01,Marketing,50000,#ec4899,UX Design;React;Content Strategy\n";
         const blob = new Blob([header + example], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -386,7 +390,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                         className="modal-body-scroll"
                         onSubmit={e => {
                             e.preventDefault();
-                            if (form.name?.trim()) onSave(form);
+                            const requiredSkills = Array.from(new Map(
+                                requiredSkillsText
+                                    .split(',')
+                                    .map(skill => skill.trim())
+                                    .filter(Boolean)
+                                    .map(skill => [skill.toLocaleLowerCase(), skill]),
+                            ).values());
+                            if (form.name?.trim()) onSave({ ...form, requiredSkills });
                         }}
                     >
                         <div className="form-group">
@@ -402,10 +413,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                             <div className="form-group">
                                 <label className="form-label">Status</label>
                                 <select className="form-select" value={form.status || ProjectStatus.PLANNING} onChange={e => set('status', e.target.value as ProjectStatus)}>
-                                    <option value="Active">Active</option>
-                                    <option value="Planning">Planning</option>
-                                    <option value="On Hold">On Hold</option>
-                                    <option value="Completed">Completed</option>
+                                    {Object.values(ProjectStatus).map(status => <option key={status} value={status}>{status}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
@@ -436,6 +444,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ initial, onSave, onB
                             <div className="form-group">
                                 <label className="form-label">Budget ($)</label>
                                 <input className="form-input" type="number" min={0} value={form.budget || ''} onChange={e => set('budget', Number(e.target.value) || undefined)} placeholder="e.g. 150000" />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Required Skills</label>
+                            <input
+                                className="form-input"
+                                value={requiredSkillsText}
+                                onChange={e => { setRequiredSkillsText(e.target.value); setIsDirty(true); }}
+                                placeholder="e.g. React, UX research, Change management"
+                            />
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                                Add the capabilities this project needs. They drive availability-aware staffing recommendations after save.
                             </div>
                         </div>
                         <div className="form-group">

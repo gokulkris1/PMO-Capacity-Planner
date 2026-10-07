@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { QBRMember, QBRProject, QBRSprint, QBRBooking, QBRTribe, QBRChapter, QBRCoE } from '../../types';
+import { getAvatarInitials } from '../../utils/avatarInitials';
 
 const c = {
     bg: '#0a0a0f', card: '#12121a', border: '#1e1e2e',
@@ -21,6 +22,7 @@ interface Props {
     selectedTribe: string | null;
     onSelectTribe: (id: string | null) => void;
     scenarioMode: boolean;
+    canEdit: boolean;
 }
 
 function heatColor(pct: number): string {
@@ -42,7 +44,7 @@ function utilTextColor(pct: number): string {
 
 export function QBRCapacityGrid({
     members, projects, sprints, bookings, tribes, chapters, coe,
-    onBooking, onSelectMember, selectedTribe, onSelectTribe, scenarioMode,
+    onBooking, onSelectMember, selectedTribe, onSelectTribe, scenarioMode, canEdit,
 }: Props) {
     const [filterChapter, setFilterChapter] = useState<string>('');
     const [filterType, setFilterType] = useState<string>('');
@@ -104,6 +106,7 @@ export function QBRCapacityGrid({
     };
 
     const handleCellClick = (memberId: string, sprintId: string) => {
+        if (!canEdit) return;
         setEditCell({ memberId, sprintId });
         setEditProject(projects[0]?.id || '');
         setEditPct('20');
@@ -171,6 +174,9 @@ export function QBRCapacityGrid({
                         fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 8,
                         background: `${c.amber}20`, color: c.amber,
                     }}>🧪 SCENARIO MODE</span>
+                )}
+                {!canEdit && (
+                    <span style={{ fontSize: 10, color: c.muted, fontWeight: 700 }}>Read-only access</span>
                 )}
             </div>
 
@@ -260,7 +266,7 @@ export function QBRCapacityGrid({
                                                         background: member.avatar_color + '25', color: member.avatar_color,
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                         fontSize: 9, fontWeight: 900,
-                                                    }}>{member.name.slice(0, 2).toUpperCase()}</div>
+                                                    }}>{getAvatarInitials(member.name)}</div>
                                                     <div>
                                                         <div style={{ fontWeight: 700, fontSize: 12 }}>{member.name}</div>
                                                         <div style={{ fontSize: 9, color: c.muted }}>
@@ -285,10 +291,10 @@ export function QBRCapacityGrid({
                                                 const isEditing = editCell?.memberId === member.id && editCell?.sprintId === sp.id;
 
                                                 return (
-                                                    <td key={sp.id} onClick={() => !isEditing && handleCellClick(member.id, sp.id)}
+                                                    <td key={sp.id} onClick={() => canEdit && !isEditing && handleCellClick(member.id, sp.id)}
                                                         style={{
                                                             padding: '4px 3px', textAlign: 'center',
-                                                            background: heatColor(total), cursor: 'pointer',
+                                                            background: heatColor(total), cursor: canEdit ? 'pointer' : 'default',
                                                             transition: 'background 0.15s',
                                                             position: 'relative',
                                                             borderLeft: `1px solid ${c.border}20`,

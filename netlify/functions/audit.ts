@@ -36,11 +36,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
         try { actor = verifyToken(event.headers.authorization || ''); }
         catch { return fail('Unauthorized', 401); }
 
-        if (actor.role !== 'SUPERUSER') {
+        const sql = getDb();
+        const [currentActor] = await sql`SELECT role FROM users WHERE id = ${actor.id}`;
+        if (!currentActor || currentActor.role !== 'SUPERUSER') {
             return fail('Forbidden: Superuser access required', 403);
         }
-
-        const sql = getDb();
 
         if (event.httpMethod === 'GET') {
             // Fetch latest 100 audit logs limit
@@ -59,6 +59,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     } catch (e: any) {
         console.error('[audit fn]', e.message);
-        return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server error', detail: e.message }) };
+        return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server error' }) };
     }
 };

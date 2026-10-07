@@ -1,6 +1,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'node:crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
@@ -22,7 +23,8 @@ const getDb = () => neon(
 );
 
 function generateSlug(name: string) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Math.floor(Math.random() * 1000);
+    const stem = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 72) || 'organization';
+    return `${stem}-${randomBytes(3).toString('hex')}`;
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -43,15 +45,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     try {
         const { orgName, logoUrl, primaryColor } = JSON.parse(event.body || '{}');
-        if (!orgName || typeof orgName !== 'string') return fail('Organization name required');
+        const normalizedOrgName = typeof orgName === 'string' ? orgName.trim() : '';
+        if (normalizedOrgName.length < 2 || normalizedOrgName.length > 120) return fail('Organization name must be 2 to 120 characters');
+        if (logoUrl && (typeof logoUrl !== 'string' || !/^https:\/\//i.test(logoUrl))) return fail('logoUrl must use HTTPS');
+        if (primaryColor && (typeof primaryColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(primaryColor))) return fail('primaryColor must be a six-digit hex color');
 
         const sql = getDb();
-        const orgSlug = generateSlug(orgName);
+        const [creator] = await sql`SELECT email, org_id, role FROM users WHERE id = ${userId}`;
+        if (!creator) return fail('Unauthorized', 401);
+        if (creator.org_id) return fail('This account is already associated with an organization', 409);
+
+        const orgSlug = generateSlug(normalizedOrgName);
 
         // 1. Create Organization
         const [org] = await sql`
             INSERT INTO organizations (id, name, slug, logo_url, primary_color) 
-            VALUES (gen_random_uuid(), ${orgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null}) 
+            VALUES (gen_random_uuid(), ${normalizedOrgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null})
             RETURNING id, slug
         `;
 
@@ -61,12 +70,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
             VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace')
         `;
 
-        // 3. Retrieve Email
-        const emailRows = await sql`SELECT email FROM users WHERE id = ${userId}`;
-        const userEmail = emailRows.length > 0 ? emailRows[0].email : null;
-
-        // 4. Bind User to Organization
-        const assignedRole = userEmail === 'gokulkris1@gmail.com' ? 'SUPERUSER' : 'ORG_ADMIN';
+        // 3. Bind the unassigned creator to their new organization.
+        const assignedRole = creator.role === 'SUPERUSER' ? 'SUPERUSER' : 'ORG_ADMIN';
         await sql`
             UPDATE users SET org_id = ${org.id}, role = ${assignedRole} WHERE id = ${userId}
         `;
@@ -79,7 +84,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         `;
 
         // 5. Fire Welcome Email
-        if (process.env.INTERNAL_API_SECRET && userEmail) {
+        if (process.env.INTERNAL_API_SECRET && creator.email) {
             try {
                 const baseUrl = process.env.URL || 'http://localhost:5173';
                 await fetch(`${baseUrl}/api/email_receipt`, {
@@ -88,7 +93,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`
                     },
-                    body: JSON.stringify({ type: 'WELCOME', email: userEmail, orgName })
+                    body: JSON.stringify({ type: 'WELCOME', email: creator.email, orgName: normalizedOrgName })
                 });
             } catch (err) {
                 console.error('Non-blocking Email Dispatch Error:', err);
@@ -97,7 +102,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         return ok({ success: true, orgSlug: org.slug });
     } catch (e: any) {
-        console.error('Org creation failed', e);
-        return fail('Failed to create organization: ' + e.message, 500);
+        console.error('Org creation failed', e?.message);
+        return fail('Failed to create organization', 500);
     }
 };

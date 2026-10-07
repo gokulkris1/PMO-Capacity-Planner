@@ -5,6 +5,7 @@ import {
 } from '../../types';
 import { QBRCapacityGrid } from './QBRCapacityGrid';
 import { QBRMemberCard } from './QBRMemberCard';
+import { getAvatarInitials } from '../../utils/avatarInitials';
 
 /* ── Colours ─────────────────────────────────────────────── */
 const c = {
@@ -18,12 +19,19 @@ const c = {
 interface Props {
     token: string;
     wsId: string;
-    orgId: string;
+    canWrite: boolean;
+    canSeedDemo: boolean;
 }
 
 type QBRView = 'capacity' | 'tribes' | 'okrs' | 'squads' | 'members';
 
-export function QBRPlanner({ token, wsId, orgId }: Props) {
+async function readApiResponse(response: Response): Promise<any> {
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    return body;
+}
+
+export function QBRPlanner({ token, wsId, canWrite, canSeedDemo }: Props) {
     const [view, setView] = useState<QBRView>('capacity');
     const [tribes, setTribes] = useState<QBRTribe[]>([]);
     const [chapters, setChapters] = useState<QBRChapter[]>([]);
@@ -41,6 +49,7 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
     const [scenarioBookings, setScenarioBookings] = useState<QBRBooking[]>([]);
     const [stats, setStats] = useState<any>({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [seeding, setSeeding] = useState(false);
     const [selectedMember, setSelectedMember] = useState<QBRMember | null>(null);
     const [selectedTribe, setSelectedTribe] = useState<string | null>(null);
@@ -51,12 +60,12 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
     };
 
     const apiBase = `/api/qbr`;
-    const qs = `wsId=${wsId}&orgId=${orgId}`;
+    const qs = new URLSearchParams({ wsId }).toString();
 
     const fetchOverview = useCallback(async () => {
         try {
             const r = await fetch(`${apiBase}/overview?${qs}`, { headers });
-            const d = await r.json();
+            const d = await readApiResponse(r);
             setTribes(d.tribes || []);
             setChapters(d.chapters || []);
             setCoe(d.coe || []);
@@ -66,18 +75,22 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                 const active = d.quarters.find((q: QBRQuarter) => q.is_active);
                 setSelectedQuarter(active?.id || d.quarters[d.quarters.length - 1].id);
             }
-        } catch (e) { console.error('QBR overview error', e); }
+            setError(null);
+        } catch (e) {
+            console.error('QBR overview error', e);
+            setError(e instanceof Error ? e.message : 'Unable to load QBR data.');
+        }
     }, [token, wsId]);
 
     const fetchQuarterData = useCallback(async (qId: string) => {
         try {
             const [qr, mr, pr, or, sq, sc] = await Promise.all([
-                fetch(`${apiBase}/quarter/${qId}?${qs}`, { headers }).then(r => r.json()),
-                fetch(`${apiBase}/members?${qs}`, { headers }).then(r => r.json()),
-                fetch(`${apiBase}/projects?${qs}`, { headers }).then(r => r.json()),
-                fetch(`${apiBase}/okrs?${qs}`, { headers }).then(r => r.json()),
-                fetch(`${apiBase}/squads?${qs}`, { headers }).then(r => r.json()),
-                fetch(`${apiBase}/scenarios?${qs}&quarterId=${qId}`, { headers }).then(r => r.json()),
+                fetch(`${apiBase}/quarter/${qId}?${qs}`, { headers }).then(readApiResponse),
+                fetch(`${apiBase}/members?${qs}`, { headers }).then(readApiResponse),
+                fetch(`${apiBase}/projects?${qs}`, { headers }).then(readApiResponse),
+                fetch(`${apiBase}/okrs?${qs}`, { headers }).then(readApiResponse),
+                fetch(`${apiBase}/squads?${qs}`, { headers }).then(readApiResponse),
+                fetch(`${apiBase}/scenarios?${qs}&quarterId=${qId}`, { headers }).then(readApiResponse),
             ]);
             setSprints(qr.sprints || []);
             setBookings(qr.bookings || []);
@@ -91,7 +104,11 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
             }));
             setSquads(squadsWithMembers);
             setScenarios(sc.scenarios || []);
-        } catch (e) { console.error('QBR quarter data error', e); }
+            setError(null);
+        } catch (e) {
+            console.error('QBR quarter data error', e);
+            setError(e instanceof Error ? e.message : 'Unable to load QBR planning data.');
+        }
     }, [token, wsId]);
 
     useEffect(() => {
@@ -107,57 +124,90 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
     }, [selectedQuarter, fetchQuarterData]);
 
     const handleSeed = async () => {
+        if (!canSeedDemo) return;
         if (!confirm('Seed QBR demo data? This will replace any existing QBR data in this workspace.')) return;
         setSeeding(true);
         try {
-            await fetch(`${apiBase}/seed?${qs}`, { method: 'POST', headers });
+            await readApiResponse(await fetch(`${apiBase}/seed?${qs}`, { method: 'POST', headers }));
             await fetchOverview();
             if (selectedQuarter) await fetchQuarterData(selectedQuarter);
-        } catch (e) { console.error('Seed error', e); }
+        } catch (e) {
+            console.error('Seed error', e);
+            setError(e instanceof Error ? e.message : 'Unable to seed demo data.');
+        }
         setSeeding(false);
     };
 
     const handleBooking = async (memberId: string, projectId: string, sprintId: string, percentage: number) => {
-        await fetch(`${apiBase}/booking?${qs}`, {
-            method: 'POST', headers,
-            body: JSON.stringify({ memberId, projectId, sprintId, percentage, scenarioId: activeScenario }),
-        });
-        if (selectedQuarter) await fetchQuarterData(selectedQuarter);
+        if (!canWrite) return;
+        try {
+            await readApiResponse(await fetch(`${apiBase}/booking?${qs}`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ memberId, projectId, sprintId, percentage, scenarioId: activeScenario }),
+            }));
+            if (activeScenario) {
+                const scenario = await readApiResponse(await fetch(`${apiBase}/scenario/${activeScenario}?${qs}`, { headers }));
+                setScenarioBookings(scenario.bookings || []);
+            } else if (selectedQuarter) {
+                await fetchQuarterData(selectedQuarter);
+            }
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to update booking.');
+        }
     };
 
     const handleCreateScenario = async () => {
+        if (!canWrite) return;
         const name = prompt('Scenario name:');
         if (!name?.trim()) return;
-        const r = await fetch(`${apiBase}/scenario?${qs}`, {
-            method: 'POST', headers,
-            body: JSON.stringify({ name, quarterId: selectedQuarter }),
-        });
-        const d = await r.json();
-        if (d.scenario) {
-            setActiveScenario(d.scenario.id);
-            await fetchQuarterData(selectedQuarter);
+        try {
+            const d = await readApiResponse(await fetch(`${apiBase}/scenario?${qs}`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ name, quarterId: selectedQuarter }),
+            }));
+            if (d.scenario) {
+                setActiveScenario(d.scenario.id);
+                const scenario = await readApiResponse(await fetch(`${apiBase}/scenario/${d.scenario.id}?${qs}`, { headers }));
+                setScenarioBookings(scenario.bookings || []);
+                await fetchQuarterData(selectedQuarter);
+            }
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to create scenario.');
         }
     };
 
     const handleCommitScenario = async (scenarioId: string) => {
+        if (!canWrite) return;
         if (!confirm('Commit this scenario? This replaces the current live plan.')) return;
-        await fetch(`${apiBase}/scenario/${scenarioId}/commit?${qs}`, { method: 'POST', headers });
-        setActiveScenario(null);
-        await fetchQuarterData(selectedQuarter);
+        try {
+            await readApiResponse(await fetch(`${apiBase}/scenario/${scenarioId}/commit?${qs}`, { method: 'POST', headers }));
+            setActiveScenario(null);
+            await fetchQuarterData(selectedQuarter);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to commit scenario.');
+        }
     };
 
     const handleDiscardScenario = async (scenarioId: string) => {
+        if (!canWrite) return;
         if (!confirm('Discard this scenario?')) return;
-        await fetch(`${apiBase}/scenario/${scenarioId}?${qs}`, { method: 'DELETE', headers });
-        if (activeScenario === scenarioId) setActiveScenario(null);
-        await fetchQuarterData(selectedQuarter);
+        try {
+            await readApiResponse(await fetch(`${apiBase}/scenario/${scenarioId}?${qs}`, { method: 'DELETE', headers }));
+            if (activeScenario === scenarioId) setActiveScenario(null);
+            await fetchQuarterData(selectedQuarter);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to discard scenario.');
+        }
     };
 
     const loadScenarioBookings = async (scenarioId: string) => {
-        setActiveScenario(scenarioId);
-        const r = await fetch(`${apiBase}/scenario/${scenarioId}?${qs}`, { headers });
-        const d = await r.json();
-        setScenarioBookings(d.bookings || []);
+        try {
+            const d = await readApiResponse(await fetch(`${apiBase}/scenario/${scenarioId}?${qs}`, { headers }));
+            setActiveScenario(scenarioId);
+            setScenarioBookings(d.bookings || []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unable to load scenario.');
+        }
     };
 
     const currentQuarter = quarters.find(q => q.id === selectedQuarter);
@@ -193,6 +243,21 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
         );
     }
 
+    if (error && tribes.length === 0 && !loading) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: c.text }}>
+                <div style={{ textAlign: 'center', maxWidth: 460, padding: 40 }} role="alert">
+                    <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8, letterSpacing: '-0.03em' }}>QBR data is unavailable</h2>
+                    <p style={{ color: c.muted, fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>{error}</p>
+                    <button onClick={() => void fetchOverview()} style={{
+                        background: c.accent, border: 'none', borderRadius: 10, color: '#fff',
+                        fontSize: 13, fontWeight: 800, padding: '10px 18px', cursor: 'pointer',
+                    }}>Retry</button>
+                </div>
+            </div>
+        );
+    }
+
     // Empty state — no data yet
     if (tribes.length === 0 && !loading) {
         return (
@@ -202,16 +267,18 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                     <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8, letterSpacing: '-0.03em' }}>QBR Planning Module</h2>
                     <p style={{ color: c.muted, fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>
                         Plan your quarters with full visibility of resources, capacity, and cross-functional squads.
-                        Start by seeding demo data to explore the module.
+                        {canSeedDemo ? ' Start by seeding demo data to explore the module.' : ' Ask a workspace planner to configure QBR data for this workspace.'}
                     </p>
-                    <button onClick={handleSeed} disabled={seeding} style={{
-                        background: `linear-gradient(135deg, ${c.accent}, ${c.purple})`,
-                        border: 'none', borderRadius: 12, color: '#fff',
-                        fontSize: 14, fontWeight: 800, padding: '14px 32px',
-                        cursor: 'pointer', opacity: seeding ? 0.6 : 1,
-                    }}>
-                        {seeding ? '⏳ Seeding...' : '🌱 Seed Demo Data'}
-                    </button>
+                    {canSeedDemo && (
+                        <button onClick={handleSeed} disabled={seeding} style={{
+                            background: `linear-gradient(135deg, ${c.accent}, ${c.purple})`,
+                            border: 'none', borderRadius: 12, color: '#fff',
+                            fontSize: 14, fontWeight: 800, padding: '14px 32px',
+                            cursor: 'pointer', opacity: seeding ? 0.6 : 1,
+                        }}>
+                            {seeding ? '⏳ Seeding...' : '🌱 Seed Demo Data'}
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -266,30 +333,43 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                             <span style={{ fontSize: 11, color: c.amber, fontWeight: 700, padding: '8px 0' }}>
                                 🧪 Scenario Mode
                             </span>
-                            <button onClick={() => handleCommitScenario(activeScenario)} style={{
-                                ...pill(false, c.green), border: `1px solid ${c.green}40`, color: c.green
-                            }}>✓ Commit</button>
-                            <button onClick={() => handleDiscardScenario(activeScenario)} style={{
-                                ...pill(false, c.red), border: `1px solid ${c.red}40`, color: c.red
-                            }}>✕ Discard</button>
+                            {canWrite && (
+                                <button onClick={() => handleCommitScenario(activeScenario)} style={{
+                                    ...pill(false, c.green), border: `1px solid ${c.green}40`, color: c.green
+                                }}>✓ Commit</button>
+                            )}
+                            {canWrite && (
+                                <button onClick={() => handleDiscardScenario(activeScenario)} style={{
+                                    ...pill(false, c.red), border: `1px solid ${c.red}40`, color: c.red
+                                }}>✕ Discard</button>
+                            )}
                             <button onClick={() => { setActiveScenario(null); setScenarioBookings([]); }} style={{
                                 ...pill(false), border: `1px solid ${c.border}`, color: c.muted
                             }}>Exit</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={handleCreateScenario} style={{
-                                ...pill(false, c.amber), border: `1px solid ${c.amber}40`, color: c.amber
-                            }}>🧪 New Scenario</button>
-                            <button onClick={handleSeed} disabled={seeding} style={{
-                                ...pill(false), border: `1px solid ${c.border}`, color: c.muted, fontSize: 11
-                            }}>{seeding ? '⏳' : '🔄'} Re-seed</button>
+                            {canWrite && (
+                                <button onClick={handleCreateScenario} style={{
+                                    ...pill(false, c.amber), border: `1px solid ${c.amber}40`, color: c.amber
+                                }}>🧪 New Scenario</button>
+                            )}
+                            {canSeedDemo && (
+                                <button onClick={handleSeed} disabled={seeding} style={{
+                                    ...pill(false), border: `1px solid ${c.border}`, color: c.muted, fontSize: 11
+                                }}>{seeding ? '⏳' : '🔄'} Re-seed</button>
+                            )}
                         </>
                     )}
                 </div>
             </div>
 
             {/* ── Stats row ────────────────────────────────────── */}
+            {error && (
+                <div role="alert" style={{ margin: '12px 24px 0', color: c.red, fontSize: 12, fontWeight: 600 }}>
+                    {error}
+                </div>
+            )}
             <div style={{ padding: '12px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {statCard('Tribes', stats.tribes || 0, c.accent, '🏛️')}
                 {statCard('Chapters', stats.chapters || 0, c.pink, '📚')}
@@ -333,6 +413,7 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                         selectedTribe={selectedTribe}
                         onSelectTribe={setSelectedTribe}
                         scenarioMode={!!activeScenario}
+                        canEdit={canWrite}
                     />
                 )}
 
@@ -564,7 +645,7 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                                             background: sm.squad_role === 'LEAD' ? `${c.accent}30` : 'rgba(255,255,255,0.06)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             fontSize: 9, fontWeight: 800, color: sm.squad_role === 'LEAD' ? c.accent : c.text,
-                                        }}>{(sm.member_name || '').slice(0, 2).toUpperCase()}</div>
+                                        }}>{getAvatarInitials(sm.member_name)}</div>
                                         <div>
                                             <div style={{ fontSize: 12, fontWeight: 600 }}>{sm.member_name}</div>
                                             <div style={{ fontSize: 10, color: c.muted }}>
@@ -627,7 +708,7 @@ export function QBRPlanner({ token, wsId, orgId }: Props) {
                                                 background: m.avatar_color + '25', color: m.avatar_color,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontSize: 11, fontWeight: 900,
-                                            }}>{m.name.slice(0, 2).toUpperCase()}</div>
+                                            }}>{getAvatarInitials(m.name)}</div>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: 13, fontWeight: 700 }}>{m.name}</div>
                                                 <div style={{ fontSize: 10, color: c.muted }}>{m.role_title}</div>

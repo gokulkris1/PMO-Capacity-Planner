@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
+import { randomBytes, randomInt } from 'node:crypto';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Orbit Space <noreply@orbitspace.io>';
@@ -13,6 +14,8 @@ const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase().tr
 // ── Valid roles ──────────────────────────────────────────────────────────────
 const PLATFORM_ROLES = ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN', 'WORKSPACE_OWNER', 'USER'] as const;
 const WORKSPACE_ROLES = ['PMO_ADMIN', 'WORKSPACE_OWNER', 'USER'] as const;
+const OTP_TTL_MS = 15 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
 
 function getDb() {
     const url = process.env.NEON_DATABASE_URL || process.env.NETLIFY_DATABASE_URL_UNPOOLED || process.env.NETLIFY_DATABASE_URL;
@@ -38,48 +41,57 @@ function verifyToken(authHeader: string): JWTPayload {
 }
 
 function generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return randomInt(100000, 1_000_000).toString();
 }
 
-async function sendAuthOtp(sql: any, email: string, context: '2fa' | 'reset') {
+async function sendAuthOtp(sql: any, email: string, context: '2fa' | 'reset'): Promise<boolean> {
     const cleanEmail = email.toLowerCase().trim();
+
+    // Never create an OTP that cannot be delivered, and never disclose it in logs.
+    if (!RESEND_API_KEY) return false;
 
     // Audit fix: Issue #38 (OTP Rate Limiting)
     const existing = await sql`SELECT expires_at FROM otps WHERE email = ${cleanEmail}`;
     if (existing.length > 0) {
-        const lastSentAt = Number(existing[0].expires_at) - (15 * 60 * 1000);
+        const lastSentAt = Number(existing[0].expires_at) - OTP_TTL_MS;
         if (Date.now() - lastSentAt < 60 * 1000) {
             throw new Error('Please wait 60 seconds before requesting another code.');
         }
     }
 
     const otp = generateOTP();
-    const expires = Date.now() + 15 * 60 * 1000;
+    const otpHash = await bcrypt.hash(otp, 10);
+    const expires = Date.now() + OTP_TTL_MS;
     await sql`
         INSERT INTO otps (email, otp, expires_at, attempts) 
-        VALUES (${cleanEmail}, ${otp}, ${expires}, 0)
+        VALUES (${cleanEmail}, ${otpHash}, ${expires}, 0)
         ON CONFLICT (email) 
         DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, attempts = 0
     `;
-    if (!RESEND_API_KEY) {
-        console.log(`[DEV ${context}] OTP for ${cleanEmail}: ${otp}`);
-        return otp;
-    }
     const resend = new Resend(RESEND_API_KEY);
     const subject = context === 'reset' ? 'Reset your Orbit Space password' : 'Your Orbit Space login code';
     const msg = context === 'reset' ? 'Use this code to reset your password:' : 'Use this code to securely log in:';
-    await resend.emails.send({
-        from: FROM_EMAIL, to: cleanEmail, subject,
-        html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
-            <h1 style="font-size:22px;margin:0 0 8px">${subject}</h1>
-            <p style="color:#94a3b8;margin:0 0 24px">${msg}</p>
-            <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
-            <span style="font-size:36px;font-weight:900;letter-spacing:12px;color:#818cf8">${otp}</span>
-            </div>
-            <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes.</p>
-        </div>`
-    });
-    return otp; // Return it so it cascades back explicitly
+    try {
+        await resend.emails.send({
+            from: FROM_EMAIL, to: cleanEmail, subject,
+            html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
+                <h1 style="font-size:22px;margin:0 0 8px">${subject}</h1>
+                <p style="color:#94a3b8;margin:0 0 24px">${msg}</p>
+                <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
+                <span style="font-size:36px;font-weight:900;letter-spacing:12px;color:#818cf8">${otp}</span>
+                </div>
+                <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes.</p>
+            </div>`
+        });
+    } catch (error) {
+        try {
+            await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+        } catch (cleanupError: any) {
+            console.error('Failed to remove undelivered authentication OTP:', cleanupError?.message);
+        }
+        throw error;
+    }
+    return true;
 }
 
 async function verifyAuthOtp(sql: any, email: string, otp: string) {
@@ -91,40 +103,61 @@ async function verifyAuthOtp(sql: any, email: string, otp: string) {
         await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
         throw new Error('Code expired.');
     }
-    if (stored.otp !== otp.trim()) {
-        await sql`UPDATE otps SET attempts = attempts + 1 WHERE email = ${cleanEmail}`;
+    if (Number(stored.attempts || 0) >= MAX_OTP_ATTEMPTS) {
+        await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+        throw new Error('Too many incorrect attempts. Request a new code.');
+    }
+
+    const storedOtp = String(stored.otp || '');
+    const matches = storedOtp.startsWith('$2')
+        ? await bcrypt.compare(otp.trim(), storedOtp)
+        : storedOtp === otp.trim(); // Allows existing pre-hardening codes to expire naturally.
+    if (!matches) {
+        const nextAttempts = Number(stored.attempts || 0) + 1;
+        if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+            await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
+            throw new Error('Too many incorrect attempts. Request a new code.');
+        }
+        await sql`UPDATE otps SET attempts = ${nextAttempts} WHERE email = ${cleanEmail}`;
         throw new Error('Incorrect code.');
     }
     await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
 }
 
-// Helper to send invite/set-password email
-async function sendInviteEmail(email: string, tempPassword: string, orgName: string) {
+// New members set their own password through the normal password-reset flow.
+// Never include a credential in an API response, browser state, or email body.
+async function sendInviteEmail(email: string, orgName: string) {
     if (!RESEND_API_KEY) {
-        console.log(`[DEV invite] ${email} temp-password: ${tempPassword} org: ${orgName}`);
+        console.warn('[Invitation email disabled] The invitation was created but no email was sent.');
         return;
     }
     const resend = new Resend(RESEND_API_KEY);
     const loginUrl = process.env.URL || 'https://orbitspace.io';
+    const escapedEmail = escapeHtml(email);
+    const escapedOrgName = escapeHtml(orgName);
     await resend.emails.send({
         from: FROM_EMAIL, to: email,
         subject: `You've been invited to ${orgName} on Orbit Space`,
         html: `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
             <h1 style="font-size:22px;margin:0 0 8px">Welcome to Orbit Space 🪐</h1>
-            <p style="color:#94a3b8;margin:0 0 24px">You've been invited to <strong>${orgName}</strong>. Sign in with the temporary credentials below and change your password.</p>
+            <p style="color:#94a3b8;margin:0 0 24px">You've been invited to <strong>${escapedOrgName}</strong>. Use the password reset option to set your own password before signing in.</p>
             <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:24px">
                 <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">Email</p>
-                <p style="margin:0 0 16px;color:#f1f5f9;font-weight:700">${email}</p>
-                <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">Temporary Password</p>
-                <p style="margin:0;color:#818cf8;font-weight:900;font-size:18px;letter-spacing:2px">${tempPassword}</p>
+                <p style="margin:0;color:#f1f5f9;font-weight:700">${escapedEmail}</p>
             </div>
-            <a href="${loginUrl}" style="display:block;text-align:center;background:#6366f1;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:700">Sign In Now →</a>
+            <a href="${loginUrl}" style="display:block;text-align:center;background:#6366f1;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:700">Set Password & Sign In →</a>
         </div>`
     });
 }
 
-function generateTempPassword(): string {
-    return 'Orbit' + Math.random().toString(36).slice(2, 8) + '!';
+function generateInitialSecret(): string {
+    return randomBytes(32).toString('base64url');
+}
+
+function escapeHtml(value: string): string {
+    return value.replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+    }[character] || character));
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -174,7 +207,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             if (user.two_factor_enabled) {
                 if (!body.otp) {
-                    await sendAuthOtp(sql, user.email, '2fa');
+                    const sent = await sendAuthOtp(sql, user.email, '2fa');
+                    if (!sent) return fail('Two-factor authentication email delivery is unavailable. Contact support.', 503);
                     return ok({ require2FA: true, email: user.email });
                 }
                 try { await verifyAuthOtp(sql, user.email, body.otp); }
@@ -219,10 +253,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (subpath === '/reset/send-otp' && event.httpMethod === 'POST') {
             const { email } = body;
             if (!email) return fail('Email required');
+            if (!RESEND_API_KEY) return fail('Account-recovery email delivery is unavailable. Contact support.', 503);
             const records = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase().trim()}`;
-            let otpSecret;
-            if (records.length > 0) otpSecret = await sendAuthOtp(sql, email, 'reset');
-            return ok({ sent: true, otp: otpSecret });
+            if (records.length > 0) await sendAuthOtp(sql, email, 'reset');
+            return ok({ sent: true });
         }
 
         if (subpath === '/reset/confirm' && event.httpMethod === 'POST') {
@@ -241,8 +275,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
         try { actor = verifyToken(event.headers.authorization || ''); }
         catch { return fail('Unauthorized', 401); }
 
-        const isSuperuser = actor.role === 'SUPERUSER';
-        const isOrgAdmin = actor.role === 'ORG_ADMIN' || actor.role === 'ADMIN';
+        const [actorRecord] = await sql`SELECT role, org_id FROM users WHERE id = ${actor.id}`;
+        if (!actorRecord) return fail('Unauthorized', 401);
+        const actorRole = actorRecord.role === 'ADMIN' ? 'ORG_ADMIN' : actorRecord.role;
+        const actorOrgId = actorRecord.org_id as string | null;
+        const isSuperuser = actorRole === 'SUPERUSER';
+        const isOrgAdmin = actorRole === 'ORG_ADMIN';
         const isAdmin = isSuperuser || isOrgAdmin;
 
         // ── 2FA TOGGLE ───────────────────────────────────────────────
@@ -283,40 +321,64 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { email, orgId, role = 'USER', workspaceIds = [] } = body;
             if (!email) return fail('email required');
 
-            // Determine caller's org
-            const [callerUser] = await sql`SELECT org_id, role FROM users WHERE id = ${actor.id}`;
-            const effectiveOrgId = orgId || callerUser?.org_id;
+            const effectiveOrgId = isSuperuser ? (orgId || actorOrgId) : actorOrgId;
             if (!effectiveOrgId) return fail('No org context', 400);
-
-            // Permission check
-            const callerRole = callerUser?.role || actor.role;
-            if (callerRole === 'USER' || callerRole === 'WORKSPACE_OWNER') return fail('Forbidden', 403);
-            if (callerRole === 'PMO_ADMIN' && (role === 'ORG_ADMIN' || role === 'PMO_ADMIN')) {
-                return fail('PMO Admins can only invite WORKSPACE_OWNER or USER', 403);
-            }
+            if (!isSuperuser && orgId && orgId !== effectiveOrgId) return fail('Forbidden', 403);
             if (!PLATFORM_ROLES.includes(role as any)) return fail('Invalid role', 400);
+
+            const requestedWorkspaceIds = Array.isArray(workspaceIds) ? workspaceIds : [];
+
+            // Organization admins may invite downward only. A PMO admin is a
+            // workspace-scoped role and may invite only into workspaces they administer.
+            if (!isSuperuser && actorRole === 'ORG_ADMIN' && !['PMO_ADMIN', 'WORKSPACE_OWNER', 'USER'].includes(role)) {
+                return fail('Organization admins can only invite lower-privileged roles', 403);
+            }
+            if (!isSuperuser && actorRole !== 'ORG_ADMIN') {
+                if (!['WORKSPACE_OWNER', 'USER'].includes(role) || requestedWorkspaceIds.length === 0) {
+                    return fail('PMO admins can invite Workspace Owners or Members into a workspace they administer', 403);
+                }
+                for (const workspaceId of requestedWorkspaceIds) {
+                    const [membership] = await sql`
+                        SELECT wm.role, wm.org_id
+                        FROM workspace_members wm
+                        WHERE wm.user_id = ${actor.id} AND wm.workspace_id = ${workspaceId} AND wm.org_id = ${effectiveOrgId}
+                    `;
+                    if (!membership || membership.org_id !== effectiveOrgId || membership.role !== 'PMO_ADMIN') {
+                        return fail('You can only invite members into workspaces you administer', 403);
+                    }
+                }
+            }
+
+            for (const workspaceId of requestedWorkspaceIds) {
+                const [workspace] = await sql`SELECT org_id FROM workspaces WHERE id = ${workspaceId}`;
+                if (!workspace || workspace.org_id !== effectiveOrgId) {
+                    return fail('Workspace does not belong to the selected organization', 400);
+                }
+            }
 
             // Get org name for email
             const [org] = await sql`SELECT name FROM organizations WHERE id = ${effectiveOrgId}`;
-            const orgName = org?.name || 'Orbit Space';
+            if (!org) return fail('Organization not found', 404);
+            const orgName = org.name || 'Orbit Space';
 
             // Auto-create user if doesn't exist
             let userId: string;
-            let tempPasswordForResponse: string | undefined;
             let addedUser: any;
             const cleanEmail = email.toLowerCase().trim();
-            const existing = await sql`SELECT id FROM users WHERE email = ${cleanEmail}`;
+            const existing = await sql`SELECT id, org_id FROM users WHERE email = ${cleanEmail}`;
 
             if (existing.length > 0) {
                 userId = existing[0].id;
-                // Update their org and role if upgrading
+                if (existing[0].org_id && existing[0].org_id !== effectiveOrgId) {
+                    return fail('This user belongs to another organization', 409);
+                }
                 const [u] = await sql`UPDATE users SET org_id = ${effectiveOrgId}, role = ${role} WHERE id = ${userId} RETURNING id, email, name, role, plan, created_at, org_id`;
                 addedUser = u;
             } else {
-                // Create new account with temp password
-                const tempPassword = generateTempPassword();
-                tempPasswordForResponse = tempPassword;
-                const hash = await bcrypt.hash(tempPassword, 10);
+                // Create an unusable random initial secret. The invitation asks
+                // the recipient to use the reset flow and choose their own password.
+                const initialSecret = generateInitialSecret();
+                const hash = await bcrypt.hash(initialSecret, 10);
                 const [newUser] = await sql`
                     INSERT INTO users (email, password_hash, name, role, plan, org_id)
                     VALUES (${cleanEmail}, ${hash}, ${cleanEmail.split('@')[0]}, ${role}, 'BASIC', ${effectiveOrgId})
@@ -324,20 +386,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 `;
                 userId = newUser.id;
                 addedUser = newUser;
-                // Send invite email with temp password
-                await sendInviteEmail(cleanEmail, tempPassword, orgName);
+                await sendInviteEmail(cleanEmail, orgName);
             }
 
             // Add to workspaces if specified
             const wsRole = role === 'ORG_ADMIN' ? 'PMO_ADMIN' : (role as string);
             const validWsRole = WORKSPACE_ROLES.includes(wsRole as any) ? wsRole : 'USER';
 
-            if (workspaceIds.length > 0) {
-                for (const wsId of workspaceIds) {
+            if (requestedWorkspaceIds.length > 0) {
+                for (const wsId of requestedWorkspaceIds) {
                     await sql`
                         INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
                         VALUES (${userId}, ${wsId}, ${effectiveOrgId}, ${validWsRole}, ${actor.id})
-                        ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = ${validWsRole}
+                        ON CONFLICT (user_id, workspace_id) DO UPDATE
+                        SET org_id = EXCLUDED.org_id, role = EXCLUDED.role
                     `;
                 }
             } else {
@@ -348,22 +410,36 @@ export const handler: Handler = async (event: HandlerEvent) => {
                         await sql`
                             INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
                             VALUES (${userId}, ${ws.id}, ${effectiveOrgId}, ${validWsRole}, ${actor.id})
-                            ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = ${validWsRole}
+                            ON CONFLICT (user_id, workspace_id) DO UPDATE
+                            SET org_id = EXCLUDED.org_id, role = EXCLUDED.role
                         `;
                     }
                 }
             }
 
-            return ok({ success: true, message: `${cleanEmail} invited as ${role}`, password: tempPasswordForResponse, user: addedUser });
+            return ok({ success: true, message: `${cleanEmail} invited as ${role}`, user: addedUser });
         }
 
         // ── REMOVE MEMBER FROM WORKSPACE ─────────────────────────────
         if (subpath === '/remove-member' && event.httpMethod === 'POST') {
-            if (!isAdmin && actor.role !== 'PMO_ADMIN') return fail('Forbidden', 403);
             const { userId: memberId, workspaceId } = body;
             if (!memberId || !workspaceId) return fail('userId and workspaceId required', 400);
             if (memberId === actor.id) return fail('Cannot remove yourself', 400);
-            await sql`DELETE FROM workspace_members WHERE user_id = ${memberId} AND workspace_id = ${workspaceId}`;
+
+            const [workspace] = await sql`SELECT org_id FROM workspaces WHERE id = ${workspaceId}`;
+            if (!workspace) return fail('Workspace not found', 404);
+
+            let canRemove = isSuperuser || (isOrgAdmin && workspace.org_id === actorOrgId);
+            if (!canRemove) {
+                const [membership] = await sql`
+                    SELECT role FROM workspace_members
+                    WHERE user_id = ${actor.id} AND workspace_id = ${workspaceId} AND org_id = ${workspace.org_id}
+                `;
+                canRemove = membership?.role === 'PMO_ADMIN';
+            }
+            if (!canRemove) return fail('Forbidden', 403);
+
+            await sql`DELETE FROM workspace_members WHERE user_id = ${memberId} AND workspace_id = ${workspaceId} AND org_id = ${workspace.org_id}`;
             return ok({ success: true });
         }
 
@@ -394,6 +470,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const userId = subpath.split('/')[2];
             let { plan, role, name, email, password } = body;
 
+            if (password) {
+                return fail('Direct password changes are disabled. Use the password-reset flow instead.', 400);
+            }
+
+            const [targetUser] = await sql`SELECT org_id FROM users WHERE id = ${userId}`;
+            if (!targetUser) return fail('User not found', 404);
+            if (!isSuperuser && targetUser.org_id !== actorOrgId) return fail('Forbidden', 403);
+            if (!isSuperuser && role && !['PMO_ADMIN', 'WORKSPACE_OWNER', 'USER'].includes(role)) {
+                return fail('Organization admins can only assign lower-privileged roles', 403);
+            }
+
             let finalUser: any = null;
 
             if (plan && ['BASIC', 'PRO', 'MAX'].includes(plan)) {
@@ -413,12 +500,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const [u] = await sql`UPDATE users SET email = ${email.toLowerCase().trim()} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
                 finalUser = u;
             }
-            if (isSuperuser && password) {
-                const hash = await bcrypt.hash(password, 10);
-                const [u] = await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${userId} RETURNING id, email, name, role, plan`;
-                finalUser = u;
-            }
-
             if (finalUser) {
                 return ok({ success: true, user: finalUser });
             }
@@ -428,34 +509,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // ── SUPERUSER: create user directly ──────────────────────────
         if (subpath === '/admin/users' && event.httpMethod === 'POST') {
             if (!isSuperuser) return fail('Forbidden', 403);
-            const { email, password, name, role = 'USER', plan = 'BASIC', orgId } = body;
-            if (!email || !password) return fail('Email and password required');
-
-            const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`;
-            if (existing.length > 0) return fail('Email already registered');
-
-            const hash = await bcrypt.hash(password, 10);
-            const [user] = await sql`
-                INSERT INTO users (email, password_hash, name, role, plan, org_id)
-                VALUES (${email.toLowerCase()}, ${hash}, ${name || email.split('@')[0]}, ${role}, ${plan}, ${orgId || null})
-                RETURNING id, email, name, role, plan, created_at
-            `;
-            return ok({ user }, 201);
+            return fail('Direct account creation is retired. Create an organization or send a scoped invitation instead.', 410);
         }
 
         // ── SUPERUSER: delete user ───────────────────────────────────
         if (subpath.match(/^\/admin\/users\/[^/]+$/) && event.httpMethod === 'DELETE') {
             if (!isSuperuser) return fail('Forbidden', 403);
-            const userId = subpath.split('/')[3];
-            await sql`DELETE FROM workspace_members WHERE user_id = ${userId}`;
-            await sql`DELETE FROM users WHERE id = ${userId}`;
-            return ok({ success: true });
+            return fail('Permanent account deletion is disabled. Remove workspace access or use an audited deprovisioning workflow instead.', 410);
         }
 
         return fail('Not found', 404);
 
     } catch (e: any) {
         console.error('[auth fn]', e.message);
-        return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server error', detail: e.message }) };
+        return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Server error' }) };
     }
 };

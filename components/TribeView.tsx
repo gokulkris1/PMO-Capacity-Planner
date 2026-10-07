@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, projectConsumesCapacity, projectIsInFlight } from '../types';
 import { TimeForecastGrid } from './TimeForecastGrid';
 import { getCurrentUtil, isAllocActiveOn } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface Props {
     resources: Resource[];
@@ -48,11 +49,12 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
 
     // Projects belonging to this Tribe
     const tribeProjects = projects.filter(p => p.clientName === selectedTribe);
-    const tribeProjectIds = new Set(tribeProjects.map(p => p.id));
+    const capacityTribeProjectIds = new Set(tribeProjects.filter(project => projectConsumesCapacity(project.status)).map(project => project.id));
+    const inFlightProjectCount = tribeProjects.filter(project => projectIsInFlight(project.status)).length;
 
-    // Allocations belonging to this Tribe (filtered to currently active date ranges)
+    // Live capacity belonging to this Tribe (Active + Planning only).
     const now = new Date();
-    const tribeAllocs = liveAlloc.filter(a => tribeProjectIds.has(a.projectId) && isAllocActiveOn(a, now));
+    const tribeAllocs = liveAlloc.filter(a => capacityTribeProjectIds.has(a.projectId) && isAllocActiveOn(a, now));
 
     // Aggregate capacity per resource within this Tribe
     const resourceMap = new Map<string, { totalPct: number; projCount: number }>();
@@ -110,8 +112,8 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>Tribe / Client / Owner</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Active Projects</div>
-                                <span style={{ fontSize: 22, fontWeight: 800, color: '#1e293b' }}>{tribeProjects.length}</span>
+                                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>In-flight Projects</div>
+                                <span style={{ fontSize: 22, fontWeight: 800, color: '#1e293b' }}>{inFlightProjectCount}</span>
                             </div>
                             <div>
                                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>FTE Committed</div>
@@ -132,13 +134,13 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                         <div className="panel-header">
                             <div>
                                 <div className="panel-title">Resource Allocation – {selectedTribe}</div>
-                                <div className="panel-subtitle">{resourceMap.size} resources deployed across {tribeProjects.length} projects</div>
+                                <div className="panel-subtitle">{resourceMap.size} resources deployed across {inFlightProjectCount} in-flight projects</div>
                             </div>
                         </div>
                         {resourceMap.size === 0 ? (
                             <div className="empty-state">
                                 <h3>No resources allocated</h3>
-                                <p>This tribe has projects, but no resources are currently assigned to them.</p>
+                                <p>This tribe has projects, but no resources are currently assigned to Active or Planning work.</p>
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, padding: 20 }}>
@@ -147,7 +149,7 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                                     if (!res) return null;
 
                                     // Calculate this person's GLOBAL utilization (across all tribes/projects)
-                                    const totalGlobalUtil = getCurrentUtil(liveAlloc, res.id);
+                                    const totalGlobalUtil = getCurrentUtil(liveAlloc, res.id, projects);
                                     const statusS = getAllocationStatus(totalGlobalUtil);
 
                                     return (
@@ -162,7 +164,7 @@ export const TribeView: React.FC<Props> = ({ resources, projects, allocations, s
                                                     background: res.type === 'Permanent' ? '#eef2ff' : '#fdf4ff',
                                                     color: res.type === 'Permanent' ? '#4338ca' : '#7c3aed',
                                                 }}>
-                                                    {res.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                    {getAvatarInitials(res.name)}
                                                 </div>
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

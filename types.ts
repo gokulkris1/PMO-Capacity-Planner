@@ -7,9 +7,46 @@ export enum ResourceType {
 
 export enum ProjectStatus {
   ACTIVE = 'Active',
-  ON_HOLD = 'On Hold',
   PLANNING = 'Planning',
+  ON_HOLD = 'On Hold',
+  SUSPENDED = 'Suspended',
   COMPLETED = 'Completed',
+  CALLED_OFF = 'Called Off',
+  ARCHIVED = 'Archived',
+}
+
+/**
+ * Describes how a project status affects a person's available capacity.
+ * Planning work is deliberately included in availability calculations so an
+ * approved plan cannot silently double-book a person. Paused and historical
+ * work remains visible, but does not consume current availability.
+ */
+export type ProjectCapacityImpact = 'committed' | 'planned' | 'paused' | 'historical';
+
+export function getProjectCapacityImpact(status: ProjectStatus | string | undefined): ProjectCapacityImpact {
+  switch (status) {
+    case ProjectStatus.ACTIVE:
+      return 'committed';
+    case ProjectStatus.PLANNING:
+      return 'planned';
+    case ProjectStatus.ON_HOLD:
+    case ProjectStatus.SUSPENDED:
+      return 'paused';
+    case ProjectStatus.COMPLETED:
+    case ProjectStatus.CALLED_OFF:
+    case ProjectStatus.ARCHIVED:
+    default:
+      return 'historical';
+  }
+}
+
+export function projectConsumesCapacity(status: ProjectStatus | string | undefined): boolean {
+  const impact = getProjectCapacityImpact(status);
+  return impact === 'committed' || impact === 'planned';
+}
+
+export function projectIsInFlight(status: ProjectStatus | string | undefined): boolean {
+  return projectConsumesCapacity(status);
 }
 
 export enum AllocationStatus {
@@ -65,6 +102,8 @@ export interface Project {
   budget?: number;
   clientName?: string;
   color?: string;
+  /** Skills that must be covered before the project can be staffed. */
+  requiredSkills?: string[];
 }
 
 export interface Allocation {

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus } from '../types';
+import { Resource, Project, Allocation, getAllocationStatus, AllocationStatus, getProjectCapacityImpact, projectConsumesCapacity } from '../types';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface Props {
     resources: Resource[];
@@ -84,8 +85,7 @@ const UtilBar: React.FC<{ pct: number }> = ({ pct }) => (
 
 // ── Avatar initials ──────────────────────────────────────────────────────────
 const Avatar: React.FC<{ name: string; type?: string }> = ({ name, type }) => {
-    // Audit fix: Issue #23 (Resource Initials Break on Empty Names)
-    const initials = (name || '??').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const initials = getAvatarInitials(name);
     const colors = {
         Permanent: { bg: 'var(--brand-50)', color: 'var(--brand-500)' },
         Contractor: { bg: 'var(--n-200)', color: 'var(--n-700)' },
@@ -128,7 +128,11 @@ export const AllocationMatrix: React.FC<Props> = ({
 
     function getResourceUtil(resId: string) {
         return liveAlloc
-            .filter(a => a.resourceId === resId && isAllocActiveInRange(a, filterRange))
+            .filter(a => {
+                if (a.resourceId !== resId || !isAllocActiveInRange(a, filterRange)) return false;
+                const project = projects.find(candidate => candidate.id === a.projectId);
+                return !project || projectConsumesCapacity(project.status);
+            })
             .reduce((s, a) => s + a.percentage, 0);
     }
 
@@ -184,8 +188,16 @@ export const AllocationMatrix: React.FC<Props> = ({
                         style={{ ...controlInput, width: 120, marginLeft: 8 }} />
                     <select value={filterProjId} onChange={e => setFilterProjId(e.target.value)}
                         style={{ ...controlInput, minWidth: 140 }}>
+                        <option value="">All projects</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
+                    <button type="button" onClick={() => {
+                        const currentMonth = new Date().toISOString().slice(0, 7);
+                        setFilterRange({ start: currentMonth, end: currentMonth });
+                        setFilterProjId('');
+                    }} style={{ ...controlInput, cursor: 'pointer', fontWeight: 600 }}>
+                        Reset
+                    </button>
                     <button onClick={onExportCSV} style={{
                         ...controlInput, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
                         background: '#fff', border: '1px solid var(--n-400)',
@@ -212,6 +224,7 @@ export const AllocationMatrix: React.FC<Props> = ({
                 <LegendPill color="#34d399" label="Optimal 60–80%" />
                 <LegendPill color="#fbbf24" label="High 80–100%" />
                 <LegendPill color="#f87171" label="Over 100%" />
+                <span style={{ fontSize: 11, color: 'var(--n-600)' }}>Totals include Active and Planning work; paused and historical projects stay visible but do not consume availability.</span>
                 {scenarioMode && (
                     <span style={{
                         marginLeft: 'auto', fontSize: 11, fontWeight: 700, padding: '4px 12px',
@@ -245,10 +258,11 @@ export const AllocationMatrix: React.FC<Props> = ({
                                 <th style={{ ...headerCell, position: 'sticky', left: 0, zIndex: 10, minWidth: 200, background: 'var(--n-100)' }}>Resource</th>
                                 <th style={{ ...headerCell, minWidth: 100 }}>Total %</th>
                                 {filteredProjects.map(p => (
-                                    <th key={p.id} style={{ ...headerCell, minWidth: 110, textAlign: 'center' }}>
+                                    <th key={p.id} style={{ ...headerCell, minWidth: 110, textAlign: 'center', opacity: projectConsumesCapacity(p.status) ? 1 : 0.72 }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                                             <div style={{ width: 8, height: 8, borderRadius: 3, background: p.color || '#6366f1', boxShadow: `0 0 6px ${p.color || '#6366f1'} 60` }} />
                                             <span style={{ maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{p.name}</span>
+                                            <span style={{ fontSize: 9, color: 'var(--n-500)', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>{getProjectCapacityImpact(p.status)}</span>
                                         </div>
                                     </th>
                                 ))}

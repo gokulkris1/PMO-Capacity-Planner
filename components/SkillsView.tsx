@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Allocation, Project, Resource, getAllocationStatus, AllocationStatus } from '../types';
+import { Allocation, Project, Resource, getAllocationStatus, AllocationStatus, getProjectCapacityImpact } from '../types';
 import { getCurrentUtil } from '../utils/dateFilteredUtil';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 interface Props {
     resources: Resource[];
@@ -38,7 +39,13 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
             .sort((a, b) => a.skill.localeCompare(b.skill));
     }, [resources, search]);
 
-    if (resources.length > 0 && skillGroups.length === 0 && !resources.some(r => (r.skills || []).length)) {
+    const projectSkillDemand = useMemo(() => projects
+        .filter(project => (project.requiredSkills || []).length > 0)
+        .filter(project => project.name.toLowerCase().includes(search.toLowerCase())
+            || (project.requiredSkills || []).some(skill => skill.toLowerCase().includes(search.toLowerCase())))
+        .sort((left, right) => left.name.localeCompare(right.name)), [projects, search]);
+
+    if (resources.length > 0 && skillGroups.length === 0 && !resources.some(r => (r.skills || []).length) && projectSkillDemand.length === 0) {
         return (
             <div className="empty-state page-enter">
                 <h3>No skills captured yet</h3>
@@ -61,9 +68,35 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
                 />
             </div>
 
+            {projectSkillDemand.length > 0 && (
+                <div className="panel">
+                    <div className="panel-header">
+                        <div>
+                            <div className="panel-title">Project skill demand</div>
+                            <div className="panel-subtitle">Required capabilities that drive staffing recommendations</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, padding: 16 }}>
+                        {projectSkillDemand.map(project => (
+                            <div key={project.id} style={{ border: '1px solid var(--n-300)', borderRadius: 10, padding: 12, borderLeft: `3px solid ${project.color || 'var(--brand-500)'}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'start', marginBottom: 8 }}>
+                                    <strong style={{ fontSize: 13, color: 'var(--n-800)' }}>{project.name}</strong>
+                                    <span style={{ fontSize: 10, color: 'var(--n-600)', fontWeight: 700, textTransform: 'capitalize' }}>{getProjectCapacityImpact(project.status)}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                                    {project.requiredSkills!.map(skill => (
+                                        <span key={skill} style={{ fontSize: 10, padding: '3px 6px', borderRadius: 999, color: 'var(--brand-700)', background: 'var(--brand-50)', fontWeight: 700 }}>{skill}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {skillGroups.map(({ skill, members }) => {
                 const totalUtil = members.reduce((sum, m) => {
-                    return sum + getCurrentUtil(liveAlloc, m.id);
+                    return sum + getCurrentUtil(liveAlloc, m.id, projects);
                 }, 0);
                 const avgUtil = members.length ? Math.round(totalUtil / members.length) : 0;
 
@@ -80,7 +113,7 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, padding: 16 }}>
                             {members.map(member => {
                                 const memberAllocs = liveAlloc.filter(a => a.resourceId === member.id);
-                                const memberUtil = getCurrentUtil(liveAlloc, member.id);
+                                const memberUtil = getCurrentUtil(liveAlloc, member.id, projects);
                                 const topProjects = memberAllocs
                                     .map(a => ({ a, p: projects.find(p => p.id === a.projectId) }))
                                     .filter(x => !!x.p)
@@ -91,7 +124,7 @@ export const SkillsView: React.FC<Props> = ({ resources, projects, allocations, 
                                     <div key={member.id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <div className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
-                                                {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                                {getAvatarInitials(member.name)}
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{member.name}</div>

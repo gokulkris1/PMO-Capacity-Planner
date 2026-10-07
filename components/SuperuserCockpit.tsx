@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getAvatarInitials } from '../utils/avatarInitials';
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface Org {
@@ -78,20 +79,6 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
         finally { setCreating(false); }
     };
 
-    const handleDeleteOrg = async (orgId: string, orgName: string) => {
-        if (!confirm(`Delete "${orgName}" and ALL its workspaces, projects, resources? This cannot be undone.`)) return;
-        await fetch(`/api/org_manage/${orgId}`, { method: 'DELETE', headers });
-        fetchData();
-    };
-
-    const handleUpdatePlan = async (orgId: string, plan: string) => {
-        await fetch(`/api/org_manage/${orgId}`, {
-            method: 'PUT', headers,
-            body: JSON.stringify({ plan }),
-        });
-        fetchData();
-    };
-
     const handleAssignWorkspace = async (orgId: string, adminId: string, workspaceId: string) => {
         if (!workspaceId) return;
         await fetch(`/api/org_manage/${orgId}/admin/${adminId}/workspace`, {
@@ -120,19 +107,6 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
             {sub && <div style={{ fontSize: 11, color: c.muted, marginTop: 4 }}>{sub}</div>}
         </div>
     );
-
-    // ── Plan badge ───────────────────────────────────────────────────
-    const PlanBadge: React.FC<{ plan?: string }> = ({ plan }) => {
-        const colors: Record<string, string> = { BASIC: '#6366f1', PRO: '#f59e0b', MAX: '#10b981' };
-        const p = plan?.toUpperCase() || 'BASIC';
-        return (
-            <span style={{
-                fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
-                background: `${colors[p] || colors.BASIC}20`, color: colors[p] || colors.BASIC,
-                border: `1px solid ${colors[p] || colors.BASIC}40`,
-            }}>{p}</span>
-        );
-    };
 
     if (loading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: c.bg }}>
@@ -242,21 +216,6 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                                         <div style={{ fontSize: 10, color: c.muted }}>Projects</div>
                                     </div>
 
-                                    {/* Plan selector */}
-                                    <select
-                                        value="BASIC"
-                                        onChange={e => handleUpdatePlan(org.id, e.target.value)}
-                                        style={{
-                                            background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
-                                            borderRadius: 8, color: c.text, fontSize: 11, padding: '6px 10px',
-                                            fontWeight: 700, cursor: 'pointer', outline: 'none',
-                                        }}
-                                    >
-                                        <option value="BASIC">BASIC</option>
-                                        <option value="PRO">PRO</option>
-                                        <option value="MAX">MAX</option>
-                                    </select>
-
                                     {/* Actions */}
                                     <button onClick={() => setExpandedOrg(expandedOrg === org.id ? null : org.id)}
                                         style={{ background: c.accentBg, border: `1px solid ${c.accent}40`, borderRadius: 8, color: c.accent, fontSize: 11, fontWeight: 700, padding: '6px 14px', cursor: 'pointer' }}>
@@ -268,10 +227,6 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                                             View As →
                                         </button>
                                     )}
-                                    <button onClick={() => handleDeleteOrg(org.id, org.name)}
-                                        style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, color: c.red, fontSize: 11, fontWeight: 700, padding: '6px 14px', cursor: 'pointer' }}>
-                                        Delete
-                                    </button>
                                 </div>
                             </div>
 
@@ -295,7 +250,7 @@ export const SuperuserCockpit: React.FC<{ onViewOrg?: (orgSlug: string) => void 
                                                                 background: 'rgba(99,102,241,0.2)', color: '#a5b4fc',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                                 fontSize: 10, fontWeight: 800,
-                                                            }}>{(a.name || a.email).slice(0, 2).toUpperCase()}</div>
+                                                            }}>{getAvatarInitials(a.name)}</div>
                                                             <div>
                                                                 <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{a.name || a.email}</div>
                                                                 <div style={{ fontSize: 10, color: c.muted }}>{a.email} · {a.role}</div>

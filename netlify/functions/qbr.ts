@@ -28,6 +28,46 @@ function auth(event: HandlerEvent) {
     } catch { return null; }
 }
 
+type WorkspaceAccess = {
+    orgId: string;
+    canWrite: boolean;
+    isSuperuser: boolean;
+};
+
+async function resolveWorkspaceAccess(
+    sql: ReturnType<typeof neon>,
+    userId: string,
+    workspaceId: string,
+    requestedOrgId?: string,
+): Promise<WorkspaceAccess | null> {
+    const actorRows = await sql`SELECT role, org_id FROM users WHERE id = ${userId}` as Array<{ role: string; org_id: string | null }>;
+    const workspaceRows = await sql`SELECT org_id FROM workspaces WHERE id = ${workspaceId}` as Array<{ org_id: string }>;
+    const actor = actorRows[0];
+    const workspace = workspaceRows[0];
+    if (!actor || !workspace || (requestedOrgId && requestedOrgId !== workspace.org_id)) return null;
+
+    if (actor.role === 'SUPERUSER') {
+        return { orgId: workspace.org_id, canWrite: true, isSuperuser: true };
+    }
+    if (actor.role === 'ORG_ADMIN' && actor.org_id === workspace.org_id) {
+        return { orgId: workspace.org_id, canWrite: true, isSuperuser: false };
+    }
+
+    const membershipRows = await sql`
+        SELECT role
+        FROM workspace_members
+        WHERE user_id = ${userId} AND workspace_id = ${workspaceId} AND org_id = ${workspace.org_id}
+    ` as Array<{ role: string }>;
+    const membership = membershipRows[0];
+    if (!membership) return null;
+
+    return {
+        orgId: workspace.org_id,
+        canWrite: ['PMO_ADMIN', 'WORKSPACE_OWNER'].includes(membership.role),
+        isSuperuser: false,
+    };
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
@@ -37,9 +77,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const sql = getDb();
     const subpath = event.path.replace(/^.*\/api\/qbr/, '');
     const wsId = event.queryStringParameters?.wsId;
-    const orgId = event.queryStringParameters?.orgId;
+    const requestedOrgId = event.queryStringParameters?.orgId;
 
     try {
+        if (!wsId) return fail('Workspace context is required', 400);
+        const access = await resolveWorkspaceAccess(sql, user.id, wsId, requestedOrgId);
+        if (!access) return fail('Workspace not found or unauthorized', 403);
+        if (['POST', 'PUT', 'DELETE'].includes(event.httpMethod) && !access.canWrite) {
+            return fail('Workspace write permission required', 403);
+        }
+        const orgId = access.orgId;
+
         // ═══════════════════════════════════════════════════════════
         // GET endpoints
         // ═══════════════════════════════════════════════════════════
@@ -88,7 +136,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // GET /api/qbr/quarter/:id — quarter details with sprints & bookings
             if (subpath.match(/^\/quarter\/[^/]+$/)) {
                 const qId = subpath.split('/')[2];
-                const quarter = await sql`SELECT * FROM qbr_quarters WHERE id = ${qId}`;
+                const quarter = await sql`SELECT * FROM qbr_quarters WHERE id = ${qId} AND workspace_id = ${wsId}`;
                 if (!quarter.length) return fail('Quarter not found', 404);
 
                 const sprints = await sql`
@@ -100,6 +148,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     JOIN qbr_members m ON m.id = b.member_id
                     WHERE b.sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${qId})
                     AND b.scenario_id IS NULL
+                    AND b.workspace_id = ${wsId}
                     ORDER BY m.name, b.sprint_id`;
 
                 return ok({ quarter: quarter[0], sprints, bookings });
@@ -183,7 +232,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     FROM qbr_bookings b
                     JOIN qbr_projects p ON p.id = b.project_id
                     JOIN qbr_members m ON m.id = b.member_id
-                    WHERE b.scenario_id = ${sId}
+                    WHERE b.scenario_id = ${sId} AND b.workspace_id = ${wsId}
                     ORDER BY m.name, b.sprint_id`;
                 return ok({ bookings });
             }
@@ -199,21 +248,50 @@ export const handler: Handler = async (event: HandlerEvent) => {
             if (subpath === '/booking') {
                 const { memberId, projectId, sprintId, percentage, scenarioId, notes } = body;
                 if (!memberId || !projectId || !sprintId) return fail('memberId, projectId, sprintId required');
+                if (typeof percentage !== 'number' || !Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+                    return fail('percentage must be a number from 0 to 100');
+                }
+
+                const validBookingInputs = await sql`
+                    SELECT 1
+                    FROM qbr_members m
+                    JOIN qbr_projects p ON p.id = ${projectId} AND p.workspace_id = ${wsId}
+                    JOIN qbr_sprints s ON s.id = ${sprintId}
+                    JOIN qbr_quarters q ON q.id = s.quarter_id AND q.workspace_id = ${wsId}
+                    WHERE m.id = ${memberId} AND m.workspace_id = ${wsId}
+                `;
+                if (!validBookingInputs.length) return fail('Booking target not found in this workspace', 404);
+                if (scenarioId) {
+                    const scenarioRows = await sql`
+                        SELECT scenario.id
+                        FROM qbr_scenarios scenario
+                        JOIN qbr_sprints sprint ON sprint.id = ${sprintId}
+                        WHERE scenario.id = ${scenarioId}
+                        AND scenario.workspace_id = ${wsId}
+                        AND scenario.quarter_id = sprint.quarter_id`;
+                    if (!scenarioRows.length) return fail('Scenario not found in this workspace', 404);
+                }
 
                 if (percentage <= 0) {
                     // Delete booking
                     await sql`DELETE FROM qbr_bookings
                         WHERE member_id = ${memberId} AND project_id = ${projectId}
                         AND sprint_id = ${sprintId}
-                        AND (scenario_id = ${scenarioId || null} OR (${scenarioId || null}::uuid IS NULL AND scenario_id IS NULL))`;
+                        AND workspace_id = ${wsId}
+                        AND scenario_id IS NOT DISTINCT FROM ${scenarioId || null}::uuid`;
                     return ok({ success: true, deleted: true });
                 }
 
                 const [booking] = (await sql`
+                    WITH removed_booking AS (
+                        DELETE FROM qbr_bookings
+                        WHERE member_id = ${memberId} AND project_id = ${projectId}
+                        AND sprint_id = ${sprintId}
+                        AND workspace_id = ${wsId}
+                        AND scenario_id IS NOT DISTINCT FROM ${scenarioId || null}::uuid
+                    )
                     INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
                     VALUES (${orgId}, ${wsId}, ${memberId}, ${projectId}, ${sprintId}, ${percentage}, ${scenarioId || null}, ${notes || null})
-                    ON CONFLICT (member_id, project_id, sprint_id, scenario_id)
-                    DO UPDATE SET percentage = EXCLUDED.percentage, notes = EXCLUDED.notes
                     RETURNING *`) as any[];
                 return ok({ success: true, booking });
             }
@@ -223,18 +301,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const { name, description, quarterId } = body;
                 if (!name || !quarterId) return fail('name and quarterId required');
 
-                const [scenario] = (await sql`
-                    INSERT INTO qbr_scenarios (org_id, workspace_id, name, description, quarter_id, created_by)
-                    VALUES (${orgId}, ${wsId}, ${name}, ${description || null}, ${quarterId}, ${user.id})
-                    RETURNING *`) as any[];
+                const quarterRows = await sql`SELECT id FROM qbr_quarters WHERE id = ${quarterId} AND workspace_id = ${wsId}`;
+                if (!quarterRows.length) return fail('Quarter not found in this workspace', 404);
 
-                // Clone current live bookings into scenario
-                await sql`
-                    INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
-                    SELECT org_id, workspace_id, member_id, project_id, sprint_id, percentage, ${scenario.id}, notes
-                    FROM qbr_bookings
-                    WHERE sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${quarterId})
-                    AND scenario_id IS NULL`;
+                const [scenario] = (await sql`
+                    WITH new_scenario AS (
+                        INSERT INTO qbr_scenarios (org_id, workspace_id, name, description, quarter_id, created_by)
+                        VALUES (${orgId}, ${wsId}, ${name}, ${description || null}, ${quarterId}, ${user.id})
+                        RETURNING *
+                    ), cloned_bookings AS (
+                        INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
+                        SELECT b.org_id, b.workspace_id, b.member_id, b.project_id, b.sprint_id, b.percentage, s.id, b.notes
+                        FROM qbr_bookings b
+                        CROSS JOIN new_scenario s
+                        WHERE b.sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${quarterId})
+                        AND b.scenario_id IS NULL
+                        AND b.workspace_id = ${wsId}
+                    )
+                    SELECT * FROM new_scenario`) as any[];
 
                 return ok({ success: true, scenario }, 201);
             }
@@ -242,22 +326,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // POST /api/qbr/scenario/:id/commit — commit a scenario
             if (subpath.match(/^\/scenario\/[^/]+\/commit$/)) {
                 const sId = subpath.split('/')[2];
-                const [sc] = (await sql`SELECT * FROM qbr_scenarios WHERE id = ${sId}`) as any[];
+                const [sc] = (await sql`SELECT * FROM qbr_scenarios WHERE id = ${sId} AND workspace_id = ${wsId}`) as any[];
                 if (!sc) return fail('Scenario not found', 404);
 
-                // Delete current live bookings for this quarter
-                await sql`
-                    DELETE FROM qbr_bookings
-                    WHERE sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${sc.quarter_id})
-                    AND scenario_id IS NULL`;
-
-                // Move scenario bookings to live (set scenario_id = NULL)
-                await sql`
-                    UPDATE qbr_bookings SET scenario_id = NULL
-                    WHERE scenario_id = ${sId}`;
-
-                // Mark scenario as committed
-                await sql`UPDATE qbr_scenarios SET is_committed = true WHERE id = ${sId}`;
+                await sql.transaction(transaction => [
+                    transaction`
+                        DELETE FROM qbr_bookings
+                        WHERE sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${sc.quarter_id})
+                        AND scenario_id IS NULL
+                        AND workspace_id = ${wsId}`,
+                    transaction`
+                        UPDATE qbr_bookings SET scenario_id = NULL
+                        WHERE scenario_id = ${sId}
+                        AND workspace_id = ${wsId}
+                        AND sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${sc.quarter_id})`,
+                    transaction`UPDATE qbr_scenarios SET is_committed = true WHERE id = ${sId} AND workspace_id = ${wsId}`,
+                ]);
 
                 return ok({ success: true });
             }
@@ -267,6 +351,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 const { name, tribeId, projectId, okrId, members: memberList } = body;
                 if (!name) return fail('Squad name required');
 
+                for (const [id, table] of [[tribeId, 'qbr_tribes'], [projectId, 'qbr_projects'], [okrId, 'qbr_okrs']] as const) {
+                    if (!id) continue;
+                    const rows = table === 'qbr_tribes'
+                        ? await sql`SELECT id FROM qbr_tribes WHERE id = ${id} AND workspace_id = ${wsId}`
+                        : table === 'qbr_projects'
+                            ? await sql`SELECT id FROM qbr_projects WHERE id = ${id} AND workspace_id = ${wsId}`
+                            : await sql`SELECT id FROM qbr_okrs WHERE id = ${id} AND workspace_id = ${wsId}`;
+                    if (!rows.length) return fail('Squad relationship not found in this workspace', 404);
+                }
+
                 const [squad] = (await sql`
                     INSERT INTO qbr_squads (org_id, workspace_id, name, tribe_id, project_id, okr_id)
                     VALUES (${orgId}, ${wsId}, ${name}, ${tribeId || null}, ${projectId || null}, ${okrId || null})
@@ -274,6 +368,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
                 if (memberList?.length) {
                     for (const m of memberList) {
+                        const memberRows = await sql`SELECT id FROM qbr_members WHERE id = ${m.memberId} AND workspace_id = ${wsId}`;
+                        if (!memberRows.length) return fail('Squad member not found in this workspace', 404);
                         await sql`
                             INSERT INTO qbr_squad_members (squad_id, member_id, squad_role)
                             VALUES (${squad.id}, ${m.memberId}, ${m.role || 'MEMBER'})
@@ -286,6 +382,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             // POST /api/qbr/seed — seed demo data (dev only)
             if (subpath === '/seed') {
+                const isProduction = process.env.NODE_ENV === 'production' || process.env.CONTEXT === 'production';
+                if (isProduction || !access.isSuperuser) {
+                    return fail('Demo seeding is disabled', 403);
+                }
                 return await seedDemoData(sql, orgId, wsId);
             }
         }
@@ -297,16 +397,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
             // DELETE /api/qbr/scenario/:id
             if (subpath.match(/^\/scenario\/[^/]+$/)) {
                 const sId = subpath.split('/')[2];
-                await sql`DELETE FROM qbr_bookings WHERE scenario_id = ${sId}`;
-                await sql`DELETE FROM qbr_scenarios WHERE id = ${sId}`;
+                await sql.transaction(transaction => [
+                    transaction`DELETE FROM qbr_bookings WHERE scenario_id = ${sId} AND workspace_id = ${wsId}`,
+                    transaction`DELETE FROM qbr_scenarios WHERE id = ${sId} AND workspace_id = ${wsId}`,
+                ]);
                 return ok({ success: true });
             }
         }
 
         return fail('Not found', 404);
     } catch (e: any) {
-        console.error('[qbr]', e);
-        return fail('Server error: ' + e.message, 500);
+        console.error('[qbr]', e?.message);
+        return fail('Server error', 500);
     }
 };
 

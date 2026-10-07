@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
-import { Resource, Project, Allocation } from "../types";
+import { Resource, Project, Allocation, projectConsumesCapacity } from "../types";
+import { isAllocActiveOn } from "../utils/dateFilteredUtil";
 
 import { User, WorkspaceInfo, WorkspaceRole } from "../context/AuthContext";
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 
 function buildSystemPrompt(
   resources: Resource[],
@@ -13,8 +12,14 @@ function buildSystemPrompt(
   activeWorkspace: WorkspaceInfo | null,
   workspaceRole: WorkspaceRole | null
 ): string {
+  const liveAllocations = allocations.filter(allocation => {
+    if (!isAllocActiveOn(allocation, new Date())) return false;
+    const project = projects.find(candidate => candidate.id === allocation.projectId);
+    return !project || projectConsumesCapacity(project.status);
+  });
+
   const resourceSummary = resources.map(r => {
-    const rAllocs = allocations.filter(a => a.resourceId === r.id);
+    const rAllocs = liveAllocations.filter(a => a.resourceId === r.id);
     const totalPct = rAllocs.reduce((s, a) => s + a.percentage, 0);
     const projectNames = rAllocs.map(a => {
       const p = projects.find(pr => pr.id === a.projectId);
@@ -24,7 +29,7 @@ function buildSystemPrompt(
   }).join('\n');
 
   const projectSummary = projects.map(p => {
-    const pAllocs = allocations.filter(a => a.projectId === p.id);
+    const pAllocs = liveAllocations.filter(a => a.projectId === p.id);
     const assignedResources = pAllocs.map(a => {
       const r = resources.find(res => res.id === a.resourceId);
       return r ? `${r.name}(${a.percentage}%)` : null;
@@ -33,10 +38,10 @@ function buildSystemPrompt(
   }).join('\n');
 
   const overAllocated = resources.filter(r =>
-    allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0) > 100
+    liveAllocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0) > 100
   );
   const unassigned = resources.filter(r =>
-    allocations.filter(a => a.resourceId === r.id).length === 0
+    liveAllocations.filter(a => a.resourceId === r.id).length === 0
   );
 
   const isAdmin = user?.role === 'SUPERUSER' || user?.role === 'ORG_ADMIN' || workspaceRole === 'PMO_ADMIN' || workspaceRole === 'WORKSPACE_OWNER';
@@ -99,20 +104,15 @@ export const getCapacityInsights = async (
 
     if (!res.ok) {
       if (res.status === 429) {
-        // Explicitly return the Quota string
         return `⚠️ ${data.error || 'AI Quota limit reached. Please upgrade to Pro.'}`;
       }
 
-      if (data.response && data.response.includes('disabled')) {
-        return data.response;
-      }
-      const genericError = data.error || data.errorMessage || data.errorType || 'Failed to generate AI insights';
-      throw new Error(genericError);
+      throw new Error(`AI request failed with status ${res.status}`);
     }
 
     return data.response;
   } catch (err: any) {
-    console.error('AI Service Error:', err);
-    return `⚠️ Error generating AI insights: ${err.message}. Please try again later.`;
+    console.error('AI service error:', err?.message);
+    return '⚠️ The AI advisor is currently unavailable. Please try again later.';
   }
 };

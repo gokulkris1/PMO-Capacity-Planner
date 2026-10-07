@@ -4,17 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { pool } from './db';
-import resourceRouter from './routes/resource';
-import projectRouter from './routes/project';
-import allocationRouter from './routes/allocation';
-import authRouter from './routes/auth';
-import aiRouter from './routes/ai';
-import { setupSwagger } from './swagger';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
-const app = express();
+export const app = express();
 app.use(helmet());
 
 const apiLimiter = rateLimit({
@@ -24,20 +17,28 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-app.use('/api/', apiLimiter);
-
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/resources', resourceRouter);
-app.use('/api/projects', projectRouter);
-app.use('/api/allocations', allocationRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/auth', authRouter);
+/**
+ * This service is intentionally retired. The production API is implemented by
+ * Netlify Functions, where every workspace operation is tenant-scoped and
+ * authorized against current database membership. Keeping the old Express
+ * routers mounted would expose an unauthenticated, single-tenant data surface.
+ */
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', service: 'legacy-api-retired' });
+});
 
-setupSwagger(app);
+app.use('/api/', apiLimiter, (_req, res) => {
+    res.status(410).json({
+        error: 'This legacy API is retired. Use the Netlify Functions API instead.',
+    });
+});
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-    console.log(`🚀 API server listening on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`🚀 API server listening on port ${PORT}`);
+    });
+}

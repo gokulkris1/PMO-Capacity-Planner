@@ -179,16 +179,16 @@ export function canWrite(user: User | null, workspaceRole: WorkspaceRole | null)
     return workspaceRole === 'PMO_ADMIN' || workspaceRole === 'WORKSPACE_OWNER';
 }
 
-/** Can the user manage workspace members (invite/remove)? */
-export function canManageMembers(user: User | null): boolean {
+/** Can the user manage members in the active workspace (invite/remove)? */
+export function canManageMembers(user: User | null, workspaceRole: WorkspaceRole | null): boolean {
     if (!user) return false;
-    return ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN'].includes(user.role);
+    return ['SUPERUSER', 'ORG_ADMIN'].includes(user.role) || workspaceRole === 'PMO_ADMIN';
 }
 
 /** Can the user create workspaces? */
 export function canCreateWorkspace(user: User | null): boolean {
     if (!user) return false;
-    return ['SUPERUSER', 'ORG_ADMIN', 'PMO_ADMIN'].includes(user.role);
+    return ['SUPERUSER', 'ORG_ADMIN'].includes(user.role);
 }
 
 /** Can the user access the admin/settings panel? */

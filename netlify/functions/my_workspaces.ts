@@ -38,6 +38,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const sql = getDb();
 
     try {
+        const [caller] = await sql`SELECT role, org_id FROM users WHERE id = ${userId}`;
+        if (!caller) return fail('Unauthorized', 401);
+        userRole = caller.role === 'ADMIN' ? 'ORG_ADMIN' : caller.role || 'USER';
+
         // SUPERUSER sees ALL workspaces across all orgs
         if (userRole === 'SUPERUSER') {
             const workspaces = await sql`
@@ -48,18 +52,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
             return ok({ workspaces });
         }
 
-        // Sync userRole with DB if it's the legacy ADMIN role
-        if (userRole === 'ADMIN') {
-            const [caller] = await sql`SELECT role, org_id FROM users WHERE id = ${userId}`;
-            if (caller) {
-                userRole = caller.role;
-                if (!caller.org_id) return ok({ workspaces: [] });
-            }
-        }
-
         // ORG_ADMIN sees ALL workspaces in their org
         if (userRole === 'ORG_ADMIN') {
-            const [caller] = await sql`SELECT org_id FROM users WHERE id = ${userId}`;
             if (!caller?.org_id) return ok({ workspaces: [] });
 
             const workspaces = await sql`
@@ -76,14 +70,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
             SELECT w.id, w.name, o.id as org_id, o.name as org_name, o.slug as org_slug, wm.role
             FROM workspace_members wm
             JOIN workspaces w ON w.id = wm.workspace_id
-            JOIN organizations o ON o.id = wm.org_id
-            WHERE wm.user_id = ${userId}
+            JOIN organizations o ON o.id = w.org_id
+            WHERE wm.user_id = ${userId} AND wm.org_id = w.org_id
             ORDER BY o.name, w.name
         `;
         return ok({ workspaces });
 
     } catch (e: any) {
-        console.error(e);
-        return fail('Failed: ' + e.message, 500);
+        console.error(e?.message);
+        return fail('Failed to load workspaces', 500);
     }
 };
