@@ -9,7 +9,7 @@ Production is deployed only from `main` to the **pmocapacityplanner** Netlify si
 - Browser API path: `/api/*`, routed by `netlify.toml`
 - Database: Neon PostgreSQL, accessed only from serverless functions
 
-Preproduction is deployed only from `develop` to a separate **pmocapacityplanner-preprod** Netlify site. It uses a separate Neon database with the same schema but no copied production data or credentials. This prevents test activity, test users, and schema experiments from reaching the production database.
+Preproduction is deployed only from `develop` to the separate **pmocapacityplanner-preprod** Netlify site at `https://pmocapacityplanner-preprod.netlify.app`. It uses a separate Neon PostgreSQL 17 database with the production-compatible schema plus the pending lifecycle, RBAC, and QBR structures, but no copied production data or credentials. This prevents test activity, test users, and schema experiments from reaching the production database.
 
 The deployment lanes are intentionally separate:
 
@@ -33,13 +33,16 @@ Configure the production and preproduction site values independently. Never put 
 - `INTERNAL_API_SECRET` — required by server-to-server email receipts
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, and `STRIPE_PRICE_MAX` — required only for billing
 - Provider key required by the selected AI integration
-- `URL` — the exact public Netlify application origin; it must be different for production and preproduction
 
-For preproduction, use a newly generated `JWT_SECRET` and the preproduction database connection strings. Do not reuse production database URLs, JWT secrets, email-provider keys, Stripe keys, or AI-provider keys. Email, billing, and AI integrations remain intentionally unconfigured in preproduction unless separately approved.
+Netlify supplies the `URL` value for each site automatically. Do not attempt to create it as a custom environment variable because `URL` is a reserved Netlify key.
+
+For preproduction, set each database URL and the newly generated `JWT_SECRET` as a secret-scoped Functions variable in the Netlify **production** context (the primary `develop` branch deploy). Do not reuse production database URLs, JWT secrets, email-provider keys, Stripe keys, or AI-provider keys. Email, billing, and AI integrations remain intentionally unconfigured in preproduction unless separately approved.
+
+The source-controlled, data-free preproduction baseline is `scripts/bootstrap_preprod_schema.sql`. It can be safely applied only to an empty preproduction database; it must never be used to overwrite a production database.
 
 ## Release safeguards
 
-1. Rotate the previously committed Neon credential and replace all deployment secrets before releasing this branch.
+1. Keep all connection strings and JWT values secret-scoped in Netlify. Correct any existing production database or JWT values classified as non-secret before the next production release.
 2. Take a backup or verify point-in-time recovery before applying database migrations.
 3. Review and apply `scripts/migrate_v2_rbac.sql`, then `scripts/migrate_project_lifecycle_and_skills.sql`, to the intended database only.
 4. Confirm preproduction works with serverless functions, a new self-registered test account, workspace creation, and capacity planning.
