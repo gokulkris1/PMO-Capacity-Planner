@@ -274,7 +274,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
                 if (percentage <= 0) {
                     // Delete booking
-                    await sql`DELETE FROM qbr_bookings
+                    await sql`WITH workspace_lock AS (
+                        SELECT pg_advisory_xact_lock(hashtext(${wsId}))
+                    )
+                    DELETE FROM qbr_bookings
+                        USING workspace_lock
                         WHERE member_id = ${memberId} AND project_id = ${projectId}
                         AND sprint_id = ${sprintId}
                         AND workspace_id = ${wsId}
@@ -282,17 +286,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
                     return ok({ success: true, deleted: true });
                 }
 
-                const [booking] = (await sql`
-                    WITH removed_booking AS (
-                        DELETE FROM qbr_bookings
-                        WHERE member_id = ${memberId} AND project_id = ${projectId}
-                        AND sprint_id = ${sprintId}
-                        AND workspace_id = ${wsId}
-                        AND scenario_id IS NOT DISTINCT FROM ${scenarioId || null}::uuid
-                    )
-                    INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
-                    VALUES (${orgId}, ${wsId}, ${memberId}, ${projectId}, ${sprintId}, ${percentage}, ${scenarioId || null}, ${notes || null})
-                    RETURNING *`) as any[];
+                const [booking] = scenarioId
+                    ? await sql`
+                        WITH workspace_lock AS (
+                            SELECT pg_advisory_xact_lock(hashtext(${wsId}))
+                        )
+                        INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
+                        SELECT ${orgId}, ${wsId}, ${memberId}, ${projectId}, ${sprintId}, ${percentage}, ${scenarioId}, ${notes || null}
+                        FROM workspace_lock
+                        ON CONFLICT (member_id, project_id, sprint_id, scenario_id)
+                        DO UPDATE SET percentage = EXCLUDED.percentage, notes = EXCLUDED.notes
+                        RETURNING *`
+                    : await sql`
+                        WITH workspace_lock AS (
+                            SELECT pg_advisory_xact_lock(hashtext(${wsId}))
+                        )
+                        INSERT INTO qbr_bookings (org_id, workspace_id, member_id, project_id, sprint_id, percentage, scenario_id, notes)
+                        SELECT ${orgId}, ${wsId}, ${memberId}, ${projectId}, ${sprintId}, ${percentage}, NULL, ${notes || null}
+                        FROM workspace_lock
+                        ON CONFLICT (member_id, project_id, sprint_id) WHERE scenario_id IS NULL
+                        DO UPDATE SET percentage = EXCLUDED.percentage, notes = EXCLUDED.notes
+                        RETURNING *`;
                 return ok({ success: true, booking });
             }
 
@@ -330,6 +344,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
                 if (!sc) return fail('Scenario not found', 404);
 
                 await sql.transaction(transaction => [
+                    transaction`SELECT pg_advisory_xact_lock(hashtext(${wsId}))`,
                     transaction`
                         DELETE FROM qbr_bookings
                         WHERE sprint_id = ANY(SELECT id FROM qbr_sprints WHERE quarter_id = ${sc.quarter_id})

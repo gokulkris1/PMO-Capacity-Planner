@@ -1,8 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { fetchPinnedPublicHttps, PublicHttpsError, resolvePinnedPublicHttpsUrl } from './publicHttps';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is missing');
@@ -12,80 +11,6 @@ const getDb = () => {
     if (!url) throw new Error('No DB URL');
     return neon(url);
 };
-
-class PublicUrlError extends Error {}
-
-function isPrivateAddress(address: string): boolean {
-    const normalizedAddress = address.toLowerCase();
-    if (isIP(normalizedAddress) === 6) {
-        if (normalizedAddress === '::' || normalizedAddress === '::1' ||
-            normalizedAddress.startsWith('fc') || normalizedAddress.startsWith('fd') ||
-            /^fe[89ab]/.test(normalizedAddress) || normalizedAddress.startsWith('ff') ||
-            normalizedAddress.startsWith('2001:db8:')) return true;
-        const mappedIpv4 = normalizedAddress.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-        return mappedIpv4 ? isPrivateAddress(mappedIpv4[1]) : false;
-    }
-    if (isIP(normalizedAddress) !== 4) return true;
-    const [a, b] = normalizedAddress.split('.').map(Number);
-    return a === 0 || a === 10 || a === 127 ||
-        (a === 100 && b >= 64 && b <= 127) ||
-        (a === 169 && b === 254) ||
-        (a === 172 && b >= 16 && b <= 31) ||
-        (a === 192 && [0, 2, 168].includes(b)) ||
-        (a === 198 && [18, 19, 51].includes(b)) ||
-        (a === 203 && b === 0) ||
-        a >= 224;
-}
-
-async function safePublicUrl(rawUrl: string): Promise<URL> {
-    if (rawUrl.length > 2_048) throw new PublicUrlError('Website URL is too long');
-    let url: URL;
-    try {
-        const candidate = rawUrl.trim().match(/^https?:\/\//i) ? rawUrl.trim() : `https://${rawUrl.trim()}`;
-        url = new URL(candidate);
-    } catch {
-        throw new PublicUrlError('A valid public HTTPS URL is required');
-    }
-    if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) {
-        throw new PublicUrlError('Only public HTTPS websites are supported');
-    }
-    const hostname = url.hostname.toLowerCase();
-    if (hostname === 'localhost' || hostname.endsWith('.localhost')) throw new PublicUrlError('Private network targets are not allowed');
-    let addresses: Array<{ address: string }>;
-    try {
-        addresses = await lookup(hostname, { all: true }) as Array<{ address: string }>;
-    } catch {
-        throw new PublicUrlError('The website domain could not be resolved');
-    }
-    if (!addresses.length || addresses.some(({ address }) => isPrivateAddress(address))) {
-        throw new PublicUrlError('Private network targets are not allowed');
-    }
-    return url;
-}
-
-async function readTextWithinLimit(response: Response, maxBytes: number): Promise<string> {
-    const reader = response.body?.getReader();
-    if (!reader) return '';
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > maxBytes) {
-            await reader.cancel();
-            throw new Error('Website response is too large');
-        }
-        chunks.push(value);
-    }
-    const body = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-        body.set(chunk, offset);
-        offset += chunk.byteLength;
-    }
-    return new TextDecoder().decode(body);
-}
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -114,9 +39,9 @@ export const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'URL is required' }) };
         }
 
-        const domainUrl = await safePublicUrl(url);
-        const targetUrl = domainUrl.href;
-        const domain = domainUrl.hostname;
+        const websiteTarget = await resolvePinnedPublicHttpsUrl(url, 'website URL');
+        const domainUrl = websiteTarget.url;
+        const domain = websiteTarget.hostname;
 
         // Default orbit generic theme
         let extractedTheme = {
@@ -126,24 +51,24 @@ export const handler: Handler = async (event) => {
 
         try {
             // Attempt a lightweight fetch to scrape meta tags
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 8_000);
-            const response = await fetch(targetUrl, {
-                signal: controller.signal,
-                redirect: 'manual',
-                headers: {
-                    'User-Agent': 'OrbitThemeExtractor/1.0',
-                    'Accept': 'text/html'
-                }
-            }).finally(() => clearTimeout(timeout));
+            const response = await fetchPinnedPublicHttps(
+                websiteTarget,
+                `${domainUrl.pathname}${domainUrl.search}`,
+                {
+                    timeoutMs: 8_000,
+                    maxBytes: 1_000_000,
+                    headers: {
+                        'User-Agent': 'OrbitThemeExtractor/1.0',
+                        'Accept': 'text/html',
+                    },
+                },
+            );
 
             if (response.status >= 300 && response.status < 400) {
-                throw new PublicUrlError('Redirected websites are not supported');
+                throw new PublicHttpsError('Redirected websites are not supported');
             }
-            if (response.ok) {
-                const contentLength = Number(response.headers.get('content-length') || 0);
-                if (contentLength > 1_000_000) throw new Error('Website response is too large');
-                const html = await readTextWithinLimit(response, 1_000_000);
+            if (response.status >= 200 && response.status < 300) {
+                const html = response.body.toString('utf8');
 
                 // Regex search for meta theme-color
                 const themeMatch = html.match(/<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["'][^>]*>/i);
@@ -165,7 +90,7 @@ export const handler: Handler = async (event) => {
                 }
             }
         } catch (fetchErr: any) {
-            if (fetchErr instanceof PublicUrlError) throw fetchErr;
+            if (fetchErr instanceof PublicHttpsError) throw fetchErr;
             console.warn('Theme extraction fetch failed:', fetchErr?.message);
         }
 
@@ -174,8 +99,8 @@ export const handler: Handler = async (event) => {
             body: JSON.stringify(extractedTheme)
         };
     } catch (error) {
-        if (error instanceof PublicUrlError) {
-            return { statusCode: 400, body: JSON.stringify({ error: error.message }) };
+        if (error instanceof PublicHttpsError) {
+            return { statusCode: error.statusCode, body: JSON.stringify({ error: error.message }) };
         }
         console.error('Theme Extraction Error:', error instanceof Error ? error.message : 'Unknown error');
         return { statusCode: 500, body: JSON.stringify({ error: 'Internal Server Error' }) };

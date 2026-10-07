@@ -166,6 +166,11 @@ CREATE INDEX IF NOT EXISTS idx_qbr_bookings_member ON qbr_bookings(member_id);
 CREATE INDEX IF NOT EXISTS idx_qbr_bookings_sprint ON qbr_bookings(sprint_id);
 CREATE INDEX IF NOT EXISTS idx_qbr_bookings_project ON qbr_bookings(project_id);
 CREATE INDEX IF NOT EXISTS idx_qbr_bookings_scenario ON qbr_bookings(scenario_id);
+-- PostgreSQL treats NULL values as distinct in a normal unique constraint.
+-- This partial index makes a live (scenario_id IS NULL) booking unique too.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qbr_bookings_live_unique
+    ON qbr_bookings(member_id, project_id, sprint_id)
+    WHERE scenario_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_qbr_members_tribe ON qbr_members(tribe_id);
 CREATE INDEX IF NOT EXISTS idx_qbr_members_chapter ON qbr_members(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_qbr_sprints_quarter ON qbr_sprints(quarter_id);

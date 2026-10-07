@@ -258,11 +258,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
             for (const r of resources) {
                 if (!r.name || r.name.trim() === '') return fail(`Resource name is required (ID: ${r.id})`, 400);
+                if (r.skills !== undefined && (!Array.isArray(r.skills) || r.skills.some((skill: unknown) => typeof skill !== 'string' || !skill.trim()))) {
+                    return fail(`Resource skills must be an array of strings (ID: ${r.id})`, 400);
+                }
             }
             for (const p of projects) {
                 if (!p.name || p.name.trim() === '') return fail(`Project name is required (ID: ${p.id})`, 400);
-                if (p.requiredSkills !== undefined && !Array.isArray(p.requiredSkills)) {
-                    return fail(`Project requiredSkills must be an array (ID: ${p.id})`, 400);
+                if (p.requiredSkills !== undefined && (!Array.isArray(p.requiredSkills) || p.requiredSkills.some((skill: unknown) => typeof skill !== 'string' || !skill.trim()))) {
+                    return fail(`Project requiredSkills must be an array of strings (ID: ${p.id})`, 400);
                 }
             }
             for (const a of allocations) {
