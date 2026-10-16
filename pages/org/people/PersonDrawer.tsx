@@ -85,10 +85,12 @@ export function PersonDrawer({
   snapshot: s,
   personId,
   onClose,
+  initialTab = 'profile',
 }: {
   snapshot: D.WorkspaceSnapshot;
   personId: string | null;
   onClose(): void;
+  initialTab?: 'profile' | 'crafts' | 'load' | 'bookings' | 'identity';
 }) {
   if (!personId) return null;
   const person = personId === 'new' ? null : (s.people.find((p) => p.id === personId) ?? null);
@@ -102,17 +104,19 @@ export function PersonDrawer({
         />
       </Drawer>
     );
-  return <PersonDrawerInner key={personId} s={s} person={person} onClose={onClose} />;
+  return <PersonDrawerInner key={personId} s={s} person={person} onClose={onClose} initialTab={initialTab} />;
 }
 
 function PersonDrawerInner({
   s,
   person,
   onClose,
+  initialTab,
 }: {
   s: D.WorkspaceSnapshot;
   person: D.PersonDTO | null;
   onClose(): void;
+  initialTab: TabId;
 }) {
   const { can, isOwnPerson, thresholds } = useWorkspace();
   const quarters = useQuarters();
@@ -123,7 +127,7 @@ function PersonDrawerInner({
   const isNew = !person;
   const canEdit = can('people.write');
   const own = !!person && isOwnPerson(person.id) && can('people.write.own');
-  const [tab, setTab] = useState<TabId>('profile');
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [profile, setProfile] = useState<ProfileDraft>(() => profileOf(person));
   const [crafts, setCrafts] = useState<CraftDraft>(() => craftsOf(person));
   const [tried, setTried] = useState(false);
