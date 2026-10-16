@@ -39,6 +39,8 @@ export const forbidden = (message = 'You do not have permission to do this.') =>
 export const notFound = (message = 'Not found') => new HttpError(404, 'not_found', message);
 export const conflict = (message: string, extra: HttpErrorExtra = {}) => new HttpError(409, 'conflict', message, extra);
 export const gone = (message: string) => new HttpError(410, 'gone', message);
+/** PL-03#AC1: message for retired v1.1 endpoints. */
+export const GONE_MESSAGE = 'PMO Capacity Planner was updated. Reload the page.';
 export const payloadTooLarge = (message = 'Request is too large.') => new HttpError(413, 'payload_too_large', message);
 export const rateLimited = (message: string, retryAfterSec: number) =>
   new HttpError(429, 'rate_limited', message, { retryAfterSec });

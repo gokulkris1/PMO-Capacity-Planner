@@ -1,83 +1,115 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import Stripe from 'stripe';
-import { neon } from '@neondatabase/serverless';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_dummy';
+/**
+ * POST /api/webhook — Stripe events (HS-06, SEC-09). Fails closed: 503 without STRIPE_WEBHOOK_SECRET /
+ * STRIPE_SECRET_KEY, 400 on a bad signature (no DB change), idempotent per event id (stripe_events).
+ * Handles checkout.session.completed, customer.subscription.updated/deleted and final invoice.payment_failed.
+ */
+import type Stripe from 'stripe';
+import type { Ctx } from './_lib/api';
+import { withApi } from './_lib/api';
+import { audit } from './_lib/audit';
+import { assertPublicBilling, planForPrice, setOrgPlan, stripeClient } from './_lib/billing';
+import type { Queryable } from './_lib/db';
+import { one, withTx } from './_lib/db';
+import { optionalEnv } from './_lib/env';
+import { badRequest, notFound, serviceUnavailable } from './_lib/errors';
+import { receiptEmail, sendEmail } from './_lib/email';
+import { log } from './_lib/log';
+import type { Plan } from '../../shared/contracts/dto';
 
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
+const WEBHOOK_AUDIT = { requestId: null, ip: null, userAgent: null, actorUserId: null, actorType: 'webhook' as const };
 
-export const handler: Handler = async (event: HandlerEvent) => {
-    // 1. Stripe Webhooks must be POST requests
-    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Make a POST request' };
+async function orgByStripe(q: Queryable, customer: unknown, subscription: unknown, metaOrg: unknown): Promise<string | null> {
+  if (typeof metaOrg === 'string' && /^[0-9a-f-]{36}$/i.test(metaOrg)) {
+    const r = await one<{ id: string }>(q, `SELECT id FROM organizations WHERE id = $1`, [metaOrg]);
+    if (r) return r.id;
+  }
+  const r = await one<{ id: string }>(
+    q,
+    `SELECT id FROM organizations WHERE ($1::text IS NOT NULL AND stripe_subscription_id = $1) OR ($2::text IS NOT NULL AND stripe_customer_id = $2) LIMIT 1`,
+    [typeof subscription === 'string' ? subscription : null, typeof customer === 'string' ? customer : null],
+  );
+  return r?.id ?? null;
+}
 
-    const sig = event.headers['stripe-signature'];
-    if (!sig || !event.body) return { statusCode: 400, body: 'Missing signature or body' };
-
-    let stripeEvent: Stripe.Event;
-
-    try {
-        // 2. Cryptographically verify the event originated from Stripe
-        stripeEvent = stripe.webhooks.constructEvent(event.body, sig, endpointSecret);
-    } catch (err: any) {
-        console.error(`Webhook Error: ${err.message}`);
-        return { statusCode: 400, body: `Webhook Error: ${err.message}` };
+async function apply(q: Queryable, event: Stripe.Event): Promise<{ orgId: string; plan: Plan } | null> {
+  const obj = event.data.object as unknown as Record<string, unknown>;
+  const meta = (obj.metadata ?? {}) as Record<string, unknown>;
+  let orgId: string | null = null;
+  let plan: Plan | null = null;
+  let ids: { customerId?: string | null; subscriptionId?: string | null } = {};
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      orgId = await orgByStripe(q, obj.customer, obj.subscription, meta.orgId);
+      plan = meta.plan === 'PRO' || meta.plan === 'MAX' ? meta.plan : null;
+      ids = { customerId: typeof obj.customer === 'string' ? obj.customer : null, subscriptionId: typeof obj.subscription === 'string' ? obj.subscription : null };
+      break;
     }
-
-    // 3. Handle specific event types
-    if (stripeEvent.type === 'checkout.session.completed') {
-        const session = stripeEvent.data.object as Stripe.Checkout.Session;
-
-        // Retrieve custom metadata passed during Checkout creation
-        const { orgId, plan } = session.metadata || {};
-
-        if (orgId && plan) {
-            try {
-                const sql = getDb();
-                console.log(`[SUBSCRIPTION UPGRADE] Upgrading org ${orgId} to plan ${plan}`);
-
-                // 4. Upgrade every user attached to this Organization tenant to the new plan
-                const affectedUsers = await sql`
-                    UPDATE users 
-                    SET plan = ${plan.toUpperCase()} 
-                    WHERE org_id = ${orgId}
-                    RETURNING email
-                `;
-
-                // 5. Fire Upgrade Emails for affected admins/users
-                if (process.env.INTERNAL_API_SECRET) {
-                    try {
-                        const baseUrl = process.env.URL || 'http://localhost:5173';
-                        for (const u of affectedUsers) {
-                            if (!u.email) continue;
-                            await fetch(`${baseUrl}/api/email_receipt`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`
-                                },
-                                body: JSON.stringify({
-                                    type: 'UPGRADE',
-                                    email: u.email,
-                                    plan: plan.toUpperCase()
-                                })
-                            });
-                        }
-                    } catch (emailErr) {
-                        console.error('Non-blocking Upgrade Email Error:', emailErr);
-                    }
-                }
-            } catch (dbErr) {
-                console.error('Failed to update Postgres upon Stripe success', dbErr);
-                // Return 500 so Stripe automatically retries this webhook delivery
-                return { statusCode: 500, body: 'Database Update Failure' };
-            }
-        }
+    case 'customer.subscription.updated': {
+      orgId = await orgByStripe(q, obj.customer, obj.id, meta.orgId);
+      const status = String(obj.status ?? '');
+      const items = ((obj.items as { data?: Array<{ price?: { id?: string } }> })?.data ?? []);
+      plan = ['canceled', 'unpaid', 'incomplete_expired'].includes(status) ? 'BASIC' : planForPrice(items[0]?.price?.id);
+      ids = { subscriptionId: typeof obj.id === 'string' ? obj.id : null };
+      break;
     }
+    case 'customer.subscription.deleted': {
+      orgId = await orgByStripe(q, obj.customer, obj.id, meta.orgId);
+      plan = 'BASIC';
+      break;
+    }
+    case 'invoice.payment_failed': {
+      if (obj.next_payment_attempt !== null && obj.next_payment_attempt !== undefined) return null; // not final yet
+      orgId = await orgByStripe(q, obj.customer, obj.subscription, null);
+      plan = 'BASIC';
+      break;
+    }
+    default:
+      return null;
+  }
+  if (!orgId || !plan) {
+    log('warn', { event: 'stripe.unmatched', type: event.type, id: event.id });
+    return null;
+  }
+  const res = await setOrgPlan(q, orgId, plan, ids);
+  await audit(q, WEBHOOK_AUDIT, {
+    action: 'org.plan_change',
+    orgId,
+    targetType: 'org',
+    targetId: orgId,
+    before: { plan: res?.before ?? null },
+    after: { plan, stripeEvent: event.id, type: event.type },
+  });
+  return { orgId, plan };
+}
 
-    // Acknowledge receipt of the event
-    return { statusCode: 200, body: JSON.stringify({ received: true }) };
-};
+async function handle(ctx: Ctx) {
+  assertPublicBilling();
+  if (ctx.method !== 'POST') throw notFound('Not found');
+  const secret = optionalEnv('STRIPE_WEBHOOK_SECRET');
+  if (!secret) throw serviceUnavailable('Billing is not available right now.', 'Stripe not configured: STRIPE_WEBHOOK_SECRET missing');
+  const stripe = stripeClient();
+  const sig = ctx.headers['stripe-signature'];
+  if (!sig || !ctx.rawBody) throw badRequest('Missing signature or body');
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(ctx.rawBody, sig, secret);
+  } catch {
+    throw badRequest('Webhook signature verification failed');
+  }
+  const result = await withTx(async (q) => {
+    const fresh = await q.query(`INSERT INTO stripe_events (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING RETURNING id`, [event.id, event.type]);
+    if (!fresh.length) return { duplicate: true as const };
+    return { duplicate: false as const, changed: await apply(q, event) };
+  });
+  if (!result.duplicate && result.changed && event.type === 'checkout.session.completed') {
+    const admins = await ctx.db.query<{ email: string; name: string }>(
+      `SELECT u.email, o.name FROM org_memberships m JOIN users u ON u.id = m.user_id JOIN organizations o ON o.id = m.org_id
+       WHERE m.org_id = $1 AND m.role = 'ORG_ADMIN'`,
+      [result.changed.orgId],
+    );
+    for (const a of admins) await sendEmail(receiptEmail(a.email, a.name, result.changed.plan));
+  }
+  return { received: true, duplicate: result.duplicate };
+}
+
+export const handler = withApi({ fn: 'webhook', auth: 'none', csrf: false, rawBody: true, requireJwtSecret: false }, handle);

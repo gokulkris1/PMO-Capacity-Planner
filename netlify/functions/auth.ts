@@ -13,7 +13,7 @@ import { audit, auditBestEffort } from './_lib/audit';
 import { loadUser, loadUserByEmail, normaliseEmail, type UserRow } from './_lib/auth';
 import { getDb, withTx } from './_lib/db';
 import { publicSignupAllowed } from './_lib/env';
-import { badRequest, forbidden, gone, notFound, unauthorized } from './_lib/errors';
+import { GONE_MESSAGE, badRequest, forbidden, gone, notFound, unauthorized } from './_lib/errors';
 import { clearSessionCookies } from './_lib/http';
 import { createOtp, deliverOtp, verifyOtp } from './_lib/otp';
 import { assertNewPassword, hashPassword, verifyPassword } from './_lib/passwords';
@@ -317,7 +317,6 @@ async function adminDeleteUser(ctx: Ctx, userId: string) {
   return { success: true };
 }
 
-const GONE_MESSAGE = 'PMO Capacity Planner was updated. Reload the page.';
 
 // Sign-in style routes are not session-authenticated, so CSRF is enforced per route (see assertCsrf below).
 export const handler = withApi({ fn: 'auth', auth: 'optional', csrf: false }, async (ctx) => {

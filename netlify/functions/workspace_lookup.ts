@@ -1,56 +1,16 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
-import jwt from 'jsonwebtoken';
+/** Legacy GET /api/workspace_lookup (AC-02#AC7): the caller's org slug, from the database. */
+import { requireActor, withApi } from './_lib/api';
+import { one } from './_lib/db';
+import { notFound } from './_lib/errors';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
-const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'OPTIONS, GET',
-    'Content-Type': 'application/json',
-};
-
-function ok(body: unknown) { return { statusCode: 200, headers: CORS, body: JSON.stringify(body) }; }
-function fail(msg: string, status = 400) { return { statusCode: status, headers: CORS, body: JSON.stringify({ error: msg }) }; }
-
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
-    if (event.httpMethod !== 'GET') return fail('Method Not Allowed', 405);
-
-    const authHeader = event.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return fail('Unauthorized', 401);
-    const token = authHeader.split(' ')[1];
-
-    let userId: string;
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-        userId = decoded.id;
-    } catch {
-        return fail('Invalid token', 401);
-    }
-
-    try {
-        const sql = getDb();
-        const rows = await sql`
-            SELECT o.slug FROM users u 
-            JOIN organizations o ON u.org_id = o.id 
-            WHERE u.id = ${userId}
-        `;
-
-        if (rows.length > 0 && rows[0].slug) {
-            return ok({ orgSlug: rows[0].slug });
-        }
-
-        return ok({ orgSlug: null });
-    } catch (e: any) {
-        console.error('Lookup failed', e);
-        return fail('Failed to lookup workspace: ' + e.message, 500);
-    }
-};
+export const handler = withApi({ fn: 'workspace_lookup' }, async (ctx) => {
+  if (ctx.method !== 'GET') throw notFound('Not found');
+  const actor = requireActor(ctx);
+  const row = await one<{ slug: string | null }>(
+    ctx.db,
+    `SELECT o.slug FROM organizations o
+     WHERE o.id = coalesce((SELECT org_id FROM org_memberships WHERE user_id = $1), (SELECT org_id FROM users WHERE id = $1))`,
+    [actor.userId],
+  );
+  return { orgSlug: row?.slug ?? null };
+});
