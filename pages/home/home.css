@@ -1,0 +1,24 @@
+/* Home (RP-01) page styles — tokens only. */
+.b2-gap {
+  height: var(--space-300);
+}
+.home-list > li {
+  padding: var(--space-100) var(--space-300);
+}
+.home-list__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.home-list__chips {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+.home-list__value {
+  flex: 0 0 auto;
+  min-width: 96px;
+}
+.home-list__band {
+  flex: 0 0 88px;
+}

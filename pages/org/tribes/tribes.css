@@ -1,0 +1,50 @@
+/* Tribes (ORG-05) — tokens only. */
+.tr-table thead th.tr-group {
+  text-align: center;
+  border-left: 1px solid var(--color-border);
+}
+.tr-table thead tr:nth-child(2) th {
+  top: 36px;
+  height: 28px;
+  font-weight: 500;
+}
+.tr-table .tr-first {
+  border-left: 1px solid var(--color-border);
+}
+.tr-col-name {
+  min-width: 180px;
+}
+.tr-col-name a {
+  display: block;
+}
+.tr-lead {
+  display: block;
+}
+.tr-signal {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-025);
+}
+.tr-gap {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.tr-cal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-200);
+  padding-bottom: var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+}
+.tr-cal__value {
+  font-size: var(--text-kpi-size);
+  line-height: var(--text-kpi-line);
+  font-weight: 600;
+}
+.tr-table tbody th,
+.tr-table tbody td {
+  height: 56px;
+  padding-top: var(--space-100);
+  padding-bottom: var(--space-100);
+}

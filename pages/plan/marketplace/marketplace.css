@@ -1,0 +1,139 @@
+/* Marketplace (DM-03…05) — tokens only. */
+.mk-controls {
+  gap: var(--space-150);
+}
+.mk-filter {
+  flex: 0 1 180px;
+  min-width: 140px;
+}
+.mk-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mk-line {
+  border-bottom: 1px solid var(--color-border);
+}
+.mk-line:last-child {
+  border-bottom: 0;
+}
+.mk-line__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-100) var(--space-300);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mk-line__head:hover {
+  background: var(--color-surface-hover);
+}
+.mk-line__head:focus-visible {
+  outline-offset: -2px;
+}
+.mk-line__title {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mk-line__fte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+.mk-matches {
+  padding: 0 var(--space-300) var(--space-200) var(--space-600);
+  background: var(--color-surface);
+}
+.mk-matches .b2-table {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.mk-matches__empty {
+  margin: 0;
+  padding: var(--space-100) 0;
+}
+.mk-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption-size);
+  font-weight: 600;
+}
+.mk-catalogue {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-200);
+  padding: var(--space-300);
+}
+.mk-craft {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+  min-width: 0;
+}
+.mk-craft__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+.mk-craft__title {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 600;
+}
+.mk-craft__stats {
+  display: flex;
+  gap: var(--space-300);
+  padding-bottom: var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+}
+.mk-craft__people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+.mk-craft__people > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.mk-free {
+  min-width: 40px;
+  text-align: right;
+}
+.mk-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+.mk-actions {
+  justify-content: flex-end;
+}
+.mk-answered > li {
+  padding: var(--space-100) var(--space-300);
+}

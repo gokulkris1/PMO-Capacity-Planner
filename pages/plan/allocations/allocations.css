@@ -1,0 +1,180 @@
+/* Allocations grid (AL-01…AL-07) — tokens only. */
+.al-toolbar__group {
+  flex: 0 0 170px;
+}
+.al-toolbar__search {
+  flex: 0 1 240px;
+  min-width: 180px;
+}
+.al-wrap {
+  max-height: calc(100vh - 290px);
+  min-height: 320px;
+}
+.al-grid {
+  table-layout: fixed;
+  min-width: 720px;
+}
+.al-grid .al-col-name {
+  width: auto;
+  min-width: 280px;
+}
+.al-grid .al-col-q {
+  width: 112px;
+}
+.al-grid .b2-cell-menu {
+  width: 48px;
+}
+.al-qhead {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 14px;
+}
+.al-qhead__sub {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.al-grid th,
+.al-grid td {
+  outline-offset: -2px;
+}
+.al-grid [role='gridcell']:focus-visible,
+.al-grid [role='rowheader']:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.al-row--parent > * {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-strong);
+}
+.al-row--group > * {
+  height: 36px;
+}
+.al-row--booking > th {
+  padding-left: var(--space-500);
+}
+.al-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.al-name__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 16px;
+}
+.al-name--sub {
+  gap: var(--space-100);
+}
+.al-name__label {
+  flex: 0 1 auto;
+  max-width: 55%;
+  color: var(--color-text);
+}
+.al-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.al-toggle:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+.al-cell {
+  cursor: default;
+  position: relative;
+}
+.al-cell.is-editable {
+  cursor: text;
+}
+.al-cell.is-editable:hover {
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+}
+.al-cell.is-active {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+.al-cell.is-locked {
+  background: var(--color-surface-sunken);
+}
+.al-val {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-050);
+  min-width: 56px;
+  height: 24px;
+  padding: 0 var(--space-100);
+  border-radius: var(--radius-xs);
+  font-variant-numeric: tabular-nums;
+}
+.al-val--tentative {
+  outline: 1px dashed var(--color-warning);
+  outline-offset: -1px;
+  background: var(--color-warning-bg);
+  color: var(--color-text);
+}
+.al-val--empty {
+  color: var(--color-text-tertiary);
+}
+.al-edit {
+  position: relative;
+  display: block;
+}
+.al-edit__input {
+  width: 100%;
+}
+.al-edit__error {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: var(--z-dropdown);
+  padding: var(--space-025) var(--space-075);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  white-space: nowrap;
+}
+.al-proj {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-025);
+  font-variant-numeric: tabular-nums;
+}
+.al-gap {
+  margin-left: var(--space-050);
+  padding: 0 var(--space-050);
+  border-radius: var(--radius-xs);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-size: var(--text-caption-size);
+  font-weight: 600;
+}
+.al-row--booking.is-selected > * {
+  background: var(--color-primary-subtle);
+}
+.al-foot {
+  flex-wrap: wrap;
+  gap: var(--space-100) var(--space-200);
+}
+.al-foot__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+}
+.al-swatch-tentative {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
