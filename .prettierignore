@@ -2,6 +2,7 @@
 # Generated output and vendored files
 node_modules/
 dist/
+.claude/
 coverage/
 playwright-report/
 test-results/

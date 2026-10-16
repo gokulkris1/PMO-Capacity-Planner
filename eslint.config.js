@@ -130,6 +130,7 @@ export default tseslint.config(
       'playwright-report/**',
       'test-results/**',
       '.netlify/**',
+      '.claude/**',
       'docs/**',
       ...LEGACY_FILES,
     ],
