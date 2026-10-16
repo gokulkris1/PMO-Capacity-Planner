@@ -115,7 +115,7 @@ describe('craftEngine', () => {
         expect(matches.map(m => m.resourceId)).toEqual(['r2']);
         expect(matches[0].via).toBe('secondary');
         expect(matches[0].proposedPct).toBe(50);
-        expect(matches[0].reasons).toEqual(expect.arrayContaining(['Knows Payments', 'Covers the full gap']));
+        expect(matches[0].reasons).toEqual(expect.arrayContaining(['L2 below the table', 'Knows Payments', 'Covers the full gap']));
 
         const baQ4 = lines.find(l => l.craftId === 'ba')!;
         const baMatches = suggestMatches(baQ4, q4, resources, projects, allocations);

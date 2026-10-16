@@ -1,27 +1,47 @@
 /**
- * utils/viewModels — pure functions (no React) that turn a WorkspaceSnapshot into what
- * pages render. Signatures are the frozen contract in BACKLOG §4.3.
+ * utils/viewModels — pure functions (no React) that turn a WorkspaceSnapshot into what pages
+ * render. The functions and interfaces down to `buildSearchIndex` are the frozen contract in
+ * BACKLOG §4.3; everything exported after the "additions" marker is additive (see
+ * docs/release/handoff-C.md §3).
  *
- * ┌──────────────────────────────────────────────────────────────────────────────────┐
- * │ WP-0 STUB. Package C replaces the bodies (RP-03, ORG-06, AL-*, DM-*, RP-*)       │
- * │ without changing exports. The stubs are honest: they compute plausible numbers   │
- * │ from the snapshot by delegating to the v1.1 `utils/craftEngine.ts`, but they are │
- * │ not the reviewed 2.0 rules (e.g. thresholds per org, same-number guarantee,      │
- * │ craft catalogue from the snapshot). B may render them; nobody should test        │
- * │ business rules against them.                                                     │
- * └──────────────────────────────────────────────────────────────────────────────────┘
+ * Numbers:
+ *  - Load % is the quarter-averaged sum of a person's counted bookings (declined never counts;
+ *    tentative counts). Utilisation (`relativePct`, `utilisationFor`, bands) is load as a % of the
+ *    person's target (A-4); groups use Σload ÷ Σtarget.
+ *  - FTE = % ÷ 100. Demand-side "staffed" = confirmed bookings, "proposed" = tentative bookings,
+ *    "gap"/"open" = demand − staffed − proposed.
+ *  - Every per-person number comes from `core.loadIndex` (same-number guarantee, RP-03#AC3).
  *
  * Pure: no React, DOM, Node or Netlify imports.
  */
 import type * as D from '../../shared/contracts/dto';
 import type { AllocationOp } from '../../shared/contracts/api';
-import { bandFor, relativeLoad, type UtilBand, type UtilisationThresholds } from '../../shared/utilisation';
-import { personQuarterLoad, DEFAULT_SECONDARY_MAX_PCT, type PersonQuarterLoad } from '../craftEngine';
-import { overlapFraction, parseDay, type Quarter } from '../quarters';
-import type { Resource } from '../../types';
-import { toLegacy, toLegacyQuarters, countedAllocations, type LegacyModel } from './legacy';
-import { bookingAllocations, effectiveCraft, effectiveWindow, setBookingRange } from './allocationOps';
+import { bandFor, type UtilBand, type UtilisationThresholds } from '../../shared/utilisation';
+import { today } from '../clock';
+import { craftRelation, headroomOf, type RangeLoad } from '../craftEngine';
+import { copyForwardOps, effectiveCraft, quarterCellOps } from './allocationOps';
+import {
+  basisIndex,
+  byId,
+  countedAllocations,
+  fteIn,
+  groupBy,
+  groupUtilisation,
+  loadIndex,
+  rangeOfView,
+  rawLoadFor,
+  relativeOf,
+  round1,
+  round2,
+  toPersonQuarter,
+  type LoadIndex,
+} from './core';
+import { allocationShare } from '../craftEngine';
 import type { QuarterView, TimeBasis } from './types';
+import { buildSearchIndex as buildSearchIndexImpl } from '../search';
+import { buildDemandGrid, projectsWithoutDemand } from './demand';
+
+export { buildDemandGrid, projectsWithoutDemand };
 
 export type { QuarterView, TimeBasis } from './types';
 
@@ -112,137 +132,15 @@ export interface HomeModel {
   myPendingProposals: number;
 }
 
-/* ── helpers ───────────────────────────────────────────────────────────────────────── */
+/* ── shared helpers ────────────────────────────────────────────────────────────────── */
 
-const r1 = (n: number) => Math.round(n * 10) / 10;
-const r2 = (n: number) => Math.round(n * 100) / 100;
-const byId = <T extends { id: D.ID }>(list: T[]) => new Map(list.map((x) => [x.id, x]));
+const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
 
-function todayIso(): D.ISODate {
-  // TODO(C): use `today()` from utils/clock.ts (RP-03#AC3).
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** Overlap-weighted % of one allocation in one quarter (same rule as craftEngine.allocationPctInQuarter). */
-function pctInQuarter(a: D.AllocationDTO, project: D.ProjectDTO | undefined, q: Quarter): number {
-  if (a.percentage <= 0) return 0;
-  const w = effectiveWindow(a, project);
-  return a.percentage * overlapFraction(parseDay(w.start, 'start'), parseDay(w.end, 'end'), q);
-}
-
-function loadsFor(m: LegacyModel, quarters: Quarter[]): Map<D.ID, PersonQuarterLoad[]> {
-  const out = new Map<D.ID, PersonQuarterLoad[]>();
-  for (const r of m.resources)
-    out.set(
-      r.id,
-      quarters.map((q) => personQuarterLoad(r, q, m.allocations, m.projects)),
-    );
-  return out;
-}
-
-function demandFteIn(
+function personRowsFrom(
   s: D.WorkspaceSnapshot,
-  quarterKey: D.QuarterKey,
-  filter?: (l: D.DemandLineDTO) => boolean,
-): number {
-  return s.demand.filter((l) => l.quarterKey === quarterKey && (!filter || filter(l))).reduce((x, l) => x + l.fte, 0);
-}
-
-function outlookPoint(
-  people: Resource[],
-  loads: Map<D.ID, PersonQuarterLoad[]>,
-  qi: number,
-  quarterKey: D.QuarterKey,
-  demandFte: number,
-  t: UtilisationThresholds,
-): OutlookPoint {
-  let supply = 0,
-    above = 0,
-    below = 0,
-    other = 0,
-    free = 0,
-    load = 0,
-    target = 0;
-  for (const r of people) {
-    const l = loads.get(r.id)?.[qi];
-    if (!l) continue;
-    supply += l.capacity;
-    above += l.aboveTable;
-    below += l.belowTable;
-    other += l.other;
-    free += l.bench;
-    load += l.total;
-    target += r.targetUtil && r.targetUtil > 0 ? r.targetUtil : 100;
-  }
-  const utilisationPct = target > 0 ? Math.round((100 * load) / target) : 0;
-  return {
-    quarterKey,
-    supplyFte: r2(supply / 100),
-    aboveFte: r2(above / 100),
-    belowFte: r2(below / 100),
-    undeclaredFte: r2(other / 100),
-    freeFte: r2(free / 100),
-    demandFte: r2(demandFte),
-    utilisationPct,
-    band: bandFor(utilisationPct, t),
-  };
-}
-
-function basisIndex(basis: TimeBasis, quarters: QuarterView[]): number {
-  if (basis.kind === 'quarter')
-    return Math.max(
-      0,
-      quarters.findIndex((q) => q.key === basis.key),
-    );
-  return 0;
-}
-
-/* ── contract functions ────────────────────────────────────────────────────────────── */
-
-/**
- * STUB: load % for one person (Σ overlap-weighted allocation %), not relative to target.
- * 'today' sums bookings active today; 'quarter' is that quarter; 'window' averages the quarters.
- */
-export function utilisationFor(
-  s: D.WorkspaceSnapshot,
-  personId: D.ID,
-  basis: TimeBasis,
-  quarters: QuarterView[],
-): number {
-  const m = toLegacy(s);
-  const r = m.resources.find((x) => x.id === personId);
-  if (!r) return 0;
-  if (basis.kind === 'today') {
-    const today = todayIso();
-    const projects = byId(s.projects);
-    return r1(
-      countedAllocations(s)
-        .filter((a) => a.resourceId === personId)
-        .filter((a) => {
-          const w = effectiveWindow(a, projects.get(a.projectId));
-          return (w.start === null || w.start <= today) && (w.end === null || w.end >= today);
-        })
-        .reduce((x, a) => x + a.percentage, 0),
-    );
-  }
-  const lq = toLegacyQuarters(quarters);
-  if (basis.kind === 'quarter') {
-    const q = lq.find((x) => x.key === basis.key);
-    return q ? personQuarterLoad(r, q, m.allocations, m.projects).total : 0;
-  }
-  if (lq.length === 0) return 0;
-  return r1(lq.reduce((x, q) => x + personQuarterLoad(r, q, m.allocations, m.projects).total, 0) / lq.length);
-}
-
-export function buildPeopleRows(
-  s: D.WorkspaceSnapshot,
-  quarters: QuarterView[],
+  idx: LoadIndex,
   t: UtilisationThresholds,
 ): PersonRow[] {
-  const m = toLegacy(s);
-  const lq = toLegacyQuarters(quarters);
-  const loads = loadsFor(m, lq);
   const chapters = byId(s.chapters);
   const teams = byId(s.teams);
   const crafts = byId(s.crafts);
@@ -255,20 +153,68 @@ export function buildPeopleRows(
       const craft = crafts.get(c.craftId);
       return craft ? [{ craft, proficiency: c.proficiency, maxPct: c.maxPct }] : [];
     }),
-    quarters: (loads.get(p.id) ?? []).map((l) => {
-      const relativePct = relativeLoad(l.total, p.targetUtil);
-      return {
-        key: l.quarterKey,
-        loadPct: l.total,
-        relativePct: r1(relativePct),
-        band: bandFor(relativePct, t),
-        above: l.aboveTable,
-        below: l.belowTable,
-        undeclared: l.other,
-        free: l.bench,
-      };
-    }),
+    quarters: (idx.raw.get(p.id) ?? []).map((l, i) => toPersonQuarter(idx.quarters[i].key, l, t)),
   }));
+}
+
+/* ── contract functions ────────────────────────────────────────────────────────────── */
+
+/**
+ * Utilisation of one person on a basis: load as a % of their target, rounded to one decimal
+ * (identical to `PersonRow.quarters[i].relativePct` and the Outlook person pivot's
+ * `utilisationPct`). 'today' uses `utils/clock.today()`; 'window' averages the window's quarters.
+ * Unknown people and quarters outside the window return 0.
+ */
+export function utilisationFor(
+  s: D.WorkspaceSnapshot,
+  personId: D.ID,
+  basis: TimeBasis,
+  quarters: QuarterView[],
+): number {
+  const person = s.people.find((p) => p.id === personId);
+  if (!person) return 0;
+  const idx = loadIndex({ ...s, people: [person] }, quarters);
+  const load = rawLoadFor(s, idx, personId, basis, today());
+  return load === null ? 0 : round1(relativeOf(load, targetFor(person)));
+}
+
+function targetFor(p: D.PersonDTO): number {
+  return p.targetUtil > 0 ? p.targetUtil : 100;
+}
+
+export function buildPeopleRows(s: D.WorkspaceSnapshot, quarters: QuarterView[], t: UtilisationThresholds): PersonRow[] {
+  return personRowsFrom(s, loadIndex(s, quarters), t);
+}
+
+type GroupBy = 'team' | 'chapter' | 'tribe' | 'none';
+
+function groupKeyOf(
+  s: D.WorkspaceSnapshot,
+  groupByKind: GroupBy,
+  pivot: 'person' | 'project',
+  person: D.PersonDTO | undefined,
+  project: D.ProjectDTO | undefined,
+): { id: string; label: string } {
+  if (groupByKind === 'none') return { id: 'all', label: pivot === 'person' ? 'Everyone' : 'All projects' };
+  if (groupByKind === 'tribe') {
+    const tribeId = pivot === 'project' ? project?.tribeId : person?.homeTribeId;
+    const t = s.tribes.find((x) => x.id === tribeId);
+    return t ? { id: t.id, label: t.name } : { id: 'none', label: 'No tribe' };
+  }
+  if (groupByKind === 'team') {
+    const t = s.teams.find((x) => x.id === person?.teamId);
+    return t ? { id: t.id, label: t.name } : { id: 'none', label: 'No team' };
+  }
+  const c = s.chapters.find((x) => x.id === person?.chapterId);
+  return c ? { id: c.id, label: c.name } : { id: 'none', label: 'No chapter' };
+}
+
+function sortGroups<T extends { id: string; label: string }>(groups: T[]): T[] {
+  return groups.sort((a, b) => Number(a.id === 'none') - Number(b.id === 'none') || a.label.localeCompare(b.label));
+}
+
+function one<T>(set: Set<T>): T | 'mixed' | null {
+  return set.size === 0 ? null : set.size === 1 ? [...set][0] : 'mixed';
 }
 
 export function buildAllocationGrid(
@@ -281,81 +227,64 @@ export function buildAllocationGrid(
     thresholds: UtilisationThresholds;
   },
 ): GridModel {
-  const lq = toLegacyQuarters(quarters);
   const people = byId(s.people);
   const projects = byId(s.projects);
-  const locked = s.org.planning.planviewOwnership === 'locked';
+  const lockPlanview = s.org.planning.planviewOwnership === 'locked';
   const counted = countedAllocations(s, o.includeTentative);
+  const ranges = quarters.map(rangeOfView);
 
   const cellFor = (allocs: D.AllocationDTO[], qi: number): GridCell => {
-    const q = lq[qi];
     let pct = 0;
     let partial = false;
     const ids: D.ID[] = [];
     const states = new Set<D.AllocationState>();
     const sources = new Set<D.AllocationSource>();
     for (const a of allocs) {
-      const w = effectiveWindow(a, projects.get(a.projectId));
-      const frac = overlapFraction(parseDay(w.start, 'start'), parseDay(w.end, 'end'), q);
-      if (frac <= 0 || a.percentage <= 0) continue;
-      pct += a.percentage * frac;
-      if (frac < 1) partial = true;
+      if (!(a.percentage > 0)) continue;
+      const share = allocationShare(a, ranges[qi], projects.get(a.projectId));
+      if (share <= 0) continue;
+      pct += a.percentage * share;
+      if (share < 1) partial = true;
       ids.push(a.id);
       states.add(a.state);
       sources.add(a.source);
     }
-    const one = <T>(set: Set<T>): T | 'mixed' | null =>
-      set.size === 0 ? null : set.size === 1 ? [...set][0] : 'mixed';
     return {
       quarterKey: quarters[qi].key,
-      pct: r1(pct),
+      pct: round1(pct),
       band: null,
       partial,
       state: one(states),
       source: one(sources),
-      locked: locked && sources.has('planview'),
+      locked: lockPlanview && sources.has('planview'),
       allocationIds: ids,
     };
   };
 
-  const withBand = (c: GridCell, target: number): GridCell => ({
-    ...c,
-    band: bandFor(relativeLoad(c.pct, target), o.thresholds),
-  });
-
-  const groupKey = (p: D.PersonDTO | undefined, pr: D.ProjectDTO | undefined): { id: string; label: string } => {
-    if (o.groupBy === 'none') return { id: 'all', label: 'Everyone' };
-    if (o.groupBy === 'tribe') {
-      const tribeId = o.pivot === 'project' ? pr?.tribeId : p?.homeTribeId;
-      const t = s.tribes.find((x) => x.id === tribeId);
-      return t ? { id: t.id, label: t.name } : { id: 'none', label: 'No tribe' };
-    }
-    if (o.groupBy === 'team') {
-      const t = s.teams.find((x) => x.id === p?.teamId);
-      return t ? { id: t.id, label: t.name } : { id: 'none', label: 'No team' };
-    }
-    const c = s.chapters.find((x) => x.id === p?.chapterId);
-    return c ? { id: c.id, label: c.name } : { id: 'none', label: 'No chapter' };
-  };
-
-  const groups = new Map<
-    string,
-    { id: string; label: string; totals: GridCell[]; rows: GridRow[]; load: number[]; target: number }
-  >();
-  const ensure = (g: { id: string; label: string }) => {
+  interface Acc {
+    id: string;
+    label: string;
+    rows: GridRow[];
+    loads: RangeLoad[][];
+  }
+  const groups = new Map<string, Acc>();
+  const ensure = (g: { id: string; label: string }): Acc => {
     let e = groups.get(g.id);
     if (!e) {
-      e = { ...g, totals: [], rows: [], load: quarters.map(() => 0), target: 0 };
+      e = { ...g, rows: [], loads: [] };
       groups.set(g.id, e);
     }
     return e;
   };
 
   if (o.pivot === 'person') {
-    for (const p of s.people) {
-      const mine = counted.filter((a) => a.resourceId === p.id);
-      const g = ensure(groupKey(p, undefined));
-      const cells = quarters.map((_, qi) => withBand(cellFor(mine, qi), p.targetUtil));
+    const idx = loadIndex(s, quarters, { includeTentative: o.includeTentative });
+    const mine = groupBy(counted, (a) => a.resourceId);
+    for (const p of [...s.people].sort(byName)) {
+      const allocs = mine.get(p.id) ?? [];
+      const loads = idx.raw.get(p.id) ?? [];
+      const g = ensure(groupKeyOf(s, o.groupBy, 'person', p, undefined));
+      g.loads.push(loads);
       g.rows.push({
         key: `person:${p.id}`,
         kind: 'person',
@@ -364,34 +293,34 @@ export function buildAllocationGrid(
         projectId: null,
         craftId: null,
         label: p.name,
-        cells,
+        cells: quarters.map((_, qi) => {
+          const c = cellFor(allocs, qi);
+          const pq = toPersonQuarter(quarters[qi].key, loads[qi], o.thresholds);
+          // The person total is the load index value (same number as People and Outlook).
+          return { ...c, pct: pq.loadPct, band: pq.band };
+        }),
       });
-      cells.forEach((c, qi) => (g.load[qi] += c.pct));
-      g.target += p.targetUtil > 0 ? p.targetUtil : 100;
-      const bookings = new Map<string, D.AllocationDTO[]>();
-      for (const a of mine) {
-        const k = `${a.projectId}|${effectiveCraft(a, p) ?? ''}`;
-        bookings.set(k, [...(bookings.get(k) ?? []), a]);
-      }
-      for (const [k, allocs] of bookings) {
+      const bookings = groupBy(allocs, (a) => `${a.projectId}|${effectiveCraft(a, p) ?? ''}`);
+      const subRows = [...bookings.entries()].map(([k, list]) => {
         const [projectId, craftId] = k.split('|');
-        g.rows.push({
+        return {
           key: `booking:${p.id}:${k}`,
-          kind: 'booking',
-          depth: 1,
+          kind: 'booking' as const,
+          depth: 1 as const,
           personId: p.id,
           projectId,
           craftId: craftId || null,
           label: projects.get(projectId)?.name ?? projectId,
-          cells: quarters.map((_, qi) => cellFor(allocs, qi)),
-        });
-      }
+          cells: quarters.map((_, qi) => cellFor(list, qi)),
+        };
+      });
+      g.rows.push(...subRows.sort((a, b) => a.label.localeCompare(b.label)));
     }
   } else {
-    for (const pr of s.projects) {
-      const mine = counted.filter((a) => a.projectId === pr.id);
-      const g = ensure(groupKey(undefined, pr));
-      const cells = quarters.map((_, qi) => cellFor(mine, qi));
+    const onProject = groupBy(counted, (a) => a.projectId);
+    for (const pr of [...s.projects].sort(byName)) {
+      const allocs = onProject.get(pr.id) ?? [];
+      const g = ensure(groupKeyOf(s, o.groupBy, 'project', undefined, pr));
       g.rows.push({
         key: `project:${pr.id}`,
         kind: 'project',
@@ -400,94 +329,134 @@ export function buildAllocationGrid(
         projectId: pr.id,
         craftId: null,
         label: pr.name,
-        cells,
+        cells: quarters.map((_, qi) => cellFor(allocs, qi)),
       });
-      const bookings = new Map<string, D.AllocationDTO[]>();
-      for (const a of mine) {
-        const k = `${a.resourceId}|${effectiveCraft(a, people.get(a.resourceId)) ?? ''}`;
-        bookings.set(k, [...(bookings.get(k) ?? []), a]);
-      }
-      for (const [k, allocs] of bookings) {
+      const bookings = groupBy(allocs, (a) => `${a.resourceId}|${effectiveCraft(a, people.get(a.resourceId)) ?? ''}`);
+      const subRows = [...bookings.entries()].map(([k, list]) => {
         const [personId, craftId] = k.split('|');
         const person = people.get(personId);
-        g.rows.push({
+        return {
           key: `booking:${pr.id}:${k}`,
-          kind: 'booking',
-          depth: 1,
+          kind: 'booking' as const,
+          depth: 1 as const,
           personId,
           projectId: pr.id,
           craftId: craftId || null,
           label: person?.name ?? personId,
-          cells: quarters.map((_, qi) => withBand(cellFor(allocs, qi), person?.targetUtil ?? 100)),
-        });
-      }
+          cells: quarters.map((_, qi) => cellFor(list, qi)),
+        };
+      });
+      g.rows.push(...subRows.sort((a, b) => a.label.localeCompare(b.label)));
     }
   }
 
   return {
     quarters,
-    groups: [...groups.values()].map((g) => ({
+    groups: sortGroups([...groups.values()]).map((g) => ({
       id: g.id,
       label: g.label,
       rows: g.rows,
       totals: quarters.map((q, qi) => {
-        const rowCells = g.rows.filter((r) => r.depth === 0).map((r) => r.cells[qi]);
-        // Person pivot: group utilisation = Σload ÷ Σtarget (A-4). Project pivot: Σ booked % (100 = 1 FTE).
-        const util = o.pivot === 'person' && g.target > 0 ? (100 * g.load[qi]) / g.target : null;
-        const pct = r1(util ?? rowCells.reduce((x, c) => x + c.pct, 0));
+        const top = g.rows.filter((r) => r.depth === 0).map((r) => r.cells[qi]);
+        const states = new Set<D.AllocationState>();
+        const sources = new Set<D.AllocationSource>();
+        for (const c of top) {
+          if (c.state === 'mixed') ['confirmed', 'tentative'].forEach((x) => states.add(x as D.AllocationState));
+          else if (c.state) states.add(c.state);
+          if (c.source && c.source !== 'mixed') sources.add(c.source);
+        }
+        if (o.pivot === 'person') {
+          // Group utilisation = Σload ÷ Σtarget (A-4), banded.
+          const util = groupUtilisation(g.loads.map((l) => l[qi]));
+          return {
+            quarterKey: q.key,
+            pct: round1(util),
+            band: bandFor(util, o.thresholds),
+            partial: top.some((c) => c.partial),
+            state: one(states),
+            source: one(sources),
+            locked: false,
+            allocationIds: top.flatMap((c) => c.allocationIds),
+          };
+        }
+        // Project pivot: Σ booked % (100 = 1 FTE).
         return {
           quarterKey: q.key,
-          pct,
-          band: util === null ? null : bandFor(util, o.thresholds),
-          partial: rowCells.some((c) => c.partial),
-          state: null,
-          source: null,
+          pct: round1(top.reduce((x, c) => x + c.pct, 0)),
+          band: null,
+          partial: top.some((c) => c.partial),
+          state: one(states),
+          source: one(sources),
           locked: false,
-          allocationIds: rowCells.flatMap((c) => c.allocationIds),
+          allocationIds: top.flatMap((c) => c.allocationIds),
         };
       }),
     })),
   };
 }
 
-/** STUB (functional): splits/updates/creates so that only `quarterKey` changes, clipped to the project window. */
+/** AL-02: ops that set one quarter of a booking to `pct` (split/clip/reuse). Throws RangeError outside 0–200. */
 export function setQuarterCell(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
   a: { resourceId: D.ID; projectId: D.ID; craftId: D.ID | null; quarterKey: D.QuarterKey; pct: number },
 ): AllocationOp[] {
-  const q = quarters.find((x) => x.key === a.quarterKey);
-  if (!q) return [];
-  return setBookingRange(s, {
-    resourceId: a.resourceId,
-    projectId: a.projectId,
-    craftId: a.craftId,
-    from: q.start,
-    to: q.end,
-    pct: a.pct,
-  });
+  return quarterCellOps(s, quarters, a);
 }
 
-/** STUB (functional): applies the booking's nominal % in `fromQuarterKey` to every later quarter of the window. */
+/** AL-03: ops that apply the booking's value in `fromQuarterKey` to every later quarter of the window. */
 export function copyForward(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
   a: { resourceId: D.ID; projectId: D.ID; craftId: D.ID | null; fromQuarterKey: D.QuarterKey },
 ): AllocationOp[] {
-  const i = quarters.findIndex((x) => x.key === a.fromQuarterKey);
-  const later = i >= 0 ? quarters.slice(i + 1) : [];
-  if (later.length === 0) return [];
-  const from = quarters[i];
-  const project = s.projects.find((p) => p.id === a.projectId);
-  const pct = bookingAllocations(s, a)
-    .filter((x) => {
-      const w = effectiveWindow(x, project);
-      return (w.start === null || w.start <= from.end) && (w.end === null || w.end >= from.start);
-    })
-    .reduce((x, al) => x + al.percentage, 0);
-  return setBookingRange(s, { ...a, from: later[0].start, to: later[later.length - 1].end, pct });
+  return copyForwardOps(s, quarters, a);
 }
 
+function pointFromLoads(
+  quarterKey: D.QuarterKey,
+  people: D.PersonDTO[],
+  loads: RangeLoad[],
+  demandFte: number,
+  t: UtilisationThresholds,
+): OutlookPoint {
+  let supply = 0,
+    above = 0,
+    below = 0,
+    undeclared = 0,
+    free = 0;
+  people.forEach((p, i) => {
+    const l = loads[i];
+    supply += headroomOf(p);
+    above += l.above;
+    below += l.below;
+    undeclared += l.undeclared;
+    free += l.free;
+  });
+  const util = groupUtilisation(loads);
+  return {
+    quarterKey,
+    supplyFte: round2(supply / 100),
+    aboveFte: round2(above / 100),
+    belowFte: round2(below / 100),
+    undeclaredFte: round2(undeclared / 100),
+    freeFte: round2(free / 100),
+    demandFte: round2(demandFte),
+    utilisationPct: round1(util),
+    band: bandFor(util, t),
+  };
+}
+
+/**
+ * Capacity Outlook (RP-02). Squad, craft, chapter and person rows are people-centric: the people
+ * in the group, their load split above / below / undeclared / free, and Σload ÷ Σtarget. Demand is
+ * the demand lines of the group's craft (craft pivot) or the chapter's craft (chapter pivot).
+ *
+ * Tribe rows are project-centric: FTE booked on the tribe's projects (split by each person's
+ * craft relation), `supplyFte` = that committed FTE, `freeFte` = 0, demand = the tribe's demand,
+ * and `utilisationPct` = staffing coverage (committed ÷ demand). Their committed FTE equals
+ * `buildTribeView().staffedFte` (ORG-05#AC3).
+ */
 export function buildCapacityOutlook(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
@@ -499,9 +468,8 @@ export function buildCapacityOutlook(
     thresholds: UtilisationThresholds;
   },
 ): OutlookModel {
-  const m = toLegacy(s);
-  const lq = toLegacyQuarters(quarters);
-  const loads = loadsFor(m, lq);
+  const t = o.thresholds;
+  const idx = loadIndex(s, quarters);
   const projects = byId(s.projects);
   const personIn = (p: D.PersonDTO) =>
     (!o.craftId || p.primaryCraft === o.craftId) &&
@@ -509,141 +477,157 @@ export function buildCapacityOutlook(
     (!o.tribeId || p.homeTribeId === o.tribeId);
   const lineIn = (l: D.DemandLineDTO) =>
     (!o.craftId || l.craftId === o.craftId) && (!o.tribeId || projects.get(l.projectId)?.tribeId === o.tribeId);
-  const resources = (ids: Set<D.ID>) => m.resources.filter((r) => ids.has(r.id));
-  const points = (ids: Set<D.ID>, demand: (l: D.DemandLineDTO) => boolean) =>
+  const demandIn = (qk: D.QuarterKey, f: (l: D.DemandLineDTO) => boolean) =>
+    s.demand.filter((l) => l.quarterKey === qk && f(l)).reduce((x, l) => x + l.fte, 0);
+  const pointsFor = (people: D.PersonDTO[], demand: (l: D.DemandLineDTO) => boolean) =>
     quarters.map((q, qi) =>
-      outlookPoint(resources(ids), loads, qi, q.key, demandFteIn(s, q.key, demand), o.thresholds),
+      pointFromLoads(
+        q.key,
+        people,
+        people.map((p) => idx.raw.get(p.id)![qi]),
+        demandIn(q.key, demand),
+        t,
+      ),
     );
 
   const scoped = s.people.filter(personIn);
-  const squad = points(new Set(scoped.map((p) => p.id)), lineIn);
-
+  const squad = pointsFor(scoped, lineIn);
   let rows: OutlookModel['rows'];
+
   if (o.pivot === 'person') {
-    rows = scoped.map((p) => ({ id: p.id, label: p.name, points: points(new Set([p.id]), () => false) }));
+    rows = [...scoped].sort(byName).map((p) => ({ id: p.id, label: p.name, points: pointsFor([p], () => false) }));
   } else if (o.pivot === 'craft') {
-    rows = s.crafts
+    rows = [...s.crafts]
       .filter((c) => !c.archived && (!o.craftId || c.id === o.craftId))
+      .sort((a, b) => a.sortOrder - b.sortOrder || byName(a, b))
       .map((c) => ({
         id: c.id,
         label: c.name,
-        points: points(
-          new Set(scoped.filter((p) => p.primaryCraft === c.id).map((p) => p.id)),
+        points: pointsFor(
+          scoped.filter((p) => p.primaryCraft === c.id),
           (l) => lineIn(l) && l.craftId === c.id,
         ),
       }));
   } else if (o.pivot === 'chapter') {
-    rows = s.chapters
+    rows = [...s.chapters]
       .filter((c) => !c.archived && (!o.chapterId || c.id === o.chapterId))
+      .sort(byName)
       .map((c) => ({
         id: c.id,
         label: c.name,
-        points: points(
-          new Set(scoped.filter((p) => p.chapterId === c.id).map((p) => p.id)),
-          (l) => lineIn(l) && (c.craftId === null || l.craftId === c.craftId),
+        points: pointsFor(
+          scoped.filter((p) => p.chapterId === c.id),
+          (l) => lineIn(l) && c.craftId !== null && l.craftId === c.craftId,
         ),
       }));
   } else {
-    rows = s.tribes
-      .filter((t) => !t.archived && (!o.tribeId || t.id === o.tribeId))
-      .map((t) => ({
-        id: t.id,
-        label: t.name,
-        points: points(
-          new Set(scoped.filter((p) => p.homeTribeId === t.id).map((p) => p.id)),
-          (l) => lineIn(l) && projects.get(l.projectId)?.tribeId === t.id,
-        ),
-      }));
+    rows = [...s.tribes]
+      .filter((tr) => !tr.archived && (!o.tribeId || tr.id === o.tribeId))
+      .sort(byName)
+      .map((tr) => ({ id: tr.id, label: tr.name, points: tribePoints(s, quarters, tr.id, o.craftId, t) }));
   }
   return { squad, rows };
 }
 
-export function buildDemandGrid(
+function tribePoints(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
-): Array<{
-  project: D.ProjectDTO;
-  tribe: D.TribeDTO | null;
-  cells: Array<{
-    quarterKey: D.QuarterKey;
-    lines: D.DemandLineDTO[];
-    demandFte: number;
-    staffedFte: number;
-    proposedFte: number;
-    gapFte: number;
-  }>;
-}> {
-  const lq = toLegacyQuarters(quarters);
-  const tribes = byId(s.tribes);
-  return s.projects.map((p) => ({
-    project: p,
-    tribe: (p.tribeId && tribes.get(p.tribeId)) || null,
-    cells: quarters.map((q, qi) => {
-      const lines = s.demand.filter((l) => l.projectId === p.id && l.quarterKey === q.key);
-      const fteOf = (state: D.AllocationState) =>
-        s.allocations
-          .filter((a) => a.projectId === p.id && a.state === state)
-          .reduce((x, a) => x + pctInQuarter(a, p, lq[qi]) / 100, 0);
-      const demandFte = lines.reduce((x, l) => x + l.fte, 0);
-      const staffedFte = fteOf('confirmed');
-      return {
-        quarterKey: q.key,
-        lines,
-        demandFte: r2(demandFte),
-        staffedFte: r2(staffedFte),
-        proposedFte: r2(fteOf('tentative')),
-        gapFte: r2(demandFte - staffedFte),
-      };
-    }),
-  }));
+  tribeId: D.ID,
+  craftId: D.ID | undefined,
+  t: UtilisationThresholds,
+): OutlookPoint[] {
+  const people = byId(s.people);
+  const projects = byId(s.projects);
+  const allocs = countedAllocations(s).filter((a) => projects.get(a.projectId)?.tribeId === tribeId);
+  return quarters.map((q) => {
+    let above = 0,
+      below = 0,
+      undeclared = 0;
+    for (const a of allocs) {
+      const person = people.get(a.resourceId);
+      const craft = effectiveCraft(a, person);
+      if (craftId && craft !== craftId) continue;
+      const fte = fteIn(a, projects.get(a.projectId), q);
+      if (fte <= 0) continue;
+      const rel = person ? craftRelation(person, craft) : 'undeclared';
+      if (rel === 'above') above += fte;
+      else if (rel === 'below') below += fte;
+      else undeclared += fte;
+    }
+    const committed = above + below + undeclared;
+    const demand = s.demand
+      .filter(
+        (l) => l.quarterKey === q.key && projects.get(l.projectId)?.tribeId === tribeId && (!craftId || l.craftId === craftId),
+      )
+      .reduce((x, l) => x + l.fte, 0);
+    const coverage = demand > 0 ? (100 * committed) / demand : 0;
+    return {
+      quarterKey: q.key,
+      supplyFte: round2(committed),
+      aboveFte: round2(above),
+      belowFte: round2(below),
+      undeclaredFte: round2(undeclared),
+      freeFte: 0,
+      demandFte: round2(demand),
+      utilisationPct: round1(coverage),
+      band: bandFor(coverage, t),
+    };
+  });
 }
 
-export function buildCatalogue(
-  s: D.WorkspaceSnapshot,
-  quarters: QuarterView[],
-  quarterKey: D.QuarterKey,
-): CatalogueEntry[] {
-  const qv = quarters.find((q) => q.key === quarterKey);
-  if (!qv) return [];
-  const m = toLegacy(s);
-  const [q] = toLegacyQuarters([qv]);
-  const loads = new Map(m.resources.map((r) => [r.id, personQuarterLoad(r, q, m.allocations, m.projects)]));
-  return s.crafts
+/**
+ * Squad catalogue (DM-04) for one quarter: per active craft, who can serve it above the table
+ * (free up to their target) and below the table (free, capped by the craft's maxPct minus what
+ * they already do in that craft), with any marketplace offer. People with nothing free and no
+ * offer are left out.
+ */
+export function buildCatalogue(s: D.WorkspaceSnapshot, quarters: QuarterView[], quarterKey: D.QuarterKey): CatalogueEntry[] {
+  const qi = quarters.findIndex((q) => q.key === quarterKey);
+  if (qi < 0) return [];
+  const idx = loadIndex(s, [quarters[qi]]);
+  const offers = new Map(s.offers.filter((o) => o.quarterKey === quarterKey).map((o) => [o.personId, o]));
+  return [...s.crafts]
     .filter((c) => !c.archived)
+    .sort((a, b) => a.sortOrder - b.sortOrder || byName(a, b))
     .map((craft) => {
       const people: CatalogueEntry['people'] = [];
       for (const p of s.people) {
-        const l = loads.get(p.id);
-        if (!l) continue;
-        const free = Math.max(0, Math.min(l.capacity, p.targetUtil) - l.total);
-        const offer = s.offers.find((x) => x.personId === p.id && x.quarterKey === quarterKey) ?? null;
+        const l = idx.raw.get(p.id)![0];
+        const offer = offers.get(p.id) ?? null;
+        const offered = !!offer && (offer.craftIds.length === 0 || offer.craftIds.includes(craft.id));
         if (p.primaryCraft === craft.id) {
-          people.push({ person: p, via: 'above', proficiency: null, freePct: r1(free), offer });
+          if (l.free > 0 || offered)
+            people.push({ person: p, via: 'above', proficiency: null, freePct: round1(l.free), offer: offered ? offer : null });
           continue;
         }
         const sec = p.secondaryCrafts.find((x) => x.craftId === craft.id);
-        if (sec) {
-          const onCraft = l.byProject.filter((b) => b.craftId === craft.id).reduce((x, b) => x + b.pct, 0);
-          const cap = Math.max(0, (sec.maxPct ?? DEFAULT_SECONDARY_MAX_PCT) - onCraft);
-          people.push({
-            person: p,
-            via: 'below',
-            proficiency: sec.proficiency,
-            freePct: r1(Math.min(free, cap)),
-            offer,
-          });
-        }
+        if (!sec) continue;
+        const onCraft = l.bookings.filter((b) => b.craftId === craft.id).reduce((x, b) => x + b.pct, 0);
+        const free = Math.max(0, Math.min(l.free, sec.maxPct - onCraft));
+        if (free > 0 || offered)
+          people.push({ person: p, via: 'below', proficiency: sec.proficiency, freePct: round1(free), offer: offered ? offer : null });
       }
-      people.sort((a, b) => (a.via === b.via ? b.freePct - a.freePct : a.via === 'above' ? -1 : 1));
+      people.sort(
+        (a, b) =>
+          Number(b.via === 'above') - Number(a.via === 'above') ||
+          Number(!!b.offer) - Number(!!a.offer) ||
+          b.freePct - a.freePct ||
+          a.person.name.localeCompare(b.person.name),
+      );
       return {
         craft,
-        freeAboveFte: r2(people.filter((x) => x.via === 'above').reduce((x, e) => x + e.freePct, 0) / 100),
-        reachBelowFte: r2(people.filter((x) => x.via === 'below').reduce((x, e) => x + e.freePct, 0) / 100),
+        freeAboveFte: round2(people.filter((x) => x.via === 'above').reduce((x, e) => x + e.freePct, 0) / 100),
+        reachBelowFte: round2(people.filter((x) => x.via === 'below').reduce((x, e) => x + e.freePct, 0) / 100),
         people,
       };
     });
 }
 
+/**
+ * Home (RP-01). KPIs follow the basis: a quarter uses that quarter; 'today' uses today's bookings
+ * for utilisation and people counts and QBR1 for demand; 'window' averages the four quarters.
+ * `nextQuarterPct` is the quarter after the basis quarter (QBR2 for today/window).
+ */
 export function buildHome(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
@@ -651,29 +635,44 @@ export function buildHome(
   t: UtilisationThresholds,
   me: D.MeWorkspace | null,
 ): HomeModel {
-  const qi = basisIndex(basis, quarters);
+  const idx = loadIndex(s, quarters);
   const outlook = buildCapacityOutlook(s, quarters, { pivot: 'person', thresholds: t }).squad;
-  const rows = buildPeopleRows(s, quarters, t);
-  const at = (r: PersonRow) => r.quarters[qi];
-  const over = rows.filter((r) => at(r)?.band === 'over').sort((a, b) => at(b).relativePct - at(a).relativePct);
-  const available = rows.filter((r) => at(r)?.band === 'bench').sort((a, b) => at(a).relativePct - at(b).relativePct);
-  const demand = buildDemandGrid(s, quarters);
-  const unstaffed = demand.reduce((x, d) => x + Math.max(0, d.cells[qi]?.gapFte ?? 0), 0);
-  const withDemand = new Set(s.demand.map((l) => l.projectId));
-  const current = outlook[qi];
+  const rows = personRowsFrom(s, idx, t);
+  const qi = basisIndex(basis, quarters);
+  const day = today();
+
+  const relOf = (r: PersonRow): number => {
+    if (basis.kind === 'quarter') return r.quarters[qi]?.relativePct ?? 0;
+    const load = rawLoadFor(s, idx, r.person.id, basis, day) ?? 0;
+    return round1(relativeOf(load, targetFor(r.person)));
+  };
+  const scored = rows.map((r) => ({ r, rel: relOf(r), band: bandFor(relOf(r), t) }));
+  const over = scored.filter((x) => x.band === 'over').sort((a, b) => b.rel - a.rel).map((x) => x.r);
+  const available = scored.filter((x) => x.band === 'bench').sort((a, b) => a.rel - b.rel).map((x) => x.r);
+
+  const loadsAt = (p: D.PersonDTO) => ({ total: rawLoadFor(s, idx, p.id, basis, day) ?? 0, target: targetFor(p) });
+  const util = basis.kind === 'quarter' ? (outlook[qi]?.utilisationPct ?? 0) : round1(groupUtilisation(s.people.map(loadsAt)));
+  const grid = buildDemandGrid(s, quarters);
+  const unstaffedIn = (i: number) => grid.reduce((x, d) => x + Math.max(0, d.cells[i]?.gapFte ?? 0), 0);
+  const unstaffed =
+    basis.kind === 'window' && quarters.length > 0
+      ? quarters.reduce((x, _, i) => x + unstaffedIn(i), 0) / quarters.length
+      : unstaffedIn(qi);
+  const nextIdx = Math.min(quarters.length - 1, basis.kind === 'quarter' ? qi + 1 : 1);
+
   return {
     kpis: {
-      utilisationPct: current?.utilisationPct ?? 0,
-      band: current?.band ?? bandFor(0, t),
-      nextQuarterPct: outlook[qi + 1]?.utilisationPct ?? 0,
-      unstaffedFte: r2(unstaffed),
+      utilisationPct: util,
+      band: bandFor(util, t),
+      nextQuarterPct: outlook[nextIdx]?.utilisationPct ?? 0,
+      unstaffedFte: round2(unstaffed),
       overCount: over.length,
       availableCount: available.length,
     },
     outlook,
     over,
     available,
-    projectsWithoutDemand: s.projects.filter((p) => p.stage === 'Initiated' && !withDemand.has(p.id)),
+    projectsWithoutDemand: projectsWithoutDemand(s, quarters),
     pendingApprovals: s.craftRequests.filter((r) => r.status === 'pending').length,
     myPendingProposals: me?.linkedPersonId
       ? s.allocations.filter((a) => a.state === 'tentative' && a.resourceId === me.linkedPersonId).length
@@ -681,6 +680,11 @@ export function buildHome(
   };
 }
 
+/**
+ * One tribe (ORG-05): its projects, demand per quarter, staffed FTE (confirmed + tentative bookings
+ * on its projects; equals the Outlook tribe pivot's committed FTE), gap = demand − staffed, and the
+ * people serving it with their load on it. Throws for an unknown tribe id.
+ */
 export function buildTribeView(
   s: D.WorkspaceSnapshot,
   quarters: QuarterView[],
@@ -695,58 +699,44 @@ export function buildTribeView(
 } {
   const tribe = s.tribes.find((t) => t.id === tribeId);
   if (!tribe) throw new Error(`Unknown tribe: ${tribeId}`);
-  const projects = s.projects.filter((p) => p.tribeId === tribeId);
-  const ids = new Set(projects.map((p) => p.id));
-  const grid = buildDemandGrid(s, quarters).filter((d) => ids.has(d.project.id));
-  const sum = (f: (c: (typeof grid)[number]['cells'][number]) => number) =>
-    quarters.map((_, qi) => r2(grid.reduce((x, d) => x + f(d.cells[qi]), 0)));
-  const lq = toLegacyQuarters(quarters);
-  const m = toLegacy(s);
-  const tribeAllocs = m.allocations.filter((a) => ids.has(a.projectId));
+  const projects = s.projects.filter((p) => p.tribeId === tribeId).sort(byName);
+  const projectMap = byId(projects);
+  const allocs = countedAllocations(s).filter((a) => projectMap.has(a.projectId));
+  const demandFte = quarters.map((q) =>
+    s.demand.filter((l) => l.quarterKey === q.key && projectMap.has(l.projectId)).reduce((x, l) => x + l.fte, 0),
+  );
+  const staffed = quarters.map((q) => allocs.reduce((x, a) => x + fteIn(a, projectMap.get(a.projectId), q), 0));
+  const byPerson = groupBy(allocs, (a) => a.resourceId);
   const people = s.people
-    .map((person) => {
-      const r = m.resources.find((x) => x.id === person.id);
-      const pctByQuarter = r ? lq.map((q) => personQuarterLoad(r, q, tribeAllocs, m.projects).total) : [];
-      return { person, pctByQuarter };
-    })
-    .filter((x) => x.pctByQuarter.some((v) => v > 0));
+    .filter((p) => byPerson.has(p.id))
+    .map((person) => ({
+      person,
+      pctByQuarter: quarters.map((q) =>
+        round1(100 * (byPerson.get(person.id) ?? []).reduce((x, a) => x + fteIn(a, projectMap.get(a.projectId), q), 0)),
+      ),
+    }))
+    .filter((x) => x.pctByQuarter.some((v) => v > 0))
+    .sort((a, b) => byName(a.person, b.person));
   return {
     tribe,
     projects,
-    demandFte: sum((c) => c.demandFte),
-    staffedFte: sum((c) => c.staffedFte),
-    gapFte: sum((c) => c.gapFte),
+    demandFte: demandFte.map(round2),
+    staffedFte: staffed.map(round2),
+    gapFte: quarters.map((_, i) => round2(demandFte[i] - staffed[i])),
     people,
   };
 }
 
+/** SH-06: client-side search over the snapshot (implementation in `utils/search.ts`). */
 export function buildSearchIndex(
   s: D.WorkspaceSnapshot,
 ): (q: string) => Array<{ kind: 'person' | 'project' | 'tribe' | 'craft'; id: D.ID; label: string; sublabel: string }> {
-  const tribes = byId(s.tribes);
-  const entries = [
-    ...s.people.map((p) => ({ kind: 'person' as const, id: p.id, label: p.name, sublabel: p.role })),
-    ...s.projects.map((p) => ({
-      kind: 'project' as const,
-      id: p.id,
-      label: p.name,
-      sublabel: [p.tribeId ? tribes.get(p.tribeId)?.name : null, p.status].filter(Boolean).join(' · '),
-    })),
-    ...s.tribes
-      .filter((t) => !t.archived)
-      .map((t) => ({ kind: 'tribe' as const, id: t.id, label: t.name, sublabel: 'Tribe' })),
-    ...s.crafts
-      .filter((c) => !c.archived)
-      .map((c) => ({ kind: 'craft' as const, id: c.id, label: c.name, sublabel: c.short })),
-  ];
-  return (q: string) => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return [];
-    return entries
-      .filter((e) => e.label.toLowerCase().includes(needle) || e.sublabel.toLowerCase().includes(needle))
-      .sort(
-        (a, b) => Number(!a.label.toLowerCase().startsWith(needle)) - Number(!b.label.toLowerCase().startsWith(needle)),
-      )
-      .slice(0, 20);
-  };
+  return buildSearchIndexImpl(s);
 }
+
+/* ── additions (not in the frozen §4.3 list; see handoff-C.md §3) ───────────────────── */
+
+export * from './marketplace';
+export * from './planning';
+export * from './delivery';
+export { MAX_CELL_PCT, MAX_BATCH_OPS, inverseOps } from './allocationOps';
