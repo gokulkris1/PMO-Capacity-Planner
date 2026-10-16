@@ -1,137 +1,41 @@
-/// <reference types="vite/client" />
-import { Resource, Project, Allocation } from "../types";
+/**
+ * @deprecated HS-11 compatibility shim for the legacy App.tsx only. Package B removes the import
+ * (the assistant drawer calls `useApi().api.ai.ask(wsId, question)`), then this file is deleted.
+ *
+ * The 2.0 contract: the client sends only `{ wsId, question }` to `POST /api/ai`; the server builds
+ * the prompt from the database (`_lib/aiPrompt.ts`) and checks the `aiAssistant` flag, `ai.use` and
+ * the quota. No API key, prompt or workspace data is sent from the browser (HS-11#AC3, HS-15#AC1).
+ */
+import type { Allocation, Project, Resource } from '../types';
+import { createApiClient } from './api/client';
+import { ApiRequestError } from './api/errors';
+import { HttpTransport } from './api/httpTransport';
 
-import { User, WorkspaceInfo, WorkspaceRole } from "../context/AuthContext";
-import { CRAFT_BY_ID } from "../constants";
-import { getRollingQuarters } from "../utils/quarters";
-import { quarterSummary, demandLines } from "../utils/craftEngine";
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
-
-function buildSystemPrompt(
-  resources: Resource[],
-  projects: Project[],
-  allocations: Allocation[],
-  user: User | null,
-  activeWorkspace: WorkspaceInfo | null,
-  workspaceRole: WorkspaceRole | null
-): string {
-  const resourceSummary = resources.map(r => {
-    const rAllocs = allocations.filter(a => a.resourceId === r.id);
-    const totalPct = rAllocs.reduce((s, a) => s + a.percentage, 0);
-    const projectNames = rAllocs.map(a => {
-      const p = projects.find(pr => pr.id === a.projectId);
-      return p ? `${p.name}(${a.percentage}%)` : null;
-    }).filter(Boolean).join(', ');
-    const craft = (id?: string) => (id && CRAFT_BY_ID[id]?.name) || id || 'n/a';
-    const below = (r.secondaryCrafts || []).map(sc => `${craft(sc.craftId)} L${sc.proficiency}`).join('/') || 'none';
-    return `  - ${r.name} | Dept: ${r.department} | Role: ${r.role} | Above-the-table craft: ${craft(r.primaryCraft)} | Below-the-table: ${below} | Utilisation: ${totalPct}%${totalPct > 100 ? ' ⚠️ OVER' : totalPct < 50 ? ' (under-used)' : ''} | Projects: ${projectNames || 'unassigned'}`;
-  }).join('\n');
-
-  const quarters = getRollingQuarters(new Date(), 4);
-  const outlook = quarters.map(q => {
-    const s = quarterSummary(q, resources, projects, allocations);
-    return `  - ${q.label} (${q.name}): ${s.avgUtil}% utilised, bench ${s.benchFte} FTE, below-the-table ${s.belowTableFte} FTE, demand ${s.demandFte} FTE of which ${s.unstaffedFte} unstaffed`;
-  }).join('\n');
-  const openDemand = demandLines(projects, resources, allocations, quarters).filter(l => l.gapFte > 0.05)
-    .map(l => `  - ${l.projectName} (${l.tribe || 'no tribe'}) needs ${l.gapFte} FTE more ${(CRAFT_BY_ID[l.craftId]?.name) || l.craftId} in ${quarters.find(q => q.key === l.quarterKey)?.label}`).join('\n');
-
-  const projectSummary = projects.map(p => {
-    const pAllocs = allocations.filter(a => a.projectId === p.id);
-    const assignedResources = pAllocs.map(a => {
-      const r = resources.find(res => res.id === a.resourceId);
-      return r ? `${r.name}(${a.percentage}%)` : null;
-    }).filter(Boolean).join(', ');
-    return `  - ${p.name} | Status: ${p.status || 'active'} | Priority: ${p.priority} | Team: ${assignedResources || 'none assigned'}`;
-  }).join('\n');
-
-  const overAllocated = resources.filter(r =>
-    allocations.filter(a => a.resourceId === r.id).reduce((s, a) => s + a.percentage, 0) > 100
-  );
-  const unassigned = resources.filter(r =>
-    allocations.filter(a => a.resourceId === r.id).length === 0
-  );
-
-  const isAdmin = user?.role === 'SUPERUSER' || user?.role === 'ORG_ADMIN' || workspaceRole === 'PMO_ADMIN' || workspaceRole === 'WORKSPACE_OWNER';
-
-  const roleDirectives = isAdmin
-    ? `Since the user is an Executive/Admin, you MAY provide explicit financial reallocation advice, strategic organizational shifts, and unconstrained insights across all departments.`
-    : `Since the user is a standard Viewer/Editor, STRICTLY RESTRICT your advice to tactical team resource capacity. DO NOT advise on financial budgets, organization-wide strategy changes, or sensitive management decisions.`;
-
-  return `You are Orbit AI, an elite PMO Strategic Advisor. The user asking for your advice is "${user?.name || user?.email || 'Unknown User'}", who holds the role of ${user?.role || 'User'} in the organization "${activeWorkspace?.org_name || 'Organization'}" (Workspace: "${activeWorkspace?.name || 'Workspace'}").
-
-📊 LIVE PORTFOLIO DATA FOR THEIR WORKSPACE:
-RESOURCES & ALLOCATIONS:
-${resourceSummary || '  (No resources yet)'}
-
-PROJECTS:
-${projectSummary || '  (No projects yet)'}
-
-FOUR-QUARTER OUTLOOK (QBR1 = current quarter; target is 100% utilisation of the PMO squad):
-${outlook}
-
-OPEN CRAFT DEMAND (unstaffed project requirements):
-${openDemand || '  (none)'}
-
-BURN & RISK METRICS:
-- Over-allocated Risks: ${overAllocated.length} individuals (${overAllocated.map(r => r.name).join(', ') || 'none'})
-- Bench / Unutilized: ${unassigned.length} individuals (${unassigned.map(r => r.name).join(', ') || 'none'})
-
-🎯 YOUR DIRECTIVES:
-1. DELIVER HARD TRUTHS: Be direct, analytical, and executive. Do not use fluff. Address the user directly by their name occasionally.
-2. ROLE AWARENESS: ${roleDirectives}
-3. SYNTHESIZE, DON'T REGURGITATE: Formulate a strategic thesis before answering. If someone is over-allocated, specifically suggest WHO on the bench can take their load based on matching above-the-table or below-the-table crafts. When demand is unstaffed, propose a below-the-table match before suggesting external hires.
-4. ALIGN WITH PRIORITIES: Call out strategic misalignment if low-priority projects consume critical resources.
-5. FORMATTING: Use Markdown flawlessly. Use *Bold* for names and projects. Use clear headers.
-
-Respond strictly to the user's prompt using the data above. If their query is general ("How are we doing?"), provide a comprehensive health check and reallocation roadmap.`;
+interface LegacyWorkspace {
+  id: string;
 }
 
-export const getCapacityInsights = async (
-  resources: Resource[],
-  projects: Project[],
-  allocations: Allocation[],
+let client: ReturnType<typeof createApiClient> | null = null;
+
+export async function getCapacityInsights(
+  _resources: Resource[],
+  _projects: Project[],
+  _allocations: Allocation[],
   userPrompt: string,
-  user: User | null,
-  activeWorkspace: WorkspaceInfo | null,
-  workspaceRole: WorkspaceRole | null
-): Promise<string> => {
-  const token = localStorage.getItem('pcp_token');
-
-  if (!token) {
-    return "You must be logged in to use the AI Advisor.";
-  }
-
+  _user: unknown,
+  activeWorkspace: LegacyWorkspace | null,
+  _workspaceRole: unknown,
+): Promise<string> {
+  if (!activeWorkspace) return 'Open a workspace to use the assistant.';
+  client ??= createApiClient(new HttpTransport());
   try {
-    const systemPrompt = buildSystemPrompt(resources, projects, allocations, user, activeWorkspace, workspaceRole);
-
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ systemPrompt, userPrompt })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      if (res.status === 429) {
-        // Explicitly return the Quota string
-        return `⚠️ ${data.error || 'AI Quota limit reached. Please upgrade to Pro.'}`;
-      }
-
-      if (data.response && data.response.includes('disabled')) {
-        return data.response;
-      }
-      const genericError = data.error || data.errorMessage || data.errorType || 'Failed to generate AI insights';
-      throw new Error(genericError);
+    const { answer } = await client.ai.ask(activeWorkspace.id, userPrompt.slice(0, 2000));
+    return answer;
+  } catch (e) {
+    if (e instanceof ApiRequestError) {
+      if (e.code === 'feature_disabled') return 'The AI assistant is turned off for your organisation.';
+      if (e.status === 429 || e.status === 403 || e.status === 400) return e.message;
     }
-
-    return data.response;
-  } catch (err: any) {
-    console.error('AI Service Error:', err);
-    return `⚠️ Error generating AI insights: ${err.message}. Please try again later.`;
+    return 'The AI service is unavailable. Try again later.';
   }
-};
+}
