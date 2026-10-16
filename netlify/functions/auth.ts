@@ -138,8 +138,10 @@ async function refresh(ctx: Ctx) {
   return ctx.actor.authMethod === 'bearer' ? { ok: true, token } : { ok: true };
 }
 
-async function logout(ctx: Ctx) {
-  const all = !!(ctx.body as { allDevices?: unknown })?.allDevices || ctx.query.all === 'true';
+async function logout(ctx: Ctx, everywhere = false) {
+  // POST /logout-all must revoke: it needs a valid session (401 otherwise) rather than silently clearing cookies.
+  if (everywhere) requireActor(ctx);
+  const all = everywhere || !!(ctx.body as { allDevices?: unknown })?.allDevices || ctx.query.all === 'true';
   if (all && ctx.actor) {
     const actor = ctx.actor;
     await withTx(async (q) => {
@@ -324,12 +326,15 @@ export const handler = withApi({ fn: 'auth', auth: 'optional', csrf: false }, as
   const m = ctx.method;
   if (['/2fa', '/2fa/toggle', '/password'].includes(p) || p.startsWith('/admin/')) assertCsrf(ctx);
   if (p === '/logout' && (ctx.query.all === 'true' || (ctx.body as { allDevices?: unknown })?.allDevices)) assertCsrf(ctx);
+  if (p === '/logout-all') assertCsrf(ctx);
   if (p === '/' && m === 'GET' && ctx.query.refresh === 'true') return refresh(ctx);
   if (p === '/login' && m === 'POST') return login(ctx);
   if (p === '/register' && m === 'POST') return register(ctx);
   if (p === '/session' && m === 'POST') return sessionExchange(ctx);
   if (p === '/refresh' && m === 'POST') return refresh(ctx);
   if (p === '/logout' && m === 'POST') return logout(ctx);
+  // Sign out everywhere: bumps token_version, so every cookie session and v1.1 bearer token stops working.
+  if (p === '/logout-all' && m === 'POST') return logout(ctx, true);
   if (p === '/reset/send-otp' && m === 'POST') return resetSend(ctx);
   if (p === '/reset/confirm' && m === 'POST') return resetConfirm(ctx);
   if (p === '/2fa' && m === 'POST') return twoFactor(ctx, false);

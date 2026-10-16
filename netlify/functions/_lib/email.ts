@@ -56,10 +56,13 @@ export async function sendEmail(msg: EmailMessage): Promise<{ sent: boolean }> {
   }
   const from = optionalEnv('FROM_EMAIL') || `${PRODUCT_NAME} <${LEGACY_FROM_ADDRESS}>`;
   try {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const result = await Promise.race([
       transport().send({ ...msg, from }),
-      new Promise<{ error: unknown }>((resolve) => setTimeout(() => resolve({ error: 'timeout' }), 5000)),
-    ]);
+      new Promise<{ error: unknown }>((resolve) => {
+        timer = setTimeout(() => resolve({ error: 'timeout' }), 5000);
+      }),
+    ]).finally(() => clearTimeout(timer));
     if (result.error) {
       log('warn', {
         event: 'email.failed',

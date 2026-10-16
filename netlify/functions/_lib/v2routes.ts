@@ -1,6 +1,7 @@
 /** The /api/v2 route table (BACKLOG §4.3). Exported for the authorisation matrix test (PL-12). */
 import { Router } from './router';
-import { getMe } from './handlers/me';
+import { getMe, patchMe } from './handlers/me';
+import { platformOverview } from './handlers/platform';
 import {
   createOrg,
   createWorkspace,
@@ -25,6 +26,7 @@ import {
   createInvitation,
   listInvitations,
   lookupInvitation,
+  resendInvitation,
   revokeInvitation,
 } from './handlers/invitations';
 import { exportAudit, orgAudit } from './handlers/auditLog';
@@ -78,6 +80,8 @@ const O = '/orgs/:orgId';
 
 export const v2Router = new Router()
   .get('/me', getMe)
+  .patch('/me', patchMe)
+  .get('/platform/overview', platformOverview)
   .post('/orgs', createOrg)
   .get(O, getOrg)
   .patch(O, patchOrg)
@@ -89,6 +93,7 @@ export const v2Router = new Router()
   .get(`${O}/invitations`, listInvitations)
   .post(`${O}/invitations`, createInvitation)
   .delete(`${O}/invitations/:id`, revokeInvitation)
+  .post(`${O}/invitations/:id/resend`, resendInvitation)
   .get(`${O}/audit`, orgAudit)
   .get(`${O}/:kind`, listStructure)
   .post(`${O}/:kind`, createStructure)

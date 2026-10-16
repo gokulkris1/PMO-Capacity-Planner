@@ -3,10 +3,12 @@ import type { MeResponse, MeWorkspace } from '../../../../shared/contracts/dto';
 import { permissionsFor } from '../../../../shared/permissions';
 import { entitlementsFor } from '../../../../shared/entitlements';
 import type { Ctx } from '../api';
-import { requireActor } from '../api';
+import { z } from 'zod';
+import { auditCtx, parseWith, requireActor } from '../api';
+import { audit } from '../audit';
 import { loadUser, toSessionUser } from '../auth';
 import { effectiveOrgRole, effectiveWorkspaceRole } from '../authz';
-import { one } from '../db';
+import { one, withTx } from '../db';
 import { ORG_COLUMNS, featuresOf, planOf, planningOf } from '../dto';
 import { appMode } from '../env';
 import { unauthorized } from '../errors';
@@ -81,4 +83,31 @@ export async function getMe(ctx: Ctx): Promise<MeResponse> {
     entitlements: entitlementsFor(planOf(org.plan), mode),
     appMode: mode,
   };
+}
+
+const patchMeSchema = z
+  .object({ name: z.string().trim().min(1, 'Enter your name').max(100, 'Use at most 100 characters') })
+  .strict();
+
+/**
+ * PATCH /api/v2/me — the signed-in user edits their own profile. Only `name` is user-editable here: email changes
+ * need verification and 2FA / password have their own re-authenticated endpoints under /api/auth.
+ */
+export async function patchMe(ctx: Ctx): Promise<MeResponse> {
+  const actor = requireActor(ctx);
+  const body = parseWith(patchMeSchema, ctx.body);
+  await withTx(async (q) => {
+    const before = await one<{ name: string }>(q, `SELECT name FROM users WHERE id = $1 FOR UPDATE`, [actor.userId]);
+    if (!before) throw unauthorized();
+    if (before.name === body.name) return;
+    await q.query(`UPDATE users SET name = $2 WHERE id = $1`, [actor.userId, body.name]);
+    await audit(q, auditCtx(ctx), {
+      action: 'user.profile_update',
+      targetType: 'user',
+      targetId: actor.userId,
+      before: { name: before.name },
+      after: { name: body.name },
+    });
+  });
+  return getMe(ctx);
 }

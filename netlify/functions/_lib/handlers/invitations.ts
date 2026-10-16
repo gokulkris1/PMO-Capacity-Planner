@@ -118,9 +118,60 @@ export async function createInvitation(ctx: Ctx, p: Params) {
     });
   });
   const inviteUrl = `${appBaseUrl()}/invite/${token}`;
-  await sendEmail(invitationEmail(email, orgName, actor.name, inviteUrl));
-  const res: InvitationResponse = { invitation: { id, email, expiresAt }, inviteUrl };
+  const { sent } = await sendEmail(invitationEmail(email, orgName, actor.name, inviteUrl));
+  // `emailSent` (not in the frozen contract yet, see handoff-A change requests): false when email is not
+  // configured or delivery failed, so the dialog tells the admin to copy the link.
+  const res: InvitationResponse & { emailSent: boolean } = {
+    invitation: { id, email, expiresAt },
+    inviteUrl,
+    emailSent: sent,
+  };
   return reply(201, res);
+}
+
+/**
+ * POST /orgs/:orgId/invitations/:id/resend — same rights as revoke. Only the token hash is stored, so a resend
+ * issues a new link (the old one stops working) and restarts the expiry.
+ */
+export async function resendInvitation(ctx: Ctx, p: Params) {
+  const access = await requireOrg(ctx, p.orgId, ['org.members.manage', 'workspace.members.manage']);
+  const actor = requireActor(ctx);
+  const token = randomToken(32);
+  const expiresAt = new Date(Date.now() + INVITE_DAYS * 86400_000).toISOString();
+  const email = await withTx(async (q) => {
+    const inv = await one(
+      q,
+      `SELECT id, email, workspaces FROM invitations
+       WHERE id = $1 AND org_id = $2 AND revoked_at IS NULL AND accepted_at IS NULL FOR UPDATE`,
+      [p.id, p.orgId],
+    );
+    if (!inv) throw notFound('Invitation not found');
+    if (!access.permissions.has('org.members.manage')) {
+      const ws = json<InviteWs>(inv.workspaces, []);
+      if (!ws.length || !ws.every((w) => access.adminWorkspaceIds.includes(w.workspaceId))) throw forbidden();
+    }
+    await q.query(`UPDATE invitations SET token_hash = $2, expires_at = $3 WHERE id = $1`, [
+      p.id,
+      sha256Hex(token),
+      expiresAt,
+    ]);
+    await audit(q, auditCtx(ctx), {
+      action: 'member.invite_resend',
+      orgId: p.orgId,
+      targetType: 'invitation',
+      targetId: p.id,
+      after: { email: inv.email, expiresAt },
+    });
+    return String(inv.email);
+  });
+  const inviteUrl = `${appBaseUrl()}/invite/${token}`;
+  const { sent } = await sendEmail(invitationEmail(email, String(access.org.name ?? ''), actor.name, inviteUrl));
+  const res: InvitationResponse & { emailSent: boolean } = {
+    invitation: { id: p.id, email, expiresAt },
+    inviteUrl,
+    emailSent: sent,
+  };
+  return res;
 }
 
 export async function listInvitations(ctx: Ctx, p: Params) {

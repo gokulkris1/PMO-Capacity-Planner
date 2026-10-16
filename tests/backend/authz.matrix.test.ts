@@ -31,7 +31,7 @@ jest.setTimeout(120_000);
 
 type Scope = 'ws' | 'org';
 /** any-of permissions; 'session' = any signed-in user; 'public' = no auth; 'noOrg' = verified user without an org. */
-type Need = Permission[] | 'session' | 'public' | 'noOrg';
+type Need = Permission[] | 'session' | 'public' | 'noOrg' | 'platform';
 interface RouteSpec {
   need: Need;
   scope?: Scope;
@@ -43,6 +43,9 @@ const org = (...p: Permission[]): RouteSpec => ({ need: p, scope: 'org' });
 /** BACKLOG §4.3 route table. Keys are `METHOD pattern` exactly as registered in v2Router. */
 const TABLE: Record<string, RouteSpec> = {
   'GET /me': { need: 'session' },
+  // Added after §4.3 for the 2.0 client (handoff-A): own profile, platform cockpit, invitation resend.
+  'PATCH /me': { need: 'session' },
+  'GET /platform/overview': { need: 'platform' },
   'POST /orgs': { need: 'noOrg' },
   'GET /orgs/:orgId': org('org.view'),
   'PATCH /orgs/:orgId': org('org.manage'),
@@ -54,6 +57,7 @@ const TABLE: Record<string, RouteSpec> = {
   'GET /orgs/:orgId/invitations': org('org.members.manage', 'workspace.members.manage'),
   'POST /orgs/:orgId/invitations': org('org.members.manage', 'workspace.members.manage'),
   'DELETE /orgs/:orgId/invitations/:id': org('org.members.manage', 'workspace.members.manage'),
+  'POST /orgs/:orgId/invitations/:id/resend': org('org.members.manage', 'workspace.members.manage'),
   'GET /orgs/:orgId/audit': org('org.audit.view', 'workspace.audit.view'),
   'GET /orgs/:orgId/:kind': org('org.view'),
   'POST /orgs/:orgId/:kind': org('structure.write'),
@@ -151,6 +155,7 @@ function expected(spec: RouteSpec, role: RoleName): 'allowed' | 'conflict' | 401
   if (role === 'anonymous') return 401;
   if (spec.need === 'session') return 'allowed';
   // Everyone but the platform admin already belongs to an org: 409 "You already belong to an organisation."
+  if (spec.need === 'platform') return role === 'PLATFORM_ADMIN' ? 'allowed' : 403;
   if (spec.need === 'noOrg') return role === 'PLATFORM_ADMIN' ? 'allowed' : 'conflict';
   const held = heldPermissions(role, spec.scope ?? 'ws');
   return spec.need.some((p) => held.has(p)) ? 'allowed' : 403;
