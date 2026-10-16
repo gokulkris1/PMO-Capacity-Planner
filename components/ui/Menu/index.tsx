@@ -62,7 +62,15 @@ const isAction = (i: MenuItem): i is ActionItem => i.type === undefined || i.typ
  * Dropdown/overflow menu (DESIGN_SYSTEM §8.19): role="menu", arrow keys, Home/End, type-ahead,
  * Escape returns focus to the trigger.
  */
-export function Menu({ trigger, items, label, placement = 'bottom-end', minWidth = 180, className, onOpenChange }: MenuProps) {
+export function Menu({
+  trigger,
+  items,
+  label,
+  placement = 'bottom-end',
+  minWidth = 180,
+  className,
+  onOpenChange,
+}: MenuProps) {
   const [open, setOpenState] = useState(false);
   const [active, setActive] = useState(-1);
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -183,7 +191,8 @@ export function Menu({ trigger, items, label, placement = 'bottom-end', minWidth
   };
 
   const triggerLabel =
-    label ?? ((trigger.props as { label?: string; 'aria-label'?: string }).label ||
+    label ??
+    ((trigger.props as { label?: string; 'aria-label'?: string }).label ||
       (trigger.props as { 'aria-label'?: string })['aria-label']);
 
   return (
@@ -210,7 +219,8 @@ export function Menu({ trigger, items, label, placement = 'bottom-end', minWidth
             onKeyDown={onMenuKeyDown}
           >
             {items.map((item, index) => {
-              if (item.type === 'separator') return <div key={item.id} role="separator" className="pcp-menu__separator" />;
+              if (item.type === 'separator')
+                return <div key={item.id} role="separator" className="pcp-menu__separator" />;
               if (item.type === 'header')
                 return (
                   <div key={item.id} className="pcp-menu__header" role="presentation">
@@ -316,12 +326,20 @@ export function Popover({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onOpenChange]);
-  const triggerEl = cloneElement(trigger as ReactElement<{ onClick?: () => void; 'aria-expanded'?: boolean; 'aria-controls'?: string; 'aria-haspopup'?: string }>, {
-    'aria-haspopup': 'dialog',
-    'aria-expanded': open,
-    'aria-controls': open ? id : undefined,
-    onClick: () => onOpenChange(!open),
-  });
+  const triggerEl = cloneElement(
+    trigger as ReactElement<{
+      onClick?: () => void;
+      'aria-expanded'?: boolean;
+      'aria-controls'?: string;
+      'aria-haspopup'?: string;
+    }>,
+    {
+      'aria-haspopup': 'dialog',
+      'aria-expanded': open,
+      'aria-controls': open ? id : undefined,
+      onClick: () => onOpenChange(!open),
+    },
+  );
   return (
     <>
       <span ref={anchorRef} className="pcp-menu-anchor">

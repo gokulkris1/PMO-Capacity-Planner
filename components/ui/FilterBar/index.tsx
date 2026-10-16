@@ -22,7 +22,12 @@ export function FilterChip({ label, value, onRemove }: FilterChipProps) {
       <span className="pcp-filter-chip__text">
         <span className="pcp-filter-chip__label">{label}:</span> {value}
       </span>
-      <button type="button" className="pcp-filter-chip__remove" aria-label={`Remove filter ${label}: ${value}`} onClick={onRemove}>
+      <button
+        type="button"
+        className="pcp-filter-chip__remove"
+        aria-label={`Remove filter ${label}: ${value}`}
+        onClick={onRemove}
+      >
         <Icon icon={X} size={12} />
       </button>
     </span>

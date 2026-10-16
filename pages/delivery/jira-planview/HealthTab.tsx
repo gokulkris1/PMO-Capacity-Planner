@@ -2,7 +2,7 @@
 import { CircleAlert, CircleCheck, CircleDashed, CircleX, Hourglass, LoaderCircle, TriangleAlert } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { Banner, Card, EmptyState, KpiTile, StatusPill, fmt } from '../../plan/_kit';
-import type { DeliverySource } from '../_parts/deliverySource';
+import type { DeliverySource } from '../../../state';
 
 export function syncStatePill(state: D.SyncHealthDTO['state']) {
   switch (state) {

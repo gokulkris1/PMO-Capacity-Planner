@@ -5,7 +5,7 @@ import type * as D from '../../../../shared/contracts/dto';
 import type { PeopleImportResponse } from '../../../../shared/contracts/api';
 import { useMutations } from '../../../../state';
 import { Banner, Button, Checkbox, Dialog, StatusPill, downloadText, errorMessage } from '../../../plan/_kit';
-import { peopleTemplateCsv, validatePeopleCsv } from './peopleCsv';
+import { peopleTemplateCsv, validatePeopleCsv } from '../../../../utils/csvPeople';
 
 export function ImportPeopleDialog({
   snapshot: s,

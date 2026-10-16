@@ -52,7 +52,10 @@ function readTokens(): Record<ChartToken, string> {
 let cached: Record<ChartToken, string> | null = null;
 let cachedKey = '';
 function snapshot(): Record<ChartToken, string> {
-  const key = typeof document === 'undefined' ? '' : `${document.documentElement.dataset.theme ?? ''}|${document.documentElement.dataset.embedded ?? ''}`;
+  const key =
+    typeof document === 'undefined'
+      ? ''
+      : `${document.documentElement.dataset.theme ?? ''}|${document.documentElement.dataset.embedded ?? ''}`;
   if (!cached || key !== cachedKey) {
     cached = readTokens();
     cachedKey = key;
@@ -123,7 +126,16 @@ export interface ChartFrameProps {
 }
 
 /** Title, caption, legend and the mandatory Chart | Table switch (DESIGN_SYSTEM §11.4). */
-export function ChartFrame({ title, caption, legend, chart, table, actions, defaultView = 'chart', className }: ChartFrameProps) {
+export function ChartFrame({
+  title,
+  caption,
+  legend,
+  chart,
+  table,
+  actions,
+  defaultView = 'chart',
+  className,
+}: ChartFrameProps) {
   const [view, setView] = useState<'chart' | 'table'>(defaultView);
   return (
     <section className={cx('pcp-chart', className)} aria-label={title}>
@@ -182,7 +194,11 @@ function TooltipCard({
               </svg>
               <span className="pcp-chart__tooltip-name">{p.name}</span>
               <span className="pcp-chart__tooltip-value">
-                {typeof p.value === 'number' ? (unit === '%' ? `${Math.round(p.value)}%` : `${p.value.toFixed(1)} ${unit}`) : p.value}
+                {typeof p.value === 'number'
+                  ? unit === '%'
+                    ? `${Math.round(p.value)}%`
+                    : `${p.value.toFixed(1)} ${unit}`
+                  : p.value}
               </span>
             </li>
           ))}
@@ -222,7 +238,15 @@ const fmt = (v: number, unit: string) => (unit === '%' ? `${Math.round(v)}%` : `
  * Four-quarter stacked capacity chart: above (--chart-1), below (--chart-2), undeclared (--chart-3), free
  * hatched (--chart-bench), demand marker (--chart-4), dashed target (--chart-target), 2 px surface gaps.
  */
-export function StackedCapacityChart({ title, caption, data, unit = 'FTE', height = 280, actions, className }: StackedCapacityChartProps) {
+export function StackedCapacityChart({
+  title,
+  caption,
+  data,
+  unit = 'FTE',
+  height = 280,
+  actions,
+  className,
+}: StackedCapacityChartProps) {
   const c = useChartColors();
   const hasDemand = data.some((d) => d.demand !== undefined);
   const hasTarget = data.some((d) => d.target !== undefined);
@@ -235,20 +259,55 @@ export function StackedCapacityChart({ title, caption, data, unit = 'FTE', heigh
     ...(hasTarget ? [{ label: 'Supply', token: '--chart-target' as const, kind: 'dashed' as const }] : []),
   ];
   const summary = data
-    .map((d) => `${d.label}: ${fmt(d.above + d.below + d.undeclared, unit)} ${unit} booked, ${fmt(d.free, unit)} free${d.demand !== undefined ? `, ${fmt(d.demand, unit)} demand` : ''}`)
+    .map(
+      (d) =>
+        `${d.label}: ${fmt(d.above + d.below + d.undeclared, unit)} ${unit} booked, ${fmt(d.free, unit)} free${d.demand !== undefined ? `, ${fmt(d.demand, unit)} demand` : ''}`,
+    )
     .join('; ');
   const columns = useMemo<Column<CapacityDatum>[]>(
     () => [
       { id: 'q', header: 'Quarter', cell: (d) => `${d.label}${d.detail ? ` · ${d.detail}` : ''}` },
-      { id: 'above', header: 'Above the table', align: 'right', cell: (d) => fmt(d.above, unit), sortValue: (d) => d.above },
-      { id: 'below', header: 'Below the table', align: 'right', cell: (d) => fmt(d.below, unit), sortValue: (d) => d.below },
-      { id: 'und', header: 'Undeclared', align: 'right', cell: (d) => fmt(d.undeclared, unit), sortValue: (d) => d.undeclared },
+      {
+        id: 'above',
+        header: 'Above the table',
+        align: 'right',
+        cell: (d) => fmt(d.above, unit),
+        sortValue: (d) => d.above,
+      },
+      {
+        id: 'below',
+        header: 'Below the table',
+        align: 'right',
+        cell: (d) => fmt(d.below, unit),
+        sortValue: (d) => d.below,
+      },
+      {
+        id: 'und',
+        header: 'Undeclared',
+        align: 'right',
+        cell: (d) => fmt(d.undeclared, unit),
+        sortValue: (d) => d.undeclared,
+      },
       { id: 'free', header: 'Free', align: 'right', cell: (d) => fmt(d.free, unit), sortValue: (d) => d.free },
       ...(hasDemand
-        ? [{ id: 'demand', header: 'Demand', align: 'right' as const, cell: (d: CapacityDatum) => (d.demand !== undefined ? fmt(d.demand, unit) : '—') }]
+        ? [
+            {
+              id: 'demand',
+              header: 'Demand',
+              align: 'right' as const,
+              cell: (d: CapacityDatum) => (d.demand !== undefined ? fmt(d.demand, unit) : '—'),
+            },
+          ]
         : []),
       ...(hasTarget
-        ? [{ id: 'target', header: 'Supply', align: 'right' as const, cell: (d: CapacityDatum) => (d.target !== undefined ? fmt(d.target, unit) : '—') }]
+        ? [
+            {
+              id: 'target',
+              header: 'Supply',
+              align: 'right' as const,
+              cell: (d: CapacityDatum) => (d.target !== undefined ? fmt(d.target, unit) : '—'),
+            },
+          ]
         : []),
     ],
     [unit, hasDemand, hasTarget],
@@ -267,30 +326,93 @@ export function StackedCapacityChart({ title, caption, data, unit = 'FTE', heigh
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="28%">
               <defs>
-                <pattern id="pcp-bench-hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                <pattern
+                  id="pcp-bench-hatch"
+                  patternUnits="userSpaceOnUse"
+                  width="6"
+                  height="6"
+                  patternTransform="rotate(45)"
+                >
                   <rect width="6" height="6" fill={c['--chart-bench']} />
                   <line x1="0" y1="0" x2="0" y2="6" stroke={c['--chart-bench-hatch']} strokeWidth="1" />
                 </pattern>
               </defs>
               <CartesianGrid vertical={false} stroke={c['--chart-grid']} />
-              <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: c['--chart-grid'] }} tick={{ fill: c['--chart-axis'], fontSize: 12 }} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={{ stroke: c['--chart-grid'] }}
+                tick={{ fill: c['--chart-axis'], fontSize: 12 }}
+              />
               <YAxis
                 tickLine={false}
                 axisLine={false}
                 width={44}
                 tick={{ fill: c['--chart-axis'], fontSize: 12 }}
-                label={{ value: unit, angle: -90, position: 'insideLeft', fill: c['--chart-axis'], fontSize: 12, dx: 8 }}
+                label={{
+                  value: unit,
+                  angle: -90,
+                  position: 'insideLeft',
+                  fill: c['--chart-axis'],
+                  fontSize: 12,
+                  dx: 8,
+                }}
               />
               <ChartTooltip
                 cursor={{ fill: c['--chart-grid'], opacity: 0.4 }}
                 content={<TooltipCard unit={unit} basis={detailOf} />}
               />
-              <Bar dataKey="above" name="Above the table" stackId="s" fill={c['--chart-1']} stroke={stroke} strokeWidth={2} maxBarSize={32} isAnimationActive={false} />
-              <Bar dataKey="below" name="Below the table" stackId="s" fill={c['--chart-2']} stroke={stroke} strokeWidth={2} maxBarSize={32} isAnimationActive={false} />
-              <Bar dataKey="undeclared" name="Undeclared craft" stackId="s" fill={c['--chart-3']} stroke={stroke} strokeWidth={2} maxBarSize={32} isAnimationActive={false} />
-              <Bar dataKey="free" name="Free" stackId="s" fill="url(#pcp-bench-hatch)" stroke={stroke} strokeWidth={2} maxBarSize={32} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar
+                dataKey="above"
+                name="Above the table"
+                stackId="s"
+                fill={c['--chart-1']}
+                stroke={stroke}
+                strokeWidth={2}
+                maxBarSize={32}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="below"
+                name="Below the table"
+                stackId="s"
+                fill={c['--chart-2']}
+                stroke={stroke}
+                strokeWidth={2}
+                maxBarSize={32}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="undeclared"
+                name="Undeclared craft"
+                stackId="s"
+                fill={c['--chart-3']}
+                stroke={stroke}
+                strokeWidth={2}
+                maxBarSize={32}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey="free"
+                name="Free"
+                stackId="s"
+                fill="url(#pcp-bench-hatch)"
+                stroke={stroke}
+                strokeWidth={2}
+                maxBarSize={32}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              />
               {hasTarget ? (
-                <Line dataKey="target" name="Supply" stroke={c['--chart-target']} strokeWidth={2} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                <Line
+                  dataKey="target"
+                  name="Supply"
+                  stroke={c['--chart-target']}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  isAnimationActive={false}
+                />
               ) : null}
               {hasDemand ? (
                 <Line
@@ -307,7 +429,16 @@ export function StackedCapacityChart({ title, caption, data, unit = 'FTE', heigh
           </ResponsiveContainer>
         </div>
       }
-      table={<DataTable id={`chart-${title}`} caption={title} columns={columns} rows={data} getRowId={(d) => d.label} maxHeight="none" />}
+      table={
+        <DataTable
+          id={`chart-${title}`}
+          caption={title}
+          columns={columns}
+          rows={data}
+          getRowId={(d) => d.label}
+          maxHeight="none"
+        />
+      }
     />
   );
 }
@@ -339,9 +470,20 @@ export function TrendLine({
   const columns: Column<TrendDatum>[] = [
     { id: 'q', header: 'Period', cell: (d) => `${d.label}${d.detail ? ` · ${d.detail}` : ''}` },
     { id: 'p', header: 'Planned', align: 'right', cell: (d) => fmt(d.planned, unit), sortValue: (d) => d.planned },
-    { id: 'i', header: 'Jira-implied', align: 'right', cell: (d) => (d.implied === null ? '—' : fmt(d.implied, unit)), sortValue: (d) => d.implied },
+    {
+      id: 'i',
+      header: 'Jira-implied',
+      align: 'right',
+      cell: (d) => (d.implied === null ? '—' : fmt(d.implied, unit)),
+      sortValue: (d) => d.implied,
+    },
   ];
-  const summary = data.map((d) => `${d.label}: planned ${fmt(d.planned, unit)}, implied ${d.implied === null ? 'none' : fmt(d.implied, unit)}`).join('; ');
+  const summary = data
+    .map(
+      (d) =>
+        `${d.label}: planned ${fmt(d.planned, unit)}, implied ${d.implied === null ? 'none' : fmt(d.implied, unit)}`,
+    )
+    .join('; ');
   return (
     <ChartFrame
       title={title}
@@ -356,16 +498,45 @@ export function TrendLine({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke={c['--chart-grid']} />
-              <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: c['--chart-grid'] }} tick={{ fill: c['--chart-axis'], fontSize: 12 }} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={{ stroke: c['--chart-grid'] }}
+                tick={{ fill: c['--chart-axis'], fontSize: 12 }}
+              />
               <YAxis tickLine={false} axisLine={false} width={44} tick={{ fill: c['--chart-axis'], fontSize: 12 }} />
               <ChartTooltip content={<TooltipCard unit={unit} />} cursor={{ stroke: c['--chart-grid'] }} />
-              <Line dataKey="planned" name="Planned" stroke={c['--chart-1']} strokeWidth={2} dot={data.length <= 6 ? { r: 4 } : false} isAnimationActive={false} />
-              <Line dataKey="implied" name="Jira-implied" stroke={c['--chart-2']} strokeWidth={2} dot={data.length <= 6 ? { r: 4 } : false} connectNulls isAnimationActive={false} />
+              <Line
+                dataKey="planned"
+                name="Planned"
+                stroke={c['--chart-1']}
+                strokeWidth={2}
+                dot={data.length <= 6 ? { r: 4 } : false}
+                isAnimationActive={false}
+              />
+              <Line
+                dataKey="implied"
+                name="Jira-implied"
+                stroke={c['--chart-2']}
+                strokeWidth={2}
+                dot={data.length <= 6 ? { r: 4 } : false}
+                connectNulls
+                isAnimationActive={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
       }
-      table={<DataTable id={`chart-${title}`} caption={title} columns={columns} rows={data} getRowId={(d) => d.label} maxHeight="none" />}
+      table={
+        <DataTable
+          id={`chart-${title}`}
+          caption={title}
+          columns={columns}
+          rows={data}
+          getRowId={(d) => d.label}
+          maxHeight="none"
+        />
+      }
     />
   );
 }

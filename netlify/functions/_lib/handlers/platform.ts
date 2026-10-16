@@ -3,6 +3,8 @@
  * the database). "Active sessions" counts users who signed in within the session lifetime (7 days): sessions are
  * stateless JWTs, so this is the best available measure. Audited as support.access.
  */
+import type { PlatformOverview } from '../../../../shared/contracts/api';
+import type { Plan } from '../../../../shared/contracts/dto';
 import type { Ctx } from '../api';
 import { auditCtx, requireActor } from '../api';
 import { auditBestEffort } from '../audit';
@@ -10,26 +12,7 @@ import { iso, num, one } from '../db';
 import { forbidden } from '../errors';
 import { SESSION_MAX_AGE_SEC } from '../http';
 
-export interface PlatformOverview {
-  orgs: number;
-  workspaces: number;
-  users: number;
-  platformAdmins: number;
-  activeSessions: number;
-  signInsLast24h: number;
-  unverifiedUsers: number;
-  syncHealth: {
-    queued: number;
-    running: number;
-    stuck: number;
-    succeeded24h: number;
-    failed24h: number;
-    partial24h: number;
-    lastFailureAt: string | null;
-    workspacesWithJira: number;
-  };
-  generatedAt: string;
-}
+export type { PlatformOverview };
 
 export async function platformOverview(ctx: Ctx): Promise<PlatformOverview> {
   const actor = requireActor(ctx);
@@ -53,6 +36,18 @@ export async function platformOverview(ctx: Ctx): Promise<PlatformOverview> {
        (SELECT max(finished_at) FROM sync_jobs WHERE status = 'failed') AS last_failure,
        (SELECT count(*) FROM workspace_integrations WHERE provider = 'jira' AND secret_enc IS NOT NULL) AS jira_ws`,
     [SESSION_MAX_AGE_SEC],
+  );
+  const orgRows = await ctx.db.query(
+    `SELECT o.id, o.name, o.slug, o.plan,
+       (SELECT count(*) FROM org_memberships m WHERE m.org_id = o.id) AS members,
+       (SELECT count(*) FROM workspaces w WHERE w.org_id = o.id) AS workspaces,
+       (SELECT max(e.occurred_at) FROM audit_events e WHERE e.org_id = o.id) AS last_activity
+     FROM organizations o ORDER BY o.name LIMIT 500`,
+  );
+  const eventRows = await ctx.db.query(
+    `SELECT e.id::text AS id, e.occurred_at, e.action, coalesce(u.name, u.email, e.actor_type) AS actor, o.name AS org_name
+     FROM audit_events e LEFT JOIN users u ON u.id = e.actor_user_id LEFT JOIN organizations o ON o.id = e.org_id
+     ORDER BY e.id DESC LIMIT 50`,
   );
   await auditBestEffort(ctx.db, auditCtx(ctx, 'platform_admin'), {
     action: 'support.access',
@@ -78,6 +73,22 @@ export async function platformOverview(ctx: Ctx): Promise<PlatformOverview> {
       lastFailureAt: iso(c?.last_failure),
       workspacesWithJira: n('jira_ws'),
     },
+    organisations: orgRows.map((o) => ({
+      id: String(o.id),
+      name: String(o.name ?? ''),
+      slug: String(o.slug ?? ''),
+      plan: (['BASIC', 'PRO', 'MAX', 'ENTERPRISE'].includes(String(o.plan)) ? String(o.plan) : 'BASIC') as Plan,
+      members: num(o.members, 0),
+      workspaces: num(o.workspaces, 0),
+      lastActivityAt: iso(o.last_activity),
+    })),
+    events: eventRows.map((e) => ({
+      id: String(e.id),
+      at: iso(e.occurred_at) ?? new Date(0).toISOString(),
+      actor: String(e.actor ?? 'System'),
+      action: String(e.action ?? ''),
+      org: e.org_name == null ? null : String(e.org_name),
+    })),
     generatedAt: new Date().toISOString(),
   };
 }

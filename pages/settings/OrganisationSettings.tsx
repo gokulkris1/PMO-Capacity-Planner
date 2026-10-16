@@ -19,7 +19,7 @@ import {
   useToast,
   type Column,
 } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { SectionBody, SectionHeader, errorText } from './common';
 
 /** Settings › Organisation (ST-01#AC2/#AC3, AC-09#AC3). Org Admin only. */

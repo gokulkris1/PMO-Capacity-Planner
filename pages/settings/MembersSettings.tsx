@@ -26,7 +26,7 @@ import {
   useToast,
   type Column,
 } from '../../components/ui';
-import { rememberDemoInvitation, useClientGaps, type PendingInvitation } from '../../components/shell/clientGaps';
+import { rememberDemoInvitation, useClientGaps, type PendingInvitation } from '../../state';
 import { SectionBody, SectionHeader, errorText } from './common';
 
 const WS_ROLES: WorkspaceRole[] = ['WORKSPACE_ADMIN', 'PLANNER', 'CONTRIBUTOR', 'VIEWER'];

@@ -22,7 +22,7 @@ import {
   toast,
   useWsPath,
 } from '../../plan/_kit';
-import type { DeliverySource, PlanviewApplyResult, PlanviewFieldTest } from '../_parts/deliverySource';
+import type { DeliverySource, PlanviewApplyResult, PlanviewFieldTest } from '../../../state';
 
 type Section =
   | 'projects.new'

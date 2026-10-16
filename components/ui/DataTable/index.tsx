@@ -297,7 +297,11 @@ export function DataTable<T>({
             <th
               key={c.id}
               scope="rowgroup"
-              className={cx('pcp-table__cell', stickyFirstColumn && 'pcp-table__sticky', selectable && 'pcp-table__sticky--after-check')}
+              className={cx(
+                'pcp-table__cell',
+                stickyFirstColumn && 'pcp-table__sticky',
+                selectable && 'pcp-table__sticky--after-check',
+              )}
             >
               <button
                 type="button"
@@ -318,7 +322,14 @@ export function DataTable<T>({
               </button>
             </th>
           ) : (
-            <td key={c.id} className={cx('pcp-table__cell', c.align === 'right' && 'pcp-table__cell--num', c.flush && 'pcp-table__cell--flush')}>
+            <td
+              key={c.id}
+              className={cx(
+                'pcp-table__cell',
+                c.align === 'right' && 'pcp-table__cell--num',
+                c.flush && 'pcp-table__cell--flush',
+              )}
+            >
               {c.groupCell ? c.groupCell(item.rows, item.id) : null}
             </td>
           ),
@@ -438,7 +449,11 @@ export function DataTable<T>({
           role="region"
           aria-label={caption}
         >
-          <table className="pcp-table" aria-rowcount={useVirtual ? items.length + 1 : undefined} aria-busy={status === 'loading' || undefined}>
+          <table
+            className="pcp-table"
+            aria-rowcount={useVirtual ? items.length + 1 : undefined}
+            aria-busy={status === 'loading' || undefined}
+          >
             <caption className={showCaption ? 'pcp-table__caption' : 'pcp-sr-only'}>{caption}</caption>
             <thead>
               <tr>
@@ -459,7 +474,15 @@ export function DataTable<T>({
                     <th
                       key={c.id}
                       scope="col"
-                      aria-sort={c.sortValue ? (sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none') : undefined}
+                      aria-sort={
+                        c.sortValue
+                          ? sorted === 'asc'
+                            ? 'ascending'
+                            : sorted === 'desc'
+                              ? 'descending'
+                              : 'none'
+                          : undefined
+                      }
                       className={cx(
                         'pcp-table__head',
                         c.align === 'right' && 'pcp-table__cell--num',
@@ -488,7 +511,9 @@ export function DataTable<T>({
             </thead>
             <tbody>{body}</tbody>
           </table>
-          {status === 'loading' ? <Skeleton variant="table" density={density} label={caption} className="pcp-table__skeleton" /> : null}
+          {status === 'loading' ? (
+            <Skeleton variant="table" density={density} label={caption} className="pcp-table__skeleton" />
+          ) : null}
           {isEmpty ? (
             <div className="pcp-table__empty">
               {empty ?? <EmptyState icon={Inbox} title="Nothing to show yet" compact />}

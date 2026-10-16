@@ -30,7 +30,16 @@ export interface BannerProps {
 }
 
 /** Page- or card-level message; one page-level banner at a time (DESIGN_SYSTEM §8.14). */
-export function Banner({ tone = 'info', title, children, action, actionNode, onDismiss, icon, className }: BannerProps) {
+export function Banner({
+  tone = 'info',
+  title,
+  children,
+  action,
+  actionNode,
+  onDismiss,
+  icon,
+  className,
+}: BannerProps) {
   const live = tone === 'danger' ? 'alert' : 'status';
   return (
     <div className={cx('pcp-banner', `pcp-banner--${tone}`, className)} role={live}>

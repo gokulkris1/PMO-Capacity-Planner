@@ -9,7 +9,7 @@ import type * as D from '../../../shared/contracts/dto';
 import { useQuarters } from '../../../state';
 import { buildTribeView } from '../../../utils/viewModels';
 import { Card, EmptyState, PageBody, PageHeader, StatusPill, fmt, useWsPath } from '../../plan/_kit';
-import { deliverySignal, useDelivery } from '../../delivery/_parts/deliverySource';
+import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
 import './tribes.css';
 
 export default function TribesPage() {

@@ -1,10 +1,10 @@
-/** Jira project ↔ planner project and tribe mapping (JI-02): auto-match, edit, confirm selected in one call. */
+/** Jira project to planner project and tribe mapping (JI-02): auto-match, edit, confirm selected in one call. */
 import { useMemo, useState } from 'react';
 import { Check, WandSparkles } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
 import { Button, Card, Checkbox, Select, StatusPill, cx, useAction } from '../../plan/_kit';
-import type { DeliverySource } from '../_parts/deliverySource';
+import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<
   D.JiraProjectMappingDTO['matchMethod'],

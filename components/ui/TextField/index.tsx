@@ -75,9 +75,7 @@ export interface DateFieldProps extends Omit<TextFieldProps, 'type' | 'leadingIc
 
 /** Native date input styled like TextField with a CalendarDays icon. */
 export function DateField({ className, ...rest }: DateFieldProps) {
-  return (
-    <TextField type="date" leadingIcon={CalendarDays} className={cx('pcp-control--date', className)} {...rest} />
-  );
+  return <TextField type="date" leadingIcon={CalendarDays} className={cx('pcp-control--date', className)} {...rest} />;
 }
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {

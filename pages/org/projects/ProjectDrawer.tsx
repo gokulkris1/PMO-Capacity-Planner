@@ -28,7 +28,7 @@ import {
   useWsPath,
 } from '../../plan/_kit';
 import { DemandCellDialog } from '../../plan/demand/DemandCellDialog';
-import { deliverySignal, useDelivery } from '../../delivery/_parts/deliverySource';
+import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
 
 type TabId = 'details' | 'demand' | 'staffing' | 'delivery' | 'links';
 const STATUSES: D.ProjectStatus[] = ['Planning', 'Active', 'On Hold', 'Completed'];

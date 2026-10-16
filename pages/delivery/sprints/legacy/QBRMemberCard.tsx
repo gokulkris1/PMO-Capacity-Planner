@@ -1,15 +1,15 @@
 import React from 'react';
-import { QBRMember, QBRBooking, QBRSprint, QBRProject } from '../../types';
+import { QBRMember, QBRBooking, QBRSprint, QBRProject } from '../../../../types';
 
 /* ── Colours (light design-system tokens, see index.css) ───────── */
 const c = {
-    card: '#fff', surface: 'var(--n-200)', track: 'var(--n-300)',
-    border: 'var(--n-300)', text: 'var(--n-800)', muted: 'var(--n-600)',
-    accent: 'var(--brand-500)', accentBg: 'var(--brand-50)',
-    green: 'var(--optimal)', greenBg: 'var(--optimal-bg)',
-    red: 'var(--over)', redBg: 'var(--over-bg)',
+    card: '#fff', surface: 'var(--color-surface-sunken)', track: 'var(--color-border)',
+    border: 'var(--color-border)', text: 'var(--color-text)', muted: 'var(--color-text-tertiary)',
+    accent: 'var(--color-primary)', accentBg: 'var(--color-primary-subtle)',
+    green: 'var(--color-success)', greenBg: 'var(--color-success-bg)',
+    red: 'var(--color-danger)', redBg: 'var(--color-danger-bg)',
     // --high (#FFAB00) is too light to read as text on white; use a dark amber for text
-    amber: '#974F0C', amberBg: 'var(--high-bg)',
+    amber: '#974F0C', amberBg: 'var(--color-warning-bg)',
     pink: '#C9357E', pinkBg: '#FFE9F3',
 };
 
@@ -37,7 +37,7 @@ export function QBRMemberCard({ member, bookings, sprints, projects, onClose }: 
         : 0;
 
     const utilColor = avgUtil > 100 ? c.red : avgUtil > 80 ? c.amber : avgUtil > 50 ? c.green : c.muted;
-    const utilFill = avgUtil > 100 ? 'var(--over)' : avgUtil > 80 ? 'var(--high)' : avgUtil > 50 ? 'var(--optimal)' : 'var(--n-500)';
+    const utilFill = avgUtil > 100 ? 'var(--color-danger)' : avgUtil > 80 ? 'var(--color-warning)' : avgUtil > 50 ? 'var(--color-success)' : 'var(--color-text-tertiary)';
 
     // Group bookings by project
     const projectGroups: Record<string, { name: string; color: string; bookings: QBRBooking[] }> = {};
@@ -54,7 +54,7 @@ export function QBRMemberCard({ member, bookings, sprints, projects, onClose }: 
             position: 'fixed', top: 0, right: 0, bottom: 0, width: 380,
             background: c.card, borderLeft: `1px solid ${c.border}`, color: c.text,
             zIndex: 1000, display: 'flex', flexDirection: 'column',
-            boxShadow: 'var(--shadow-lg)',
+            boxShadow: 'var(--elevation-3)',
         }}>
             {/* Header */}
             <div style={{
@@ -63,7 +63,7 @@ export function QBRMemberCard({ member, bookings, sprints, projects, onClose }: 
             }}>
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                     <div style={{
-                        width: 48, height: 48, borderRadius: 'var(--radius-xl)',
+                        width: 48, height: 48, borderRadius: 'var(--radius-lg)',
                         background: member.avatar_color + '25', color: member.avatar_color,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 16, fontWeight: 800,

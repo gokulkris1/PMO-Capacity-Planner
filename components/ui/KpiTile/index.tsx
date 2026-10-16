@@ -39,7 +39,10 @@ function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(...values);
   const span = max - min || 1;
   const points = values
-    .map((v, i) => `${((i / (values.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((v - min) / span) * (h - 4)).toFixed(1)}`)
+    .map(
+      (v, i) =>
+        `${((i / (values.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((v - min) / span) * (h - 4)).toFixed(1)}`,
+    )
     .join(' ');
   return (
     <svg className="pcp-kpi__spark" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false">

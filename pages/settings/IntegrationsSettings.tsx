@@ -15,7 +15,7 @@ import {
   formatDate,
   useToast,
 } from '../../components/ui';
-import { useClientGaps, type JiraConnection, type PlanviewConnection } from '../../components/shell/clientGaps';
+import { useClientGaps, type JiraConnection, type PlanviewConnection } from '../../state';
 import { SectionBody, SectionHeader, errorText } from './common';
 
 const STATUS: Record<JiraConnection['status'], { tone: 'neutral' | 'success' | 'danger'; label: string }> = {

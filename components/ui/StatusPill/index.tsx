@@ -208,7 +208,11 @@ export interface BadgeProps {
 /** Count badge: 16 px, radius full, "99+" above 99 (DESIGN_SYSTEM §8.7). */
 export function Badge({ count, tone = 'brand', label, className }: BadgeProps) {
   return (
-    <span className={cx('pcp-badge', `pcp-badge--${tone}`, 'pcp-tnum', className)} aria-label={label} role={label ? 'img' : undefined}>
+    <span
+      className={cx('pcp-badge', `pcp-badge--${tone}`, 'pcp-tnum', className)}
+      aria-label={label}
+      role={label ? 'img' : undefined}
+    >
       {count > 99 ? '99+' : count}
     </span>
   );

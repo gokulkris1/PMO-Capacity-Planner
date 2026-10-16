@@ -27,7 +27,7 @@ import {
   useWsPath,
 } from '../../plan/_kit';
 import { CalibrationDialog } from '../../delivery/_parts/CalibrationDialog';
-import { useDelivery } from '../../delivery/_parts/deliverySource';
+import { useDelivery } from '../../../state';
 import './tribes.css';
 
 export default function TribeDetailPage() {

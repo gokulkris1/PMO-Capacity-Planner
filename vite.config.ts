@@ -9,14 +9,30 @@ const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as
 
 /** Vendor chunks (SH-08#AC3): Recharts and the PDF stack load only with the pages that use them. */
 function manualChunks(id: string): string | undefined {
+  // Vite's preload helper and Rollup's CommonJS helpers are shared by every lazy import. Without this rule Rollup
+  // hoists them into whichever vendor chunk asks first (jsPDF's own dynamic imports), which then drags the whole
+  // PDF stack into the entry chunk (SH-08).
+  if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'runtime';
   if (!id.includes('node_modules')) return undefined;
-  if (/node_modules\/(recharts|d3-[^/]+|victory-vendor|decimal\.js-light|internmap|es-toolkit|immer|reselect|@reduxjs|react-redux|redux)\//.test(id)) {
+  if (
+    /node_modules\/(recharts|d3-[^/]+|victory-vendor|decimal\.js-light|internmap|es-toolkit|immer|reselect|@reduxjs|react-redux|redux)\//.test(
+      id,
+    )
+  ) {
     return 'vendor-charts';
   }
-  if (/node_modules\/(jspdf|jspdf-autotable|html2canvas|canvg|dompurify|fflate|core-js|raf|rgbcolor|stackblur-canvas|svg-pathdata)\//.test(id)) {
+  if (
+    /node_modules\/(jspdf|jspdf-autotable|html2canvas|canvg|dompurify|fflate|core-js|raf|rgbcolor|stackblur-canvas|svg-pathdata)\//.test(
+      id,
+    )
+  ) {
     return 'vendor-pdf';
   }
-  if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run|cookie|set-cookie-parser)\//.test(id)) {
+  if (
+    /node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run|cookie|set-cookie-parser)\//.test(
+      id,
+    )
+  ) {
     return 'vendor-react';
   }
   if (/node_modules\/lucide-react\//.test(id)) return 'vendor-icons';
@@ -34,10 +50,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     // SH-10: version shown in Help › What's new. No secrets are ever defined here (HS-15).
-    // package.json stays 0.0.0 until I sets 2.0.0 (SH-10#AC3); this codebase is Release 2.0.
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
-      process.env.VITE_APP_VERSION ?? (pkg.version === '0.0.0' ? '2.0.0' : pkg.version),
-    ),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.VITE_APP_VERSION ?? pkg.version),
   },
   resolve: {
     alias: { '@': root },

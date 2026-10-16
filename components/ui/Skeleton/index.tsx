@@ -19,7 +19,15 @@ function Bar({ width, height, className }: { width?: number | string; height?: n
 }
 
 /** Loading placeholders with a shimmer (off with reduced motion). Pages use these, not spinners. */
-export function Skeleton({ variant = 'text', label, lines, width, height, density = 'compact', className }: SkeletonProps) {
+export function Skeleton({
+  variant = 'text',
+  label,
+  lines,
+  width,
+  height,
+  density = 'compact',
+  className,
+}: SkeletonProps) {
   const sr = label ? <span className="pcp-sr-only">Loading {label}</span> : null;
   if (variant === 'block') {
     return (

@@ -14,7 +14,7 @@ import {
   TextField,
   formatDate,
 } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { useHomeHref } from '../../components/shell/guards';
 import { AuthForm, AuthLayout, MIN_PASSWORD, authErrorMessage } from './AuthLayout';
 

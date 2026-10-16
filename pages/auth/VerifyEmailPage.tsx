@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MailCheck } from 'lucide-react';
 import { useSession } from '../../state';
 import { Banner, Button, CodeInput, Icon, LinkButton } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { useHomeHref } from '../../components/shell/guards';
 import { AuthForm, AuthLayout, authErrorMessage } from './AuthLayout';
 

@@ -168,12 +168,54 @@ export default function App() {
       <AppProviders>
         <Routes>
           {/* Auth and first run (ST-07, ST-08, AC-05, AC-07) */}
-          <Route path="/" element={<FullPage><A.login /></FullPage>} />
-          <Route path="/login" element={<FullPage><A.login /></FullPage>} />
-          <Route path="/register" element={<FullPage><A.register /></FullPage>} />
-          <Route path="/reset" element={<FullPage><A.reset /></FullPage>} />
-          <Route path="/verify-email" element={<FullPage><A.verifyEmail /></FullPage>} />
-          <Route path="/invite/:token" element={<FullPage><A.invite /></FullPage>} />
+          <Route
+            path="/"
+            element={
+              <FullPage>
+                <A.login />
+              </FullPage>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <FullPage>
+                <A.login />
+              </FullPage>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <FullPage>
+                <A.register />
+              </FullPage>
+            }
+          />
+          <Route
+            path="/reset"
+            element={
+              <FullPage>
+                <A.reset />
+              </FullPage>
+            }
+          />
+          <Route
+            path="/verify-email"
+            element={
+              <FullPage>
+                <A.verifyEmail />
+              </FullPage>
+            }
+          />
+          <Route
+            path="/invite/:token"
+            element={
+              <FullPage>
+                <A.invite />
+              </FullPage>
+            }
+          />
           <Route
             path="/create"
             element={
@@ -214,7 +256,14 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Page><NotFoundPage fullPage /></Page>} />
+          <Route
+            path="*"
+            element={
+              <Page>
+                <NotFoundPage fullPage />
+              </Page>
+            }
+          />
         </Routes>
       </AppProviders>
     </Router>

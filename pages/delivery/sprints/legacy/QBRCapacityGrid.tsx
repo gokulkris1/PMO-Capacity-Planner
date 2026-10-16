@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { QBRMember, QBRProject, QBRSprint, QBRBooking, QBRTribe, QBRChapter, QBRCoE } from '../../types';
+import { QBRMember, QBRProject, QBRSprint, QBRBooking, QBRTribe, QBRChapter, QBRCoE } from '../../../../types';
 
 /* ── Colours (light design-system tokens, see index.css) ───────── */
 const c = {
-    card: '#fff', cardHover: 'var(--n-100)', surface: 'var(--n-200)',
-    border: 'var(--n-300)', text: 'var(--n-800)', muted: 'var(--n-600)',
-    placeholder: 'var(--n-500)',
-    accent: 'var(--brand-500)', accentBg: 'var(--brand-50)',
-    green: 'var(--optimal)', greenBg: 'var(--optimal-bg)',
-    red: 'var(--over)', redBg: 'var(--over-bg)',
+    card: '#fff', cardHover: 'var(--color-bg)', surface: 'var(--color-surface-sunken)',
+    border: 'var(--color-border)', text: 'var(--color-text)', muted: 'var(--color-text-tertiary)',
+    placeholder: 'var(--color-text-tertiary)',
+    accent: 'var(--color-primary)', accentBg: 'var(--color-primary-subtle)',
+    green: 'var(--color-success)', greenBg: 'var(--color-success-bg)',
+    red: 'var(--color-danger)', redBg: 'var(--color-danger-bg)',
     // --high (#FFAB00) is too light to read as text on white; use a dark amber for text
-    amber: '#974F0C', amberBg: 'var(--high-bg)',
+    amber: '#974F0C', amberBg: 'var(--color-warning-bg)',
 };
 
 interface Props {
@@ -30,11 +30,11 @@ interface Props {
 
 /* Heat-map tints: light status backgrounds that stay readable under dark text. */
 const HEAT_STEPS = [
-    { label: '0-30%', bg: 'var(--optimal-bg)' },
+    { label: '0-30%', bg: 'var(--color-success-bg)' },
     { label: '31-60%', bg: '#ABF5D1' },
-    { label: '61-80%', bg: 'var(--high-bg)' },
+    { label: '61-80%', bg: 'var(--color-warning-bg)' },
     { label: '81-100%', bg: '#FFE380' },
-    { label: '100%+', bg: 'var(--over-bg)' },
+    { label: '100%+', bg: 'var(--color-danger-bg)' },
 ];
 
 function heatColor(pct: number): string {
@@ -267,7 +267,7 @@ export function QBRCapacityGrid({
                                     const avgUtil = getMemberAvgUtil(member.id);
                                     return (
                                         <tr key={member.id} style={{
-                                            borderBottom: `1px solid ${idx < group.members.length - 1 ? 'var(--n-200)' : c.border}`,
+                                            borderBottom: `1px solid ${idx < group.members.length - 1 ? 'var(--color-surface-sunken)' : c.border}`,
                                         }}>
                                             {/* Member name */}
                                             <td onClick={() => onSelectMember(member)} style={{
@@ -311,7 +311,7 @@ export function QBRCapacityGrid({
                                                             background: heatColor(total), cursor: 'pointer',
                                                             transition: 'background 0.15s',
                                                             position: 'relative',
-                                                            borderLeft: '1px solid var(--n-200)',
+                                                            borderLeft: '1px solid var(--color-surface-sunken)',
                                                         }}>
                                                         {isEditing ? (
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: 2 }}

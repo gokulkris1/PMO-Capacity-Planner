@@ -72,7 +72,11 @@ export function NumberField({
   });
 
   const rangeText =
-    min !== undefined && max !== undefined ? `Enter ${min}–${max}` : min !== undefined ? `Enter ${min} or more` : `Enter ${max} or less`;
+    min !== undefined && max !== undefined
+      ? `Enter ${min}–${max}`
+      : min !== undefined
+        ? `Enter ${min} or more`
+        : `Enter ${max} or less`;
 
   const commit = (text: string) => {
     const trimmed = text.trim().replace(',', '.');

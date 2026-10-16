@@ -20,6 +20,7 @@ import {
   type LoginResponse,
   type MemberDTO,
   type MemberPatch,
+  type MePatchRequest,
   type NewAllocation,
   type NewDemandLine,
   type NewPerson,
@@ -28,6 +29,7 @@ import {
   type PeopleBulkRequest,
   type PeopleImportRequest,
   type PeopleImportResponse,
+  type PlatformOverview,
   type ProposeRequest,
   type RespondRequest,
 } from '../../shared/contracts/api';
@@ -98,7 +100,7 @@ export function createApiClient(t: Transport) {
         post<{ emailVerificationRequired: true }>(API.register, r),
       logout: () => post<void>(API.logout),
       /** Signs out of every device (AC-03#AC6): increments the user's token version. */
-      logoutEverywhere: () => post<void>(API.logout, { everywhere: true }),
+      logoutEverywhere: () => post<void>(API.logoutAll),
       refresh: () => post<{ ok: true }>(API.refresh),
       resetSend: (email: string) => post<{ sent: true }>(API.resetSend, { email }),
       resetConfirm: (r: { email: string; otp: string; newPassword: string }) =>
@@ -111,7 +113,7 @@ export function createApiClient(t: Transport) {
         post<{ verified: true }>(API.verifyCheck, email ? { email, code } : { code }),
       me: () => get<D.MeResponse>(API.me),
       /** ST-01#AC4 profile name. Not in the §4.3 table yet: requested from A (handoff-C.md §7). */
-      updateProfile: (r: { name: string }) => patch<D.SessionUser>(API.me, r),
+      updateProfile: (r: MePatchRequest) => patch<D.MeResponse>(API.me, r),
     },
 
     health: () => get<HealthResponse>(API.health),
@@ -157,7 +159,7 @@ export function createApiClient(t: Transport) {
         >(API.invitations(orgId)),
       revoke: (orgId: D.ID, id: D.ID) => del(API.invitations(orgId, id)),
       /** ST-02#AC1 "Resend". Not in the §4.3 table yet: requested from A (handoff-C.md §7). */
-      resend: (orgId: D.ID, id: D.ID) => post<InvitationResponse>(`${API.invitations(orgId, id)}/resend`),
+      resend: (orgId: D.ID, id: D.ID) => post<InvitationResponse>(API.invitationResend(orgId, id)),
       lookup: (token: string) => get<InvitationLookup>(API.invitationByToken(token)),
       accept: (token: string, r: { name?: string; password?: string }) =>
         post<{ user: D.SessionUser }>(API.invitationAccept(token), r),
@@ -282,7 +284,7 @@ export function createApiClient(t: Transport) {
 
     /** ST-09 cockpit. `GET /api/v2/platform/overview` is requested from A (handoff-C.md §7). */
     platform: {
-      overview: () => get<PlatformOverviewResponse>(LEGACY.platformOverview),
+      overview: () => get<PlatformOverview>(API.platformOverview),
     },
   };
 }
@@ -293,7 +295,6 @@ export const LEGACY = {
   jiraTest: '/api/integrations/jira/test',
   planviewTest: '/api/integrations/planview/test',
   checkout: '/api/checkout',
-  platformOverview: '/api/v2/platform/overview',
 } as const;
 
 export interface LegacyIntegrationConfig {
@@ -330,16 +331,5 @@ export interface LegacyIntegrationSave {
   };
 }
 
-export interface PlatformOverviewResponse {
-  stats: { orgs: number; users: number; workspaces: number; activeLast30d: number };
-  orgs: Array<{
-    id: D.ID;
-    name: string;
-    slug: string;
-    plan: D.Plan;
-    members: number;
-    workspaces: number;
-    lastActivityAt: D.ISODateTime | null;
-  }>;
-  events: Array<{ id: string; at: D.ISODateTime; actor: string; action: string; org: string | null }>;
-}
+/** @deprecated use `PlatformOverview` from shared/contracts/api. */
+export type PlatformOverviewResponse = PlatformOverview;

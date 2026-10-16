@@ -32,7 +32,7 @@ import {
   useWsPath,
 } from '../../plan/_kit';
 import { BookingDatesDialog } from '../../plan/_parts/BookingDatesDialog';
-import { useDelivery } from '../../delivery/_parts/deliverySource';
+import { useDelivery } from '../../../state';
 
 type TabId = 'profile' | 'crafts' | 'load' | 'bookings' | 'identity';
 

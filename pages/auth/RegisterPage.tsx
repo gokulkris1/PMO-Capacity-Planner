@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Banner, Button, FormField, PasswordField, TextField } from '../../components/ui';
 import { SIGNUP_ENABLED } from '../../components/shell/env';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { NotFoundPage } from '../system/SystemPages';
 import { AuthForm, AuthLayout, MIN_PASSWORD, authErrorMessage, isEmail } from './AuthLayout';
 

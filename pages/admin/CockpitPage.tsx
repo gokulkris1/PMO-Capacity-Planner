@@ -21,11 +21,11 @@ import {
   type Column,
 } from '../../components/ui';
 import { Wordmark } from '../../components/shell/ProductMark';
-import { useClientGaps, type PlatformOverview } from '../../components/shell/clientGaps';
+import { useClientGaps, type PlatformOverview } from '../../state';
 import { NotFoundPage } from '../system/SystemPages';
 import './cockpit.css';
 
-type OrgRow = PlatformOverview['orgs'][number];
+type OrgRow = PlatformOverview['organisations'][number];
 type EventRow = PlatformOverview['events'][number];
 const PLAN_TONE: Record<Plan, 'neutral' | 'brand' | 'info' | 'success'> = {
   BASIC: 'neutral',
@@ -142,7 +142,7 @@ export default function CockpitPage() {
     { id: 'org', header: 'Organisation', sortValue: (e) => e.org ?? '', cell: (e) => e.org ?? '—' },
   ];
 
-  const orgs = (data?.orgs ?? []).filter(
+  const orgs = (data?.organisations ?? []).filter(
     (o) => !query || o.name.toLowerCase().includes(query.toLowerCase()) || o.slug.includes(query.toLowerCase()),
   );
 
@@ -188,10 +188,14 @@ export default function CockpitPage() {
             </KpiGrid>
           ) : data ? (
             <KpiGrid label="Platform figures">
-              <KpiTile label="Organisations" value={data.stats.orgs} caption="All time" />
-              <KpiTile label="Users" value={data.stats.users} caption="All time" />
-              <KpiTile label="Workspaces" value={data.stats.workspaces} caption="All time" />
-              <KpiTile label="Active users" value={data.stats.activeLast30d} caption="Last 30 days" />
+              <KpiTile label="Organisations" value={data.orgs} caption="All time" />
+              <KpiTile label="Users" value={data.users} caption={`${data.unverifiedUsers} unverified`} />
+              <KpiTile
+                label="Workspaces"
+                value={data.workspaces}
+                caption={`${data.syncHealth.workspacesWithJira} with Jira`}
+              />
+              <KpiTile label="Active users" value={data.activeSessions} caption="Signed in, last 7 days" />
             </KpiGrid>
           ) : null}
           <DataTable

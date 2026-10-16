@@ -87,7 +87,10 @@ export function PageHeader({
           <div className="pcp-page-header__actions">
             {actions}
             {overflow && overflow.length > 0 ? (
-              <Menu trigger={<IconButton icon={Ellipsis} label="More actions" variant="secondary" />} items={overflow} />
+              <Menu
+                trigger={<IconButton icon={Ellipsis} label="More actions" variant="secondary" />}
+                items={overflow}
+              />
             ) : null}
           </div>
         ) : null}

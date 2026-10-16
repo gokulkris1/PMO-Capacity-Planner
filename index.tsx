@@ -2,8 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/inter';
 import './index.css';
-// TEMPORARY: v1.1 variable names mapped onto 2.0 tokens for screens not yet migrated (see the file header).
-import './styles/legacy-aliases.css';
+import { DataProvider } from './state';
 import App from './App';
 
 const rootElement = document.getElementById('root');
@@ -16,6 +15,8 @@ document.documentElement.dataset.theme = 'light';
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <DataProvider forceDemo={import.meta.env.MODE === 'demo'}>
+      <App />
+    </DataProvider>
   </StrictMode>,
 );

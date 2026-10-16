@@ -47,19 +47,8 @@ export interface PlanviewConnection {
   fieldMap: Record<string, string>;
 }
 
-export interface PlatformOverview {
-  stats: { orgs: number; users: number; workspaces: number; activeLast30d: number };
-  orgs: Array<{
-    id: D.ID;
-    name: string;
-    slug: string;
-    plan: D.Plan;
-    members: number;
-    workspaces: number;
-    lastActivityAt: D.ISODateTime | null;
-  }>;
-  events: Array<{ id: string; at: D.ISODateTime; actor: string; action: string; org: string | null }>;
-}
+export type { PlatformOverview } from '../shared/contracts/api';
+import type { PlatformOverview } from '../shared/contracts/api';
 
 export interface AccountActions {
   register(r: { name: string; email: string; password: string }): Promise<{ verificationSent: boolean }>;

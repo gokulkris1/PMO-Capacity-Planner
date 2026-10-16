@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, FolderKanban, Funnel, Plus, Search, X } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { useQuarters, useSession, useWorkspace } from '../../../state';
+import { useQuarters, useRecordExport, useSession, useWorkspace } from '../../../state';
 import { buildDemandGrid } from '../../../utils/viewModels';
 import {
   Button,
@@ -64,6 +64,7 @@ type Row = ReturnType<typeof buildDemandGrid>[number];
 
 function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapshot; exportReq: number }) {
   const quarters = useQuarters();
+  const recordExport = useRecordExport();
   const { can } = useWorkspace();
   const { me } = useSession();
   const [projectId, setProject] = useQueryParam('project');
@@ -97,45 +98,44 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
   const { rows, sort, toggle } = useSort(filtered, accessors, { key: 'stage', dir: 'asc' });
   const q1 = quarters[0];
 
-  const doExport = useCallback(
-    () =>
-      downloadText(
-        'projects.csv',
-        toCsv(
-          [
-            'name',
-            'jira_key',
-            'tribe',
-            'stage',
-            'status',
-            'start',
-            'end',
-            'initiated_on',
-            `demand_${q1?.key}`,
-            `staffed_${q1?.key}`,
-            `gap_${q1?.key}`,
-            'source',
-            'planview_id',
-          ],
-          rows.map((r) => [
-            r.project.name,
-            r.project.jiraKey ?? '',
-            r.tribe?.name ?? '',
-            r.project.stage ?? '',
-            r.project.status,
-            r.project.startDate ?? '',
-            r.project.endDate ?? '',
-            r.project.initiatedOn ?? '',
-            r.cells[0]?.demandFte ?? 0,
-            r.cells[0]?.staffedFte ?? 0,
-            Math.max(0, r.cells[0]?.gapFte ?? 0),
-            r.project.source,
-            r.project.planviewId ?? '',
-          ]),
-        ),
+  const doExport = useCallback(() => {
+    void recordExport({ kind: 'projects', format: 'csv' }).catch(() => undefined);
+    downloadText(
+      'projects.csv',
+      toCsv(
+        [
+          'name',
+          'jira_key',
+          'tribe',
+          'stage',
+          'status',
+          'start',
+          'end',
+          'initiated_on',
+          `demand_${q1?.key}`,
+          `staffed_${q1?.key}`,
+          `gap_${q1?.key}`,
+          'source',
+          'planview_id',
+        ],
+        rows.map((r) => [
+          r.project.name,
+          r.project.jiraKey ?? '',
+          r.tribe?.name ?? '',
+          r.project.stage ?? '',
+          r.project.status,
+          r.project.startDate ?? '',
+          r.project.endDate ?? '',
+          r.project.initiatedOn ?? '',
+          r.cells[0]?.demandFte ?? 0,
+          r.cells[0]?.staffedFte ?? 0,
+          Math.max(0, r.cells[0]?.gapFte ?? 0),
+          r.project.source,
+          r.project.planviewId ?? '',
+        ]),
       ),
-    [rows, q1],
-  );
+    );
+  }, [rows, q1, recordExport]);
   useEffect(() => {
     if (exportReq === handledExport.current) return;
     handledExport.current = exportReq;

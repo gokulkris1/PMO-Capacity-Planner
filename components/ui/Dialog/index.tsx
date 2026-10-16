@@ -1,13 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button, IconButton } from '../Button';
 import { Portal } from '../internal/Portal';
@@ -168,7 +159,12 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel} disabled={busy} data-autofocus={requireText ? undefined : ''}>
             {cancelLabel}
           </Button>
-          <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} loading={busy} disabled={blocked}>
+          <Button
+            variant={tone === 'danger' ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            loading={busy}
+            disabled={blocked}
+          >
             {confirmLabel}
           </Button>
         </>
@@ -217,7 +213,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {state ? (
-        <ConfirmDialog key={state.nonce} open {...state.opts} onConfirm={() => settle(true)} onCancel={() => settle(false)} />
+        <ConfirmDialog
+          key={state.nonce}
+          open
+          {...state.opts}
+          onConfirm={() => settle(true)}
+          onCancel={() => settle(false)}
+        />
       ) : null}
     </ConfirmContext.Provider>
   );

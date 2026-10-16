@@ -4,7 +4,7 @@ import { useQuarters } from '../../../state';
 import { Activity } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { Card, ChartFrame, EmptyState, GroupedBarChart, StatusPill, fmt } from '../../plan/_kit';
-import { deliverySignal, type DeliverySource } from '../_parts/deliverySource';
+import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
 export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
   const tribes = useMemo(() => new Map(s.tribes.map((t) => [t.id, t.name])), [s.tribes]);

@@ -2,19 +2,19 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     QBRTribe, QBRChapter, QBRCoE, QBRQuarter, QBRSprint,
     QBRMember, QBRProject, QBRBooking, QBRScenario, QBROKR, QBRSquad
-} from '../../types';
+} from '../../../../types';
 import { QBRCapacityGrid } from './QBRCapacityGrid';
 import { QBRMemberCard } from './QBRMemberCard';
 
 /* ── Colours (light design-system tokens, see index.css) ───────── */
 const c = {
-    card: '#fff', cardHover: 'var(--n-100)', surface: 'var(--n-200)',
-    border: 'var(--n-300)', text: 'var(--n-800)', muted: 'var(--n-600)',
-    accent: 'var(--brand-500)', accentBg: 'var(--brand-50)',
-    green: 'var(--optimal)', greenBg: 'var(--optimal-bg)',
-    red: 'var(--over)', redBg: 'var(--over-bg)',
+    card: '#fff', cardHover: 'var(--color-bg)', surface: 'var(--color-surface-sunken)',
+    border: 'var(--color-border)', text: 'var(--color-text)', muted: 'var(--color-text-tertiary)',
+    accent: 'var(--color-primary)', accentBg: 'var(--color-primary-subtle)',
+    green: 'var(--color-success)', greenBg: 'var(--color-success-bg)',
+    red: 'var(--color-danger)', redBg: 'var(--color-danger-bg)',
     // --high (#FFAB00) is too light to read as text on white; use a dark amber for text
-    amber: '#974F0C', amberBg: 'var(--high-bg)',
+    amber: '#974F0C', amberBg: 'var(--color-warning-bg)',
     purple: '#6554C0', purpleBg: '#EAE6FF',
     pink: '#C9357E', pinkBg: '#FFE9F3',
     cyan: '#00A3BF', cyanBg: '#E6FCFF',

@@ -16,7 +16,7 @@ import {
   useConfirm,
   useToast,
 } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { SectionBody, SectionHeader, errorText } from './common';
 
 const MIN_PASSWORD = 10;

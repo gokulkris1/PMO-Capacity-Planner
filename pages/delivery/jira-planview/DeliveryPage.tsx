@@ -23,7 +23,7 @@ import {
   useQueryParam,
   useWsPath,
 } from '../../plan/_kit';
-import { useDelivery, type DeliverySource } from '../_parts/deliverySource';
+import { useDelivery, type DeliverySource } from '../../../state';
 import { OverviewTab } from './OverviewTab';
 import { HealthTab, syncStatePill } from './HealthTab';
 import { MappingTab } from './MappingTab';

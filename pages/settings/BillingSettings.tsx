@@ -3,7 +3,7 @@ import { BadgeCheck, Check } from 'lucide-react';
 import { PLAN_ENTITLEMENTS, type Entitlements, type Plan } from '../../shared/entitlements';
 import { useEntitlements, useSession, useWorkspaceData } from '../../state';
 import { Banner, Button, Card, Dialog, Icon, StatusPill, useToast } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { cx } from '../../components/ui/internal/utils';
 import { NotFoundPage } from '../system/SystemPages';
 import { SectionBody, SectionHeader, errorText } from './common';

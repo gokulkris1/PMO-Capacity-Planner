@@ -108,8 +108,8 @@ describe('account actions (B1 client gaps)', () => {
     await expect(clientGapsFor(rt).platform.overview()).rejects.toMatchObject({ status: 404 });
     const admin = await booted({ isPlatformAdmin: true });
     const o = await clientGapsFor(admin.rt).platform.overview();
-    expect(o.stats.workspaces).toBeGreaterThan(0);
-    expect(o.orgs[0]).toMatchObject({ slug: expect.any(String), members: expect.any(Number) });
+    expect(o.workspaces).toBeGreaterThan(0);
+    expect(o.organisations[0]).toMatchObject({ slug: expect.any(String), members: expect.any(Number) });
   });
 });
 

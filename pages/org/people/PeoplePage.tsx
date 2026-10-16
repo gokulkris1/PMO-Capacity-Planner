@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { bandFor, BAND_LABEL, type UtilBand } from '../../../shared/utilisation';
-import { useEntitlements, useMutations, useQuarters, useWorkspace } from '../../../state';
+import { useEntitlements, useMutations, useQuarters, useRecordExport, useWorkspace } from '../../../state';
 import { buildPeopleRows, type PersonRow } from '../../../utils/viewModels';
 import {
   Banner,
@@ -53,7 +53,7 @@ import { PersonDrawer } from './PersonDrawer';
 import { BulkEditDialog, type BulkKind } from './_parts/BulkEditDialog';
 import { ImportPeopleDialog } from './_parts/ImportPeopleDialog';
 import { CraftRequests } from './_parts/CraftRequests';
-import { peopleToCsv } from './_parts/peopleCsv';
+import { peopleToCsv } from '../../../utils/csvPeople';
 import './people.css';
 
 export default function PeoplePage() {
@@ -116,6 +116,7 @@ function PeopleBody({
 }) {
   const { can, thresholds } = useWorkspace();
   const quarters = useQuarters();
+  const recordExport = useRecordExport();
   const b = useBasis();
   const m = useMutations();
   const { run } = useAction();
@@ -195,7 +196,8 @@ function PeopleBody({
         s,
       ),
     );
-  }, [exportReq, sorted, s, quarters]);
+    void recordExport({ kind: 'people', format: 'csv' }).catch(() => undefined);
+  }, [exportReq, sorted, s, quarters, recordExport]);
 
   const canWrite = can('people.write');
   const pending = s.craftRequests.filter((r) => r.status === 'pending');

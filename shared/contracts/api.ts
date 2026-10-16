@@ -39,28 +39,45 @@ export interface PeopleImportResponse { created: number; updated: number; skippe
 export interface ProposeRequest { demandLineId: D.ID | null; projectId: D.ID; resourceId: D.ID; craftId: D.ID; quarterKey: D.QuarterKey; percentage: number; startDate: D.ISODate; endDate: D.ISODate }
 export interface RespondRequest { decision: 'accept' | 'decline'; reason?: string }
 export interface InvitationRequest { email: string; orgRole: D.OrgRole; workspaces: Array<{ workspaceId: D.ID; role: D.WorkspaceRole }> }
-export interface InvitationResponse { invitation: { id: D.ID; email: string; expiresAt: D.ISODateTime }; inviteUrl: string }
+/** `emailSent` (I change request, handoff-A §6): false when email is not configured and the link must be shared by hand.
+ *  Optional so older clients/servers stay compatible; the 2.0 API always sends it. */
+export interface InvitationResponse { invitation: { id: D.ID; email: string; expiresAt: D.ISODateTime }; inviteUrl: string; emailSent?: boolean }
 export interface InvitationLookup { email: string; orgName: string; workspaces: Array<{ id: D.ID; name: string; role: D.WorkspaceRole }>; expiresAt: D.ISODateTime; existingUser: boolean }
 export interface MemberDTO { userId: D.ID; name: string; email: string; orgRole: D.OrgRole; workspaces: Array<{ workspaceId: D.ID; role: D.WorkspaceRole }>; linkedPersonIds: D.ID[]; lastSignInAt: D.ISODateTime | null }
 export interface MemberPatch { orgRole?: D.OrgRole; workspaces?: Array<{ workspaceId: D.ID; role: D.WorkspaceRole | null }> }
 export interface AuditEventDTO { id: string; occurredAt: D.ISODateTime; actor: D.UserRef | null; actorType: string; action: string; workspaceId: D.ID | null; targetType: string | null; targetId: string | null; before: unknown; after: unknown; requestId: string | null }
 
+/** PATCH /api/v2/me (ST-01#AC4): the only user-editable profile field. */
+export interface MePatchRequest { name: string }
+/** GET /api/v2/platform/overview (ST-09, platform admins only). Counts plus the organisation list and recent
+ *  platform audit events for the cockpit. */
+export interface PlatformOverview {
+  orgs: number; workspaces: number; users: number; platformAdmins: number;
+  activeSessions: number;                         // users signed in within the 7-day session lifetime
+  signInsLast24h: number; unverifiedUsers: number;
+  syncHealth: { queued: number; running: number; stuck: number; succeeded24h: number; failed24h: number; partial24h: number; lastFailureAt: D.ISODateTime | null; workspacesWithJira: number };
+  organisations: Array<{ id: D.ID; name: string; slug: string; plan: D.Plan; members: number; workspaces: number; lastActivityAt: D.ISODateTime | null }>;
+  events: Array<{ id: string; at: D.ISODateTime; actor: string; action: string; org: string | null }>;
+  generatedAt: D.ISODateTime;
+}
 const v2 = '/api/v2';
 const ws = (w: string) => `${v2}/workspaces/${w}`;
 const org = (o: string) => `${v2}/orgs/${o}`;
 export const API = {
   // auth (existing function auth.ts)
   login: '/api/auth/login', register: '/api/auth/register', logout: '/api/auth/logout', refresh: '/api/auth/refresh',
-  sessionExchange: '/api/auth/session', resetSend: '/api/auth/reset/send-otp', resetConfirm: '/api/auth/reset/confirm',
+  sessionExchange: '/api/auth/session', logoutAll: '/api/auth/logout-all', resetSend: '/api/auth/reset/send-otp', resetConfirm: '/api/auth/reset/confirm',
   twoFactor: '/api/auth/2fa', changePassword: '/api/auth/password', verifySend: '/api/verify/send', verifyCheck: '/api/verify/check',
   health: '/api/health', ai: '/api/ai',
-  me: `${v2}/me`,
+  me: `${v2}/me`,                                  // GET → MeResponse; PATCH MePatchRequest → MeResponse
+  platformOverview: `${v2}/platform/overview`,
   createOrg: `${v2}/orgs`,
   org: (o: string) => org(o),
   orgWorkspaces: (o: string) => `${org(o)}/workspaces`,
   orgEntity: (o: string, kind: 'tribes' | 'chapters' | 'teams' | 'crafts', id?: string) => `${org(o)}/${kind}${id ? `/${id}` : ''}`,
   members: (o: string, userId?: string) => `${org(o)}/members${userId ? `/${userId}` : ''}`,
   invitations: (o: string, id?: string) => `${org(o)}/invitations${id ? `/${id}` : ''}`,
+  invitationResend: (o: string, id: string) => `${org(o)}/invitations/${id}/resend`,   // → InvitationResponse (new link)
   invitationByToken: (token: string) => `${v2}/invitations/${token}`,
   invitationAccept: (token: string) => `${v2}/invitations/${token}/accept`,
   orgAudit: (o: string) => `${org(o)}/audit`,

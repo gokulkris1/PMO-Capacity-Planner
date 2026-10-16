@@ -30,5 +30,4 @@ export {
   SessionLoading,
   useHomeHref,
 } from './guards';
-export { RoutePlaceholder, placeholder, type PlaceholderSpec } from './RoutePlaceholder';
 export { APP_MODE, APP_VERSION, DEMO_ENABLED, SIGNUP_ENABLED } from './env';

@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronDown, ChevronRight, Download, Funnel, Link2, Send, Store, Users, X } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { useMutations, useQuarters, useWorkspace, type QuarterView } from '../../../state';
+import { useMutations, useQuarters, useRecordExport, useWorkspace, type QuarterView } from '../../../state';
 import { buildAllocationGrid, buildCatalogue, buildPeopleRows } from '../../../utils/viewModels';
 import {
   BandCell,
@@ -39,7 +39,7 @@ import {
   useQueryParam,
   useWsPath,
 } from '../_kit';
-import { rankMatches, type Match } from './rankMatches';
+import { rankMatches, type Match } from '../../../utils/viewModels';
 import './marketplace.css';
 
 type Tab = 'open' | 'catalogue' | 'under' | 'proposals';
@@ -380,6 +380,7 @@ function Catalogue({
 }) {
   const quarters = useQuarters();
   const { can } = useWorkspace();
+  const recordExport = useRecordExport();
   const wsPath = useWsPath();
   const entries = useMemo(() => buildCatalogue(s, quarters, quarter.key), [s, quarters, quarter.key]);
   const shown = entries
@@ -406,7 +407,8 @@ function Catalogue({
       toast({ tone: 'error', title: 'Could not copy the link', body: url });
     }
   };
-  const exportCsv = () =>
+  const exportCsv = () => {
+    void recordExport({ kind: 'squad-catalogue', format: 'csv' }).catch(() => undefined);
     downloadText(
       `squad-catalogue-${quarter.key}.csv`,
       toCsv(
@@ -424,6 +426,7 @@ function Catalogue({
         ),
       ),
     );
+  };
 
   return (
     <Card

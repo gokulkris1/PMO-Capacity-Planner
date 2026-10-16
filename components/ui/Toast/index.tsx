@@ -65,7 +65,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = seq.current;
     const tone = opts.tone ?? 'info';
     const duration = opts.duration ?? (tone === 'error' ? 0 : opts.action ? 8000 : 5000);
-    setItems((list) => [...list, { id, tone, title: opts.title, body: opts.body, action: opts.action, duration }].slice(-MAX_VISIBLE));
+    setItems((list) =>
+      [...list, { id, tone, title: opts.title, body: opts.body, action: opts.action, duration }].slice(-MAX_VISIBLE),
+    );
     return id;
   }, []);
 

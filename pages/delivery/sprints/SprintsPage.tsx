@@ -1,15 +1,14 @@
 /**
  * Sprint planning (SH-05#AC2, D-5) — route `/o/:org/w/:ws/delivery/sprints`, only when the `qbrSprintModule`
- * flag is on. Hosts the legacy QBR sprint module (`components/qbr/**`, lint-exempt legacy code) inside the
- * new page frame, loaded lazily so it never ships in the main chunk. After the router swap the integrator moves
- * `components/qbr/**` to `pages/delivery/sprints/legacy/` (see docs/release/handoff-B2.md §5).
+ * flag is on. Hosts the legacy QBR sprint module (`./legacy/**`) inside the new page frame, loaded lazily so it
+ * never ships in the main chunk.
  */
 import { lazy, Suspense } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { useFeature, useWorkspace } from '../../../state';
 import { Card, EmptyState, PageHeader, Skeleton } from '../../plan/_kit';
 
-const QBRPlanner = lazy(() => import('../../../components/qbr/QBRPlanner').then((m) => ({ default: m.QBRPlanner })));
+const QBRPlanner = lazy(() => import('./legacy/QBRPlanner').then((m) => ({ default: m.QBRPlanner })));
 
 export default function SprintsPage() {
   const enabled = useFeature('qbrSprintModule');

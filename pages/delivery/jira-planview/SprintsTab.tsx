@@ -13,7 +13,7 @@ import {
   fmt,
   useQueryParam,
 } from '../../plan/_kit';
-import { deliverySignal, type DeliverySource } from '../_parts/deliverySource';
+import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
 export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
   const tribesWithData = useMemo(() => {

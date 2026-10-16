@@ -30,6 +30,7 @@ import {
   SegmentedControl,
   Select,
   TextField,
+  errorMessage,
   toast,
   useAction,
   useQueryParam,
@@ -254,33 +255,32 @@ function AllocationsBody({
         });
       });
     });
-    let done = 0;
-    for (const c of cells) {
-      try {
-        await m.allocations.setQuarterCell({
+    if (!cells.length) {
+      toast({ tone: 'warning', title: `0 cells updated, ${skipped} skipped` });
+      return;
+    }
+    // AL-07: the whole paste is one atomic batch and one undo step.
+    const label = `Paste ${cells.length} cell${cells.length === 1 ? '' : 's'}`;
+    try {
+      await m.allocations.setQuarterCells(
+        cells.map((c) => ({
           resourceId: c.personId,
           projectId: c.projectId,
           craftId: c.craftId,
           quarterKey: c.quarterKey,
           pct: c.pct,
-        });
-        done++;
-      } catch {
-        skipped++;
-      }
+        })),
+        label,
+      );
+    } catch (e) {
+      toast({ tone: 'error', title: 'Paste failed', body: errorMessage(e) });
+      return;
     }
+    const done = cells.length;
     toast({
       tone: skipped ? 'warning' : 'success',
       title: `${done} cell${done === 1 ? '' : 's'} updated, ${skipped} skipped`,
-      action: done
-        ? {
-            label: 'Undo',
-            onClick: () =>
-              void (async () => {
-                for (let i = 0; i < done; i++) await undo.undo();
-              })(),
-          }
-        : undefined,
+      action: { label: 'Undo', onClick: () => void undo.undo() },
     });
   };
 

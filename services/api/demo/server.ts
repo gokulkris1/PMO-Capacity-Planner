@@ -993,6 +993,7 @@ const invitations: Record<string, Handler> = {
     return {
       invitation: { id: inv.id, email: inv.email, expiresAt: inv.expiresAt },
       inviteUrl: `/invite/${inv.token}`,
+      emailSent: false,
     };
   },
   list(c) {
@@ -2343,8 +2344,8 @@ const extras: Record<string, Handler> = {
     const name = str(obj(c.body).name);
     if (!name) badRequest({ name: 'Enter your name' });
     u.name = name;
-    audit(c, 'user.update', { type: 'user', id: u.id });
-    return buildMe(c.db, u).user;
+    audit(c, 'user.profile_update', { type: 'user', id: u.id });
+    return buildMe(c.db, u);
   },
   resendInvitation(c) {
     const { perms, user } = orgPerms(c);
@@ -2357,6 +2358,7 @@ const extras: Record<string, Handler> = {
     return {
       invitation: { id: inv.id, email: inv.email, expiresAt: inv.expiresAt },
       inviteUrl: `/invite/${inv.token}`,
+      emailSent: false,
     };
   },
   integrationsConfig(c) {
@@ -2458,23 +2460,35 @@ const extras: Record<string, Handler> = {
     const u = requireUser(c);
     if (!u.isPlatformAdmin) notFound('Route');
     const members = c.db.users.filter((x) => x.orgRole).length;
+    const signedInWithin = (ms: number) =>
+      c.db.users.filter((x) => x.lastSignInAt && Date.parse(c.now) - Date.parse(x.lastSignInAt) < ms).length;
+    const workspaces = Object.keys(c.db.workspaces).length;
     return {
-      stats: {
-        orgs: 1,
-        users: c.db.users.length,
-        workspaces: Object.keys(c.db.workspaces).length,
-        activeLast30d: c.db.users.filter(
-          (x) => x.lastSignInAt && Date.parse(c.now) - Date.parse(x.lastSignInAt) < 30 * 86_400_000,
-        ).length,
+      orgs: 1,
+      workspaces,
+      users: c.db.users.length,
+      platformAdmins: c.db.users.filter((x) => x.isPlatformAdmin).length,
+      activeSessions: signedInWithin(7 * 86_400_000),
+      signInsLast24h: signedInWithin(86_400_000),
+      unverifiedUsers: 0,
+      syncHealth: {
+        queued: 0,
+        running: 0,
+        stuck: 0,
+        succeeded24h: 0,
+        failed24h: 0,
+        partial24h: 0,
+        lastFailureAt: null,
+        workspacesWithJira: 0,
       },
-      orgs: [
+      organisations: [
         {
           id: c.db.org.id,
           name: c.db.org.name,
           slug: c.db.org.slug,
           plan: c.db.org.plan,
           members,
-          workspaces: Object.keys(c.db.workspaces).length,
+          workspaces,
           lastActivityAt: c.db.audit[0]?.occurredAt ?? null,
         },
       ],
@@ -2485,6 +2499,7 @@ const extras: Record<string, Handler> = {
         action: e.action,
         org: c.db.org.name,
       })),
+      generatedAt: c.now,
     };
   },
 };
@@ -2498,6 +2513,7 @@ const routes: Array<[string, RegExp, string[], Handler]> = [
   ['POST', /^\/api\/auth\/login$/, [], auth.login],
   ['POST', /^\/api\/auth\/register$/, [], auth.register],
   ['POST', /^\/api\/auth\/logout$/, [], auth.logout],
+  ['POST', /^\/api\/auth\/logout-all$/, [], auth.logout],
   ['POST', /^\/api\/auth\/refresh$/, [], auth.refresh],
   ['GET', /^\/api\/auth$/, [], auth.refresh],
   ['POST', /^\/api\/auth\/session$/, [], auth.session],

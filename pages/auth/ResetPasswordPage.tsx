@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Banner, Button, CodeInput, FormField, LinkButton, PasswordField, TextField } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { AuthForm, AuthLayout, MIN_PASSWORD, authErrorMessage, isEmail } from './AuthLayout';
 
 /**

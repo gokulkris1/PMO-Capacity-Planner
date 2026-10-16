@@ -36,7 +36,7 @@ import {
   useWsPath,
 } from '../plan/_kit';
 import { CapacityOutlookChart } from '../plan/_parts/CapacityOutlookChart';
-import { useDelivery } from '../delivery/_parts/deliverySource';
+import { useDelivery } from '../../state';
 import './home.css';
 
 export default function HomePage() {

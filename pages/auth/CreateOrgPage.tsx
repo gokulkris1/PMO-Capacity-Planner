@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useSession } from '../../state';
 import { Banner, Button, FormField, TextField } from '../../components/ui';
-import { useClientGaps } from '../../components/shell/clientGaps';
+import { useClientGaps } from '../../state';
 import { useHomeHref } from '../../components/shell/guards';
 import { workspaceBase } from '../../components/shell/workspacePath';
 import { AuthForm, AuthLayout, authErrorMessage } from './AuthLayout';

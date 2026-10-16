@@ -5,7 +5,7 @@ import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
 import { Button, Card, StatusPill, fmt } from '../../plan/_kit';
 import { CalibrationDialog } from '../_parts/CalibrationDialog';
-import type { DeliverySource } from '../_parts/deliverySource';
+import type { DeliverySource } from '../../../state';
 
 export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
   const { can } = useWorkspace();

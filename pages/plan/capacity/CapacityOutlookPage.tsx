@@ -29,7 +29,7 @@ import {
   useWsPath,
 } from '../_kit';
 import { CapacityOutlookChart } from '../_parts/CapacityOutlookChart';
-import { useDelivery } from '../../delivery/_parts/deliverySource';
+import { useDelivery } from '../../../state';
 import './capacity.css';
 
 type Pivot = 'craft' | 'chapter' | 'tribe' | 'person';

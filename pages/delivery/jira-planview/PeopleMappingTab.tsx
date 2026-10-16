@@ -1,10 +1,10 @@
-/** Assignee ↔ person identity mapping (JI-03): suggested person, method, override, "Confirm all exact matches". */
+/** Assignee to person identity mapping (JI-03): suggested person, method, override, "Confirm all exact matches". */
 import { useMemo, useState } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
 import { Button, Card, PersonLabel, Select, StatusPill, cx, fmt, useAction } from '../../plan/_kit';
-import type { DeliverySource } from '../_parts/deliverySource';
+import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<D.IdentityMappingDTO['matchMethod'], string> = {
   accountId: 'Account id',

@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Clock, Download, FileChartColumn, FileSpreadsheet, FileText, Lock } from 'lucide-react';
 import type * as D from '../../shared/contracts/dto';
-import { useQuarters, useWorkspace } from '../../state';
+import { useQuarters, useRecordExport, useWorkspace } from '../../state';
 import { buildCapacityOutlook, buildDemandGrid } from '../../utils/viewModels';
 import {
   BandCell,
@@ -20,7 +20,7 @@ import {
   fmt,
   toast,
 } from '../plan/_kit';
-import { useDelivery } from '../delivery/_parts/deliverySource';
+import { useDelivery } from '../../state';
 import {
   bookingsCsv,
   buildQbrPack,
@@ -30,7 +30,7 @@ import {
   timeToStaffRows,
   utilisationByGroupCsv,
   utilisationByPersonCsv,
-} from './_parts/reportData';
+} from '../../utils/reportData';
 import './reports.css';
 
 export default function ReportsPage() {
@@ -61,6 +61,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const { thresholds, org, workspace } = useWorkspace();
   const quarters = useQuarters();
   const delivery = useDelivery(s);
+  const recordExport = useRecordExport();
   const [busy, setBusy] = useState<string | null>(null);
   const [pivot, setPivot] = useState<'tribe' | 'chapter' | 'craft'>('tribe');
   const stamp = s.serverTime.slice(0, 10);
@@ -69,6 +70,8 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const csv = (name: string, make: () => string) => {
     try {
       downloadText(`${name}-${stamp}.csv`, make());
+      // RP-04#AC4: exports are audited; a failed audit call never blocks the download.
+      void recordExport({ kind: name, format: 'csv' }).catch(() => undefined);
       toast({ tone: 'success', title: 'Download started', body: `${name}-${stamp}.csv` });
     } catch (e) {
       toast({ tone: 'error', title: 'Export failed', body: errorMessage(e) });
@@ -77,13 +80,14 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const pdf = async () => {
     setBusy('pdf');
     try {
-      const { downloadQbrPack } = await import('./_parts/qbrPackPdf');
+      const { downloadQbrPack } = await import('../../utils/qbrPackPdf');
       await downloadQbrPack(buildQbrPack(s, quarters, thresholds, delivery), {
         org: org?.name ?? s.org.name,
         workspace: workspace?.name ?? s.workspace.name,
         generatedAt: fmt.dateTime(new Date().toISOString()),
         filename: `qbr-pack-${quarters[0]?.key ?? stamp}.pdf`,
       });
+      void recordExport({ kind: 'qbr-pack', format: 'pdf' }).catch(() => undefined);
       toast({ tone: 'success', title: 'QBR pack downloaded' });
     } catch (e) {
       toast({ tone: 'error', title: 'The QBR pack could not be generated', body: errorMessage(e) });

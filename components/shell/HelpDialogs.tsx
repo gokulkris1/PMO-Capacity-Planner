@@ -1,4 +1,9 @@
+import { useState, type FormEvent } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useApi, useFeature, userMessage } from '../../state';
+import { Banner } from '../ui/Banner';
+import { FormField } from '../ui/FormField';
+import { Textarea } from '../ui/TextField';
 import { Dialog } from '../ui/Dialog';
 import { Drawer } from '../ui/Drawer';
 import { Button } from '../ui/Button';
@@ -121,15 +126,77 @@ export function GlossaryDrawer({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-/** Placeholder drawer for the optional AI assistant (HS-11; shown only when the org enabled it). */
+/** The optional AI assistant (HS-11): shown only when the org enabled `aiAssistant`. The client sends the question
+ *  and the workspace id only; the server builds the prompt from workspace data and enforces the monthly quota. */
 export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { api, workspaceId } = useApi();
+  const enabled = useFeature('aiAssistant');
+  const [question, setQuestion] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<Array<{ id: number; question: string; answer: string }>>([]);
+
+  const ask = async (e: FormEvent) => {
+    e.preventDefault();
+    const q = question.trim();
+    if (!q || !workspaceId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { answer } = await api.ai.ask(workspaceId, q);
+      setHistory((h) => [{ id: Date.now(), question: q, answer }, ...h].slice(0, 10));
+      setQuestion('');
+    } catch (err) {
+      setError(userMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Drawer open={open} onClose={onClose} title="Assistant" subtitle="Answers use this workspace's data">
-      <EmptyState
-        icon={Sparkles}
-        title="The assistant is being connected"
-        description="Your organisation has enabled the assistant. Questions will be available here once the service is configured."
-      />
+      {!enabled ? (
+        <EmptyState
+          icon={Sparkles}
+          title="The assistant is turned off"
+          description="An Org Admin can switch it on in Settings › Features."
+        />
+      ) : (
+        <div className="pcp-stack">
+          <form className="pcp-stack" onSubmit={(e) => void ask(e)}>
+            <FormField label="Your question" help="For example: Who is over capacity in QBR1?">
+              <Textarea
+                rows={3}
+                maxLength={2000}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                disabled={busy}
+              />
+            </FormField>
+            <div>
+              <Button type="submit" variant="primary" iconBefore={Sparkles} loading={busy} disabled={!question.trim()}>
+                Ask
+              </Button>
+            </div>
+          </form>
+          {error ? <Banner tone="danger">{error}</Banner> : null}
+          {history.length === 0 ? (
+            <p className="pcp-text-secondary">
+              Answers are generated from this workspace&apos;s plan and can be wrong. Check important figures in the
+              plan itself.
+            </p>
+          ) : (
+            <ol className="pcp-assistant__history" aria-label="Answers">
+              {history.map((h) => (
+                <li key={h.id} className="pcp-assistant__item">
+                  <p className="pcp-assistant__question">{h.question}</p>
+                  <p className="pcp-assistant__answer">{h.answer}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
     </Drawer>
   );
 }

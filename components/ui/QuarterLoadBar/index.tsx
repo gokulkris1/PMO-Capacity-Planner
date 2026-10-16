@@ -53,8 +53,12 @@ export function QuarterLoadBar({
     <div className={cx('pcp-load', `pcp-load--${size}`, className)}>
       <Tooltip content={`${aria}. ${text}.`}>
         <div className="pcp-load__track" role="img" aria-label={aria} tabIndex={-1}>
-          {segAbove > 0 ? <span className="pcp-load__seg pcp-load__seg--above" style={{ width: pct(segAbove) }} /> : null}
-          {segBelow > 0 ? <span className="pcp-load__seg pcp-load__seg--below" style={{ width: pct(segBelow) }} /> : null}
+          {segAbove > 0 ? (
+            <span className="pcp-load__seg pcp-load__seg--above" style={{ width: pct(segAbove) }} />
+          ) : null}
+          {segBelow > 0 ? (
+            <span className="pcp-load__seg pcp-load__seg--below" style={{ width: pct(segBelow) }} />
+          ) : null}
           {segUndeclared > 0 ? (
             <span className="pcp-load__seg pcp-load__seg--undeclared" style={{ width: pct(segUndeclared) }} />
           ) : null}
@@ -82,7 +86,10 @@ export function HeatStrip({ cells, className, label }: { cells: HeatStripCell[];
   return (
     <div className={cx('pcp-heat', className)} role="group" aria-label={label ?? 'Utilisation by quarter'}>
       {cells.map((c) => (
-        <Tooltip key={c.label} content={`${c.label}${c.detail ? ` · ${c.detail}` : ''}: ${Math.round(c.pct)}%, ${BAND_LABEL[c.band]}`}>
+        <Tooltip
+          key={c.label}
+          content={`${c.label}${c.detail ? ` · ${c.detail}` : ''}: ${Math.round(c.pct)}%, ${BAND_LABEL[c.band]}`}
+        >
           <span
             role="img"
             tabIndex={-1}
