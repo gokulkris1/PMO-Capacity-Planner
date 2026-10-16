@@ -1,0 +1,76 @@
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+export const PRODUCT_NAME = 'PMO Capacity Planner';
+
+/** Sets `document.title` to "{title} · PMO Capacity Planner" (SH-01#AC1). */
+export function useDocumentTitle(title: string | null | undefined): void {
+  useEffect(() => {
+    document.title = title ? `${title} · ${PRODUCT_NAME}` : PRODUCT_NAME;
+  }, [title]);
+}
+
+/**
+ * A single URL search param as state (drawers `?person=`, filters). Setting null removes it.
+ * Pushes a history entry by default so Back closes a drawer (DS-03#AC5).
+ */
+export function useUrlParam(
+  name: string,
+  opts: { replace?: boolean } = {},
+): [string | null, (v: string | null) => void] {
+  const [params, setParams] = useSearchParams();
+  const value = params.get(name);
+  const replace = opts.replace ?? false;
+  const set = useCallback(
+    (v: string | null) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (v === null || v === '') next.delete(name);
+          else next.set(name, v);
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setParams, name, replace],
+  );
+  return [value, set];
+}
+
+/** Subscribes to a CSS media query, e.g. useMediaQuery('(max-width: 767px)'). */
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (cb: () => void) => {
+      if (typeof window === 'undefined' || !window.matchMedia) return () => undefined;
+      const mql = window.matchMedia(query);
+      mql.addEventListener('change', cb);
+      return () => mql.removeEventListener('change', cb);
+    },
+    [query],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : false),
+    () => false,
+  );
+}
+
+/** Formats a number as a rounded percentage with tabular digits expected from the caller's CSS. */
+export function formatPct(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+/** One decimal for FTE ("0.5 FTE"). */
+export function formatFte(value: number, withUnit = true): string {
+  const v = Math.round(value * 10) / 10;
+  return withUnit ? `${v.toFixed(1)} FTE` : v.toFixed(1);
+}
+
+/** "16 Oct 2026" style dates (d MMM yyyy) for read-only contexts. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}

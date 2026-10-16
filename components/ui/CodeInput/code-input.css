@@ -1,0 +1,41 @@
+.pcp-code {
+  display: flex;
+  gap: var(--space-100);
+}
+
+.pcp-code__box {
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-code__box:hover {
+  border-color: var(--color-border-input-hover);
+}
+
+.pcp-code__box:focus-visible,
+.pcp-code__box:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.pcp-code__box--invalid {
+  border-color: var(--color-danger);
+}
+
+.pcp-code__box:disabled {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  color: var(--color-text-disabled);
+}

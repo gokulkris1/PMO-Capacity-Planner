@@ -1,0 +1,51 @@
+.pcp-cockpit {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.pcp-cockpit__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-200);
+  height: var(--topbar-height);
+  padding: 0 var(--page-gutter);
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
+}
+
+.pcp-cockpit__user {
+  font-size: var(--text-table-size);
+  color: var(--color-nav-text);
+}
+
+.pcp-cockpit__signout.pcp-button--subtle {
+  color: var(--color-nav-text);
+}
+
+.pcp-cockpit__signout.pcp-button--subtle:hover {
+  background: var(--color-nav-hover);
+  color: var(--color-nav-text-active);
+}
+
+.pcp-cockpit__main {
+  flex: 1 1 auto;
+}
+
+.pcp-cockpit__main:focus {
+  outline: none;
+}
+
+.pcp-cockpit__code {
+  padding: 0 var(--space-050);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-sunken);
+  font-size: var(--text-caption-size);
+}
+
+@media (max-width: 767px) {
+  .pcp-cockpit__user {
+    display: none;
+  }
+}

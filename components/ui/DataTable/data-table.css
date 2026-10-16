@@ -1,0 +1,339 @@
+/* DataTable (DESIGN_SYSTEM §8.9) */
+.pcp-table-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.pcp-table__toolbar,
+.pcp-table__bulk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-150);
+  min-height: 52px;
+  padding: var(--space-100) var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pcp-table__toolbar-start {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-100);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pcp-table__toolbar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-shrink: 0;
+}
+
+.pcp-table__bulk {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-page-header);
+  justify-content: flex-start;
+  background: var(--color-primary-subtle);
+}
+
+.pcp-table__bulk-count {
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.pcp-table__bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex: 1 1 auto;
+}
+
+.pcp-table__scroll {
+  position: relative;
+  overflow: auto;
+  min-height: 0;
+}
+
+.pcp-table__scroll:focus-visible {
+  outline-offset: -2px;
+}
+
+.pcp-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-table-size);
+  line-height: var(--text-table-line);
+  color: var(--color-text);
+}
+
+.pcp-table__caption {
+  padding: var(--space-150);
+  text-align: left;
+  font-weight: 600;
+  caption-side: top;
+}
+
+.pcp-table__head {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: 36px;
+  padding: 0 var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.pcp-table__scroll--top .pcp-table__head {
+  box-shadow: var(--elevation-1);
+}
+
+.pcp-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+  max-width: 100%;
+  margin: 0 calc(-1 * var(--space-050));
+  padding: var(--space-050);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.pcp-table__cell--num .pcp-table__sort {
+  flex-direction: row-reverse;
+}
+
+.pcp-table__sort:hover {
+  color: var(--color-text);
+}
+
+.pcp-table__sort-icon {
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-table__sort:hover .pcp-table__sort-icon,
+.pcp-table__sort:focus-visible .pcp-table__sort-icon {
+  opacity: 1;
+}
+
+.pcp-table__sort-icon--active {
+  color: var(--color-text);
+  opacity: 1;
+}
+
+.pcp-table__cell {
+  height: var(--row-comfortable);
+  padding: var(--space-100) var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.pcp-table-card--compact .pcp-table__cell {
+  height: var(--row-compact);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pcp-table tbody tr:last-child > .pcp-table__cell {
+  border-bottom: 0;
+}
+
+.pcp-table__cell--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pcp-table__cell--center {
+  text-align: center;
+}
+
+.pcp-table__cell--flush {
+  padding: 0;
+}
+
+.pcp-table__cell--check {
+  width: 40px;
+  min-width: 40px;
+  padding: 0 var(--space-150);
+}
+
+.pcp-table__row:hover > .pcp-table__cell {
+  background: var(--color-surface-hover);
+}
+
+.pcp-table__row--selected > .pcp-table__cell,
+.pcp-table__row--selected:hover > .pcp-table__cell,
+.pcp-table__row--active > .pcp-table__cell {
+  background: var(--color-primary-subtle);
+}
+
+/* Sticky first column (row header) */
+.pcp-table__sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.pcp-table__head.pcp-table__sticky {
+  z-index: var(--z-sticky-corner);
+}
+
+.pcp-table__sticky-check {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.pcp-table__head.pcp-table__sticky-check {
+  z-index: var(--z-sticky-corner);
+}
+
+.pcp-table__sticky--after-check {
+  left: 40px;
+}
+
+.pcp-table__scroll--left .pcp-table__sticky {
+  box-shadow:
+    1px 0 0 var(--color-border),
+    var(--elevation-1);
+}
+
+tbody .pcp-table__sticky {
+  font-weight: 400;
+}
+
+/* Group rows */
+.pcp-table__group > .pcp-table__cell {
+  background: var(--color-surface-sunken);
+  font-weight: 600;
+}
+
+.pcp-table__group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--text-body-size);
+}
+
+.pcp-table__group-count {
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+  font-size: var(--text-caption-size);
+}
+
+.pcp-table__spacer td {
+  padding: 0;
+  border: 0;
+}
+
+.pcp-table__error {
+  padding: var(--space-200);
+}
+
+.pcp-table__empty {
+  border-top: 1px solid var(--color-border);
+}
+
+.pcp-table__skeleton .pcp-skeleton-table__head {
+  display: none;
+}
+
+.pcp-table__colmenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  padding: var(--space-150) var(--space-200);
+}
+
+.pcp-table__colmenu-title {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Row-header label pattern */
+.pcp-cell-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+
+.pcp-cell-main__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pcp-cell-button {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcp-cell-button:hover {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+
+.pcp-cell-main__sub {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcp-table-card--compact .pcp-cell-main__sub {
+  display: none;
+}
+
+/* Inside a flush Card: no outer frame, the card provides it. */
+.pcp-table-card--plain {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}

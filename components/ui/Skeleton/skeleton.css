@@ -1,0 +1,111 @@
+@keyframes pcp-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.pcp-skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-skeleton);
+  background-image: linear-gradient(
+    90deg,
+    var(--color-skeleton) 0%,
+    var(--color-skeleton-shine) 50%,
+    var(--color-skeleton) 100%
+  );
+  background-size: 200% 100%;
+  animation: pcp-shimmer 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcp-skeleton {
+    animation: none;
+    background-image: none;
+  }
+}
+
+.pcp-skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+
+.pcp-skeleton-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  padding: var(--space-200);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-height: 116px;
+}
+
+.pcp-skeleton-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.pcp-skeleton-table__head,
+.pcp-skeleton-table__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-300);
+  padding: 0 var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pcp-skeleton-table__head {
+  height: 36px;
+  background: var(--color-surface-sunken);
+}
+
+.pcp-skeleton-table--compact .pcp-skeleton-table__row {
+  height: var(--row-compact);
+}
+
+.pcp-skeleton-table--comfortable .pcp-skeleton-table__row {
+  height: var(--row-comfortable);
+}
+
+.pcp-skeleton-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: var(--space-300);
+  padding: var(--space-200) var(--space-300) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pcp-skeleton-chart__bar {
+  width: 32px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.pcp-skeleton-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  padding: var(--space-300) var(--page-gutter);
+}
+
+.pcp-skeleton-page__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-200);
+  margin-top: var(--space-100);
+}
+
+.pcp-skeleton-page__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+  padding: var(--space-300);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}

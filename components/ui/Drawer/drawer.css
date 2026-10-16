@@ -1,0 +1,109 @@
+@keyframes pcp-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.pcp-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-drawer);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pcp-drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-3);
+  animation: pcp-drawer-in var(--duration-base) var(--ease-standard);
+}
+
+.pcp-drawer:focus-visible {
+  outline: none;
+}
+
+.pcp-drawer--sm {
+  max-width: var(--drawer-sm);
+}
+
+.pcp-drawer--lg {
+  max-width: var(--drawer-lg);
+}
+
+@media (max-width: 767px) {
+  .pcp-drawer--sm,
+  .pcp-drawer--lg {
+    max-width: 100%;
+    border-radius: 0;
+  }
+}
+
+.pcp-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  min-height: 56px;
+  padding: var(--space-100) var(--space-200) var(--space-100) var(--space-300);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pcp-drawer__titles {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pcp-drawer__title {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcp-drawer__subtitle {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-drawer__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-050);
+  flex-shrink: 0;
+}
+
+.pcp-drawer__tabs {
+  padding: 0 var(--space-300);
+}
+
+.pcp-drawer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-300);
+}
+
+.pcp-drawer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-100);
+  min-height: 64px;
+  padding: var(--space-150) var(--space-300);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}

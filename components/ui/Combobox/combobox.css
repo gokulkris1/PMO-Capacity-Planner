@@ -1,0 +1,46 @@
+.pcp-combobox {
+  min-width: 0;
+}
+
+.pcp-combobox__leading {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.pcp-combobox__list {
+  max-height: 320px;
+}
+
+.pcp-combobox__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-height: 32px;
+  padding: var(--space-050) var(--space-150);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.pcp-combobox__option--active {
+  background: var(--color-primary-subtle);
+}
+
+.pcp-combobox__option--disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.pcp-combobox__group {
+  padding: var(--space-100) var(--space-150) var(--space-050);
+  font-size: var(--text-overline-size);
+  line-height: var(--text-overline-line);
+  font-weight: 600;
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.pcp-combobox__empty {
+  padding: var(--space-100) var(--space-150);
+  color: var(--color-text-tertiary);
+}

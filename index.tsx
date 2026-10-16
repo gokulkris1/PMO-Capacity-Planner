@@ -1,25 +1,21 @@
-
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/inter';
+import './index.css';
+// TEMPORARY: v1.1 variable names mapped onto 2.0 tokens for screens not yet migrated (see the file header).
+import './styles/legacy-aliases.css';
 import App from './App';
-import { AuthProvider } from './context/AuthContext';
-import { BrowserRouter, HashRouter } from 'react-router-dom';
-
-// VITE_ROUTER=hash lets a static preview (no server-side SPA fallback) deep-link to /o/:orgSlug routes.
-const Router = import.meta.env.VITE_ROUTER === 'hash' ? HashRouter : BrowserRouter;
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+  throw new Error('Could not find root element to mount to');
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <Router>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </Router>
-  </React.StrictMode>
+// Light theme in 2.0 (dark tokens exist; the toggle is XT-01, Could).
+document.documentElement.dataset.theme = 'light';
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
 );

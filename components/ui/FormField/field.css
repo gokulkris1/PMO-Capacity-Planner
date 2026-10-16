@@ -1,0 +1,309 @@
+/* FormField, Fieldset and the shared control box (DESIGN_SYSTEM §8.4) */
+.pcp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  min-width: 0;
+}
+
+.pcp-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+}
+
+.pcp-field__label {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.pcp-field__optional {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+.pcp-field__help {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-field__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-050);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-danger);
+}
+
+.pcp-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.pcp-fieldset__legend {
+  padding: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pcp-fieldset__description {
+  margin-top: var(--space-050);
+  color: var(--color-text-secondary);
+}
+
+.pcp-fieldset__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  margin-top: var(--space-200);
+}
+
+/* ---- Shared control box: TextField, NumberField, Select, DateField, Combobox ---------------- */
+.pcp-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  height: var(--control-height-md);
+  min-width: 0;
+  padding: 0 var(--space-100);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-control--sm {
+  height: var(--control-height-sm);
+}
+
+.pcp-control--lg {
+  height: var(--control-height-lg);
+  padding: 0 var(--space-150);
+}
+
+.pcp-control:hover {
+  border-color: var(--color-border-input-hover);
+}
+
+.pcp-control:focus-within {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The wrapper draws the ring; the inner element must not draw a second one. */
+.pcp-control__input:focus-visible {
+  outline: none;
+}
+
+.pcp-control--invalid,
+.pcp-control--invalid:hover {
+  border-color: var(--color-danger);
+}
+
+.pcp-control--disabled,
+.pcp-control--disabled:hover {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.pcp-control--readonly,
+.pcp-control--readonly:hover {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+}
+
+.pcp-control__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  appearance: none;
+}
+
+.pcp-control--sm .pcp-control__input {
+  font-size: var(--text-table-size);
+}
+
+.pcp-control__input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+.pcp-control__input:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-disabled);
+}
+
+.pcp-control__icon {
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.pcp-control__suffix {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-body-size);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pcp-control__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: calc(-1 * var(--space-050));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+}
+
+.pcp-control__clear:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+/* Select */
+.pcp-control--select {
+  padding-right: 0;
+}
+
+.pcp-control--select .pcp-control__input {
+  padding-right: calc(var(--space-100) + 24px);
+  cursor: pointer;
+}
+
+.pcp-control--select .pcp-control__chevron {
+  position: absolute;
+  right: var(--space-100);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+/* Number */
+.pcp-control--number .pcp-control__input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date */
+.pcp-control--date .pcp-control__input {
+  position: static;
+}
+
+/* The native picker opens from the whole field; our CalendarDays icon is the visible affordance. */
+.pcp-control--date .pcp-control__input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Textarea */
+.pcp-textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-100);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-textarea:hover {
+  border-color: var(--color-border-input-hover);
+}
+
+.pcp-textarea:focus-visible,
+.pcp-textarea:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.pcp-textarea[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.pcp-textarea:disabled {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  color: var(--color-text-disabled);
+}
+
+.pcp-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.pcp-control-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-050);
+  margin-top: var(--space-050);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-danger);
+}
+
+/* Password field: room for the show/hide toggle inside the control. */
+.pcp-password {
+  position: relative;
+  min-width: 0;
+}
+
+.pcp-password .pcp-control {
+  padding-right: calc(var(--space-100) + 28px);
+}
+
+.pcp-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-050);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  transform: translateY(-50%);
+}
+
+.pcp-password__toggle:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}

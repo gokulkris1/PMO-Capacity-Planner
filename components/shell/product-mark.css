@@ -1,0 +1,44 @@
+.pcp-mark__bg {
+  fill: var(--color-primary);
+}
+
+.pcp-mark__bar {
+  fill: var(--color-on-primary);
+}
+
+.pcp-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+
+.pcp-wordmark__text {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcp-wordmark--sm .pcp-wordmark__text {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}
+
+.pcp-wordmark--lg {
+  gap: var(--space-150);
+}
+
+.pcp-wordmark--lg .pcp-wordmark__text {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  letter-spacing: -0.01em;
+}
+
+.pcp-wordmark--default .pcp-wordmark__text {
+  color: var(--color-text);
+}
+
+.pcp-wordmark--inverse .pcp-wordmark__text {
+  color: var(--color-nav-text-active);
+}

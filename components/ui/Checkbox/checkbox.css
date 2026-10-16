@@ -1,0 +1,188 @@
+/* Checkbox, Radio, Switch (DESIGN_SYSTEM §8.4) */
+.pcp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-100);
+  min-width: 0;
+}
+
+.pcp-check__box-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.pcp-check__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pcp-check__input:disabled {
+  cursor: not-allowed;
+}
+
+.pcp-check__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-on-primary);
+  pointer-events: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-check__input:hover + .pcp-check__box {
+  border-color: var(--color-border-input-hover);
+}
+
+.pcp-check__input:checked + .pcp-check__box,
+.pcp-check__input:indeterminate + .pcp-check__box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.pcp-check__input:focus-visible + .pcp-check__box {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.pcp-check__input:disabled + .pcp-check__box {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border);
+  color: var(--color-text-disabled);
+}
+
+.pcp-check__box--radio {
+  border-radius: var(--radius-full);
+}
+
+.pcp-check__input:checked + .pcp-check__box--radio {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 4px var(--color-primary);
+}
+
+.pcp-check__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pcp-check__label {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.pcp-check__description {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-check--disabled .pcp-check__label {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Radio group */
+.pcp-radio-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.pcp-radio-group > legend {
+  padding: 0;
+  margin-bottom: var(--space-100);
+}
+
+.pcp-radio-group__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+
+.pcp-radio-group--horizontal .pcp-radio-group__options {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-300);
+}
+
+/* Switch */
+.pcp-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-150);
+  min-width: 0;
+}
+
+.pcp-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  margin-top: 1px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-switch__track:hover {
+  background: var(--color-border-input);
+}
+
+.pcp-switch__track[aria-checked='true'] {
+  background: var(--color-primary);
+}
+
+.pcp-switch__track[aria-checked='true']:hover {
+  background: var(--color-primary-hover);
+}
+
+.pcp-switch__track:disabled {
+  background: var(--color-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.pcp-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-1);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-switch__track[aria-checked='true'] .pcp-switch__knob {
+  transform: translateX(14px);
+}
+
+.pcp-switch__label {
+  cursor: default;
+}
+
+.pcp-switch--disabled .pcp-switch__label {
+  color: var(--color-text-disabled);
+}

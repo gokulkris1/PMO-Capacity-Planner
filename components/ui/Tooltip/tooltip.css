@@ -1,0 +1,36 @@
+.pcp-tooltip-anchor {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pcp-tooltip-anchor--block {
+  display: flex;
+  width: 100%;
+}
+
+.pcp-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-tooltip);
+  max-width: 280px;
+  padding: var(--space-050) var(--space-100);
+  border-radius: var(--radius-sm);
+  background: var(--color-tooltip-bg);
+  color: var(--color-tooltip-text);
+  box-shadow: var(--elevation-2);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 400;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  overflow-wrap: break-word;
+}
+
+.pcp-tooltip--placed {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
