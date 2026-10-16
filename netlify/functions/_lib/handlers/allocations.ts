@@ -304,17 +304,18 @@ export async function allocationBatch(ctx: Ctx, p: Params): Promise<AllocationBa
 
 export async function respondAllocation(ctx: Ctx, p: Params) {
   const access = await requireWorkspace(ctx, p.wsId, ['allocations.write', 'allocations.respond.own']);
-  const body = parseWith(
-    z.object({ decision: z.enum(['accept', 'decline']), reason: z.string().max(1000).optional() }),
-    ctx.body,
-  );
   const actor = requireActor(ctx);
   return withTx(async (q) => {
     const before = await loadAllocation(q, p.wsId, p.id);
     if (!before) throw notFound('This booking no longer exists.');
+    // Ownership before body validation, so a non-owner always gets 403 (PL-12).
     if (!has(access, 'allocations.write') && !(await isOwnPerson(q, p.wsId, before.resourceId, actor.userId))) {
       throw forbidden('You can only respond to bookings proposed to you.');
     }
+    const body = parseWith(
+      z.object({ decision: z.enum(['accept', 'decline']), reason: z.string().max(1000).optional() }),
+      ctx.body,
+    );
     if (before.state !== 'tentative') throw conflict('This booking was already answered.');
     const accept = body.decision === 'accept';
     await q.query(

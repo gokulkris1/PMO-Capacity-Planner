@@ -9,12 +9,19 @@ export class PgliteDb implements Db {
   readonly pg: PGlite;
   /** Every statement text, for "≤ N queries" assertions. */
   readonly statements: string[] = [];
+  /** When set, the next statement matching it throws (rollback tests). */
+  failOn: RegExp | null = null;
   constructor() {
     this.pg = new PGlite();
   }
 
-  async query<T extends Row = Row>(text: string, params: unknown[] = []): Promise<T[]> {
+  private record(text: string): void {
     this.statements.push(text);
+    if (this.failOn?.test(text)) throw new Error(`injected failure: ${text.slice(0, 40)}`);
+  }
+
+  async query<T extends Row = Row>(text: string, params: unknown[] = []): Promise<T[]> {
+    this.record(text);
     const r = await this.pg.query<T>(text, params as never[]);
     return r.rows;
   }
@@ -23,7 +30,7 @@ export class PgliteDb implements Db {
     return this.pg.transaction(async (t) => {
       const q: Queryable = {
         query: async <R extends Row = Row>(text: string, params: unknown[] = []) => {
-          this.statements.push(text);
+          this.record(text);
           return (await t.query<R>(text, params as never[])).rows;
         },
       };

@@ -93,7 +93,7 @@ export function auditCtx(ctx: Ctx, actorType?: AuditContext['actorType']): Audit
     ip: ctx.ip,
     userAgent: ctx.userAgent,
     actorUserId: ctx.actor?.userId ?? null,
-    actorType: actorType ?? (ctx.actor ? 'user' : 'system'),
+    actorType: actorType ?? (ctx.actor ? (ctx.actor.isPlatformAdmin ? 'platform_admin' : 'user') : 'system'),
   };
 }
 

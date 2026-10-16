@@ -38,9 +38,9 @@ const createOrgSchema = z.object({
 export async function createOrg(ctx: Ctx) {
   const actor = requireActor(ctx);
   if (!actor.emailVerified) throw forbidden('Verify your email first');
-  const body = parseWith(createOrgSchema, ctx.body);
   const existing = await one(ctx.db, `SELECT 1 AS x FROM org_memberships WHERE user_id = $1`, [actor.userId]);
   if (existing || actor.legacyOrgId) throw conflict('You already belong to an organisation.');
+  const body = parseWith(createOrgSchema, ctx.body);
   const orgId = randomUUID();
   const wsId = randomUUID();
   const slug = `${slugify(body.name)}-${randomBytes(3).toString('hex')}`;
