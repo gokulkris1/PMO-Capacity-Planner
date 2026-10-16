@@ -157,6 +157,17 @@ export function headroomOf(person: EnginePerson): number {
   return Math.min(person.totalCapacity ?? 100, targetOf(person));
 }
 
+/** Groups allocations by person once, so per-person loops stay O(bookings), not O(people × bookings). */
+export function allocationsByResource<A extends EngineAllocation>(allocations: A[]): Map<string, A[]> {
+  const out = new Map<string, A[]>();
+  for (const a of allocations) {
+    const list = out.get(a.resourceId);
+    if (list) list.push(a);
+    else out.set(a.resourceId, [a]);
+  }
+  return out;
+}
+
 /* ── per person ────────────────────────────────────────────────────────────────────── */
 
 export interface BookingShare {
@@ -308,6 +319,7 @@ export function craftBalance(
 ): CraftQuarterBalance {
   const range = rangeOf(quarter);
   const projectMap = new Map(projects.map((p) => [p.id, p]));
+  const mine = allocationsByResource(allocations);
   const resourceMap = new Map(resources.map((r) => [r.id, r]));
 
   let primarySupply = 0;
@@ -316,7 +328,7 @@ export function craftBalance(
   let secondaryReach = 0;
 
   for (const r of resources) {
-    const load = personRangeLoad(r, range, allocations, projectMap);
+    const load = personRangeLoad(r, range, mine.get(r.id) ?? [], projectMap);
     const onCraft = load.bookings.filter((b) => b.craftId === craft.id).reduce((s, b) => s + b.pct, 0) / 100;
     if (r.primaryCraft === craft.id) {
       primarySupply += (r.totalCapacity ?? 100) / 100;
@@ -471,11 +483,12 @@ export function suggestMatches(
   if (line.gapFte <= 0) return [];
   const range = rangeOf(quarter);
   const projectMap = new Map(projects.map((p) => [p.id, p]));
+  const mine = allocationsByResource(allocations);
   const needPct = Math.round(line.gapFte * 100);
   const out: MatchSuggestion[] = [];
 
   for (const r of resources) {
-    const load = personRangeLoad(r, range, allocations, projectMap);
+    const load = personRangeLoad(r, range, mine.get(r.id) ?? [], projectMap);
     const freePct = load.free;
     if (freePct < 5) continue;
     if (load.bookings.some((b) => b.projectId === line.projectId && b.craftId === line.craftId)) continue; // already on it
@@ -564,6 +577,7 @@ export function quarterSummary(
 ): QuarterSummary {
   const range = rangeOf(quarter);
   const projectMap = new Map(projects.map((p) => [p.id, p]));
+  const mine = allocationsByResource(allocations);
   let capacity = 0,
     committed = 0,
     above = 0,
@@ -572,7 +586,7 @@ export function quarterSummary(
     over = 0,
     under = 0;
   for (const r of resources) {
-    const l = personRangeLoad(r, range, allocations, projectMap);
+    const l = personRangeLoad(r, range, mine.get(r.id) ?? [], projectMap);
     capacity += l.capacity;
     committed += l.total;
     above += l.above;

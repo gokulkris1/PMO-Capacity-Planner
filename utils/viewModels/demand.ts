@@ -68,4 +68,3 @@ export function projectsWithoutDemand(s: D.WorkspaceSnapshot, quarters: QuarterV
     .filter((p) => (p.stage === 'Initiated' || p.stage === 'Mobilising') && !withDemand.has(p.id))
     .sort(byName);
 }
-

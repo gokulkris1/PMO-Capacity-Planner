@@ -136,11 +136,7 @@ export interface HomeModel {
 
 const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
 
-function personRowsFrom(
-  s: D.WorkspaceSnapshot,
-  idx: LoadIndex,
-  t: UtilisationThresholds,
-): PersonRow[] {
+function personRowsFrom(s: D.WorkspaceSnapshot, idx: LoadIndex, t: UtilisationThresholds): PersonRow[] {
   const chapters = byId(s.chapters);
   const teams = byId(s.teams);
   const crafts = byId(s.crafts);
@@ -182,7 +178,11 @@ function targetFor(p: D.PersonDTO): number {
   return p.targetUtil > 0 ? p.targetUtil : 100;
 }
 
-export function buildPeopleRows(s: D.WorkspaceSnapshot, quarters: QuarterView[], t: UtilisationThresholds): PersonRow[] {
+export function buildPeopleRows(
+  s: D.WorkspaceSnapshot,
+  quarters: QuarterView[],
+  t: UtilisationThresholds,
+): PersonRow[] {
   return personRowsFrom(s, loadIndex(s, quarters), t);
 }
 
@@ -557,7 +557,10 @@ function tribePoints(
     const committed = above + below + undeclared;
     const demand = s.demand
       .filter(
-        (l) => l.quarterKey === q.key && projects.get(l.projectId)?.tribeId === tribeId && (!craftId || l.craftId === craftId),
+        (l) =>
+          l.quarterKey === q.key &&
+          projects.get(l.projectId)?.tribeId === tribeId &&
+          (!craftId || l.craftId === craftId),
       )
       .reduce((x, l) => x + l.fte, 0);
     const coverage = demand > 0 ? (100 * committed) / demand : 0;
@@ -581,7 +584,11 @@ function tribePoints(
  * they already do in that craft), with any marketplace offer. People with nothing free and no
  * offer are left out.
  */
-export function buildCatalogue(s: D.WorkspaceSnapshot, quarters: QuarterView[], quarterKey: D.QuarterKey): CatalogueEntry[] {
+export function buildCatalogue(
+  s: D.WorkspaceSnapshot,
+  quarters: QuarterView[],
+  quarterKey: D.QuarterKey,
+): CatalogueEntry[] {
   const qi = quarters.findIndex((q) => q.key === quarterKey);
   if (qi < 0) return [];
   const idx = loadIndex(s, [quarters[qi]]);
@@ -597,7 +604,13 @@ export function buildCatalogue(s: D.WorkspaceSnapshot, quarters: QuarterView[], 
         const offered = !!offer && (offer.craftIds.length === 0 || offer.craftIds.includes(craft.id));
         if (p.primaryCraft === craft.id) {
           if (l.free > 0 || offered)
-            people.push({ person: p, via: 'above', proficiency: null, freePct: round1(l.free), offer: offered ? offer : null });
+            people.push({
+              person: p,
+              via: 'above',
+              proficiency: null,
+              freePct: round1(l.free),
+              offer: offered ? offer : null,
+            });
           continue;
         }
         const sec = p.secondaryCrafts.find((x) => x.craftId === craft.id);
@@ -605,7 +618,13 @@ export function buildCatalogue(s: D.WorkspaceSnapshot, quarters: QuarterView[], 
         const onCraft = l.bookings.filter((b) => b.craftId === craft.id).reduce((x, b) => x + b.pct, 0);
         const free = Math.max(0, Math.min(l.free, sec.maxPct - onCraft));
         if (free > 0 || offered)
-          people.push({ person: p, via: 'below', proficiency: sec.proficiency, freePct: round1(free), offer: offered ? offer : null });
+          people.push({
+            person: p,
+            via: 'below',
+            proficiency: sec.proficiency,
+            freePct: round1(free),
+            offer: offered ? offer : null,
+          });
       }
       people.sort(
         (a, b) =>
@@ -647,11 +666,18 @@ export function buildHome(
     return round1(relativeOf(load, targetFor(r.person)));
   };
   const scored = rows.map((r) => ({ r, rel: relOf(r), band: bandFor(relOf(r), t) }));
-  const over = scored.filter((x) => x.band === 'over').sort((a, b) => b.rel - a.rel).map((x) => x.r);
-  const available = scored.filter((x) => x.band === 'bench').sort((a, b) => a.rel - b.rel).map((x) => x.r);
+  const over = scored
+    .filter((x) => x.band === 'over')
+    .sort((a, b) => b.rel - a.rel)
+    .map((x) => x.r);
+  const available = scored
+    .filter((x) => x.band === 'bench')
+    .sort((a, b) => a.rel - b.rel)
+    .map((x) => x.r);
 
   const loadsAt = (p: D.PersonDTO) => ({ total: rawLoadFor(s, idx, p.id, basis, day) ?? 0, target: targetFor(p) });
-  const util = basis.kind === 'quarter' ? (outlook[qi]?.utilisationPct ?? 0) : round1(groupUtilisation(s.people.map(loadsAt)));
+  const util =
+    basis.kind === 'quarter' ? (outlook[qi]?.utilisationPct ?? 0) : round1(groupUtilisation(s.people.map(loadsAt)));
   const grid = buildDemandGrid(s, quarters);
   const unstaffedIn = (i: number) => grid.reduce((x, d) => x + Math.max(0, d.cells[i]?.gapFte ?? 0), 0);
   const unstaffed =

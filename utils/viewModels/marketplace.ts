@@ -8,7 +8,7 @@ import type { UtilBand, UtilisationThresholds } from '../../shared/utilisation';
 import { suggestMatches, type DemandLine, type MatchSuggestion } from '../craftEngine';
 import { dayNumber } from '../quarters';
 import { effectiveCraft } from './allocationOps';
-import { byId, countedAllocations, fteIn, loadIndex, round1, round2, toPersonQuarter } from './core';
+import { byId, countedAllocations, fteIn, groupBy, loadIndex, round1, round2, toPersonQuarter } from './core';
 import type { QuarterView } from './types';
 
 export interface OpenDemandLine {
@@ -46,6 +46,7 @@ export function buildOpenDemand(
   const crafts = byId(s.crafts);
   const people = byId(s.people);
   const counted = countedAllocations(s);
+  const countedByProject = groupBy(counted, (a) => a.projectId);
   const groups = new Map<string, D.DemandLineDTO[]>();
   for (const l of s.demand) {
     if (o.quarterKey && l.quarterKey !== o.quarterKey) continue;
@@ -62,8 +63,8 @@ export function buildOpenDemand(
     if (o.tribeId && project.tribeId !== o.tribeId) continue;
     let staffed = 0,
       proposed = 0;
-    for (const a of counted) {
-      if (a.projectId !== projectId || effectiveCraft(a, people.get(a.resourceId)) !== craftId) continue;
+    for (const a of countedByProject.get(projectId) ?? []) {
+      if (effectiveCraft(a, people.get(a.resourceId)) !== craftId) continue;
       const fte = fteIn(a, project, quarter);
       if (a.state === 'confirmed') staffed += fte;
       else proposed += fte;
@@ -95,7 +96,10 @@ export function buildOpenDemand(
       staffedFte: round2(staffed),
       proposedFte: round2(proposed),
       openFte: round2(open),
-      matches: open > 0.005 ? suggestMatches(line, quarter, s.people, s.projects, counted, o.matchLimit ?? 5) : [],
+      matches:
+        open > 0.005 && (o.matchLimit ?? 5) > 0
+          ? suggestMatches(line, quarter, s.people, s.projects, counted, o.matchLimit ?? 5)
+          : [],
     });
   }
   return out.sort(
@@ -148,7 +152,10 @@ export function buildUnderTarget(
 }
 
 /** Default dates for a proposal in a quarter, clipped to the project window (DM-03 ProposeRequest). */
-export function proposalWindow(project: D.ProjectDTO | undefined, q: QuarterView): { startDate: D.ISODate; endDate: D.ISODate } {
+export function proposalWindow(
+  project: D.ProjectDTO | undefined,
+  q: QuarterView,
+): { startDate: D.ISODate; endDate: D.ISODate } {
   const start = project?.startDate && project.startDate > q.start ? project.startDate : q.start;
   const end = project?.endDate && project.endDate < q.end ? project.endDate : q.end;
   return end < start ? { startDate: q.start, endDate: q.end } : { startDate: start, endDate: end };
@@ -198,6 +205,7 @@ export function buildTimeToStaff(
     .map((r) => r.days)
     .sort((a, b) => a - b);
   const mid = Math.floor(recent.length / 2);
-  const median = recent.length === 0 ? null : recent.length % 2 ? recent[mid] : round1((recent[mid - 1] + recent[mid]) / 2);
+  const median =
+    recent.length === 0 ? null : recent.length % 2 ? recent[mid] : round1((recent[mid - 1] + recent[mid]) / 2);
   return { rows, medianDays90: median };
 }

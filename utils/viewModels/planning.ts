@@ -9,7 +9,16 @@ import type * as D from '../../shared/contracts/dto';
 import { QUARTER_KEY_RE } from '../../shared/contracts/dto';
 import type { UtilisationThresholds } from '../../shared/utilisation';
 import { craftBalance } from '../craftEngine';
-import { byId, countedAllocations, fteIn, groupBy, loadIndex, round2, toPersonQuarter, type PersonQuarter } from './core';
+import {
+  byId,
+  countedAllocations,
+  fteIn,
+  groupBy,
+  loadIndex,
+  round2,
+  toPersonQuarter,
+  type PersonQuarter,
+} from './core';
 import { buildDemandGrid } from './demand';
 import type { QuarterView } from './types';
 
@@ -61,7 +70,13 @@ export interface ProjectRow {
   project: D.ProjectDTO;
   tribe: D.TribeDTO | null;
   /** Per window quarter. */
-  quarters: Array<{ quarterKey: D.QuarterKey; demandFte: number; staffedFte: number; proposedFte: number; gapFte: number }>;
+  quarters: Array<{
+    quarterKey: D.QuarterKey;
+    demandFte: number;
+    staffedFte: number;
+    proposedFte: number;
+    gapFte: number;
+  }>;
   /** True for Initiated/Mobilising projects with no demand in QBR1–QBR2 (DM-02#AC3). */
   noDemandWarning: boolean;
   /** Planview-sourced project under the "locked" rule: dates are read-only (PPL-07#AC3). */
@@ -96,7 +111,10 @@ export interface MyPlanModel {
   quarters: PersonQuarter[];
   proposals: Array<{ allocation: D.AllocationDTO; project: D.ProjectDTO | null; craft: D.CraftDTO | null }>;
   bookings: Array<{ allocation: D.AllocationDTO; project: D.ProjectDTO | null; craft: D.CraftDTO | null }>;
-  crafts: { primary: D.CraftDTO | null; secondary: Array<{ craft: D.CraftDTO; proficiency: D.Proficiency; maxPct: number }> };
+  crafts: {
+    primary: D.CraftDTO | null;
+    secondary: Array<{ craft: D.CraftDTO; proficiency: D.Proficiency; maxPct: number }>;
+  };
   /** The pending request, if any ("Pending approval by {approver}"). */
   pendingRequest: D.CraftChangeRequestDTO | null;
   /** Who the pending request is routed to: the chapter lead's name, else 'a Planner'. */
@@ -222,7 +240,9 @@ export function buildStructureRows(s: D.WorkspaceSnapshot): {
   const byTeam = groupBy(s.people, (p) => p.teamId);
   const projectsByTribe = groupBy(s.projects, (p) => p.tribeId);
   const sortRows = <T extends { name: string; archived: boolean }>(rows: Array<StructureRow<T>>) =>
-    rows.sort((a, b) => Number(a.entity.archived) - Number(b.entity.archived) || a.entity.name.localeCompare(b.entity.name));
+    rows.sort(
+      (a, b) => Number(a.entity.archived) - Number(b.entity.archived) || a.entity.name.localeCompare(b.entity.name),
+    );
   return {
     tribes: sortRows(
       s.tribes.map((t) => ({
@@ -271,7 +291,9 @@ export function buildCraftAdminRows(s: D.WorkspaceSnapshot): CraftAdminRow[] {
 }
 
 /** "Create chapters from crafts" (ORG-03#AC3): one chapter per above-the-table craft in use, with its members. */
-export function chaptersFromCrafts(s: D.WorkspaceSnapshot): Array<{ craft: D.CraftDTO; name: string; personIds: D.ID[] }> {
+export function chaptersFromCrafts(
+  s: D.WorkspaceSnapshot,
+): Array<{ craft: D.CraftDTO; name: string; personIds: D.ID[] }> {
   const crafts = byId(s.crafts);
   const holders = groupBy(
     s.people.filter((p) => p.primaryCraft),
@@ -293,7 +315,8 @@ export function validateCraft(s: D.WorkspaceSnapshot, c: { id?: D.ID; name?: unk
   const name = typeof c.name === 'string' ? c.name.trim() : '';
   const short = typeof c.short === 'string' ? c.short.trim() : '';
   if (!name) e.name = 'Enter a name';
-  else if (s.crafts.some((x) => x.id !== c.id && x.name.toLowerCase() === name.toLowerCase())) e.name = 'Already exists';
+  else if (s.crafts.some((x) => x.id !== c.id && x.name.toLowerCase() === name.toLowerCase()))
+    e.name = 'Already exists';
   if (!/^[A-Z0-9]{2,4}$/.test(short)) e.short = 'Use 2–4 capital letters or digits';
   else if (s.crafts.some((x) => x.id !== c.id && x.short === short)) e.short = 'Already used by another craft';
   return e;
@@ -306,7 +329,8 @@ export function validateStructureName(
 ): FieldErrors {
   const name = typeof e.name === 'string' ? e.name.trim() : '';
   if (!name) return { name: 'Enter a name' };
-  if (list.some((x) => x.id !== e.id && x.name.trim().toLowerCase() === name.toLowerCase())) return { name: 'Already exists' };
+  if (list.some((x) => x.id !== e.id && x.name.trim().toLowerCase() === name.toLowerCase()))
+    return { name: 'Already exists' };
   return {};
 }
 
@@ -316,7 +340,8 @@ export function validateDemandLine(
   l: { quarterKey?: unknown; fte?: unknown; craftId?: unknown; projectId?: unknown },
 ): FieldErrors {
   const e: FieldErrors = {};
-  if (typeof l.quarterKey !== 'string' || !QUARTER_KEY_RE.test(l.quarterKey)) e.quarterKey = 'Use a quarter like 2027-Q1';
+  if (typeof l.quarterKey !== 'string' || !QUARTER_KEY_RE.test(l.quarterKey))
+    e.quarterKey = 'Use a quarter like 2027-Q1';
   if (typeof l.fte !== 'number' || !Number.isFinite(l.fte) || l.fte < 0 || l.fte > 50) e.fte = 'Enter 0–50 FTE';
   const craft = s.crafts.find((c) => c.id === l.craftId);
   if (!craft) e.craftId = 'Choose a craft';
@@ -335,7 +360,8 @@ export function validatePerson(p: Partial<D.PersonDTO>): FieldErrors {
   if (p.secondaryCrafts) {
     const seen = new Set<string>();
     p.secondaryCrafts.forEach((c, i) => {
-      if (p.primaryCraft && c.craftId === p.primaryCraft) e[`secondaryCrafts.${i}`] = 'Already their above-the-table craft';
+      if (p.primaryCraft && c.craftId === p.primaryCraft)
+        e[`secondaryCrafts.${i}`] = 'Already their above-the-table craft';
       else if (seen.has(c.craftId)) e[`secondaryCrafts.${i}`] = 'Listed twice';
       else if (![1, 2, 3].includes(c.proficiency)) e[`secondaryCrafts.${i}`] = 'Choose L1, L2 or L3';
       else if (!(c.maxPct >= 0 && c.maxPct <= 100)) e[`secondaryCrafts.${i}`] = 'Cap must be 0–100%';

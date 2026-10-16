@@ -38,10 +38,18 @@ export function isIsoDate(value: unknown): value is ISODate {
   return d <= new Date(Date.UTC(y, mo, 0)).getUTCDate();
 }
 
-/** Days since 1970-01-01 for an ISO date (UTC, so no time-zone drift). NaN when invalid. */
+const dayCache = new Map<string, number>();
+
+/** Days since 1970-01-01 for an ISO date (UTC, so no time-zone drift). NaN when invalid. Memoised. */
 export function dayNumber(iso: ISODate): number {
-  if (!isIsoDate(iso)) return NaN;
-  return Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) / DAY_MS;
+  const hit = dayCache.get(iso);
+  if (hit !== undefined) return hit;
+  const n = isIsoDate(iso)
+    ? Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) / DAY_MS
+    : NaN;
+  if (dayCache.size > 20_000) dayCache.clear();
+  dayCache.set(iso, n);
+  return n;
 }
 
 export function isoFromDayNumber(n: number): ISODate {

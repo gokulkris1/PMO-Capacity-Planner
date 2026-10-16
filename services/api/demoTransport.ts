@@ -70,7 +70,7 @@ export class DemoTransport implements Transport {
 
   constructor(o: DemoTransportOptions = {}) {
     this.o = o;
-    this.db = o.db ? clone(o.db) : (this.load() ?? buildDemoDb(o));
+    this.db = o.db ? this.withRole(clone(o.db)) : (this.load() ?? buildDemoDb(o));
   }
 
   on(event: TransportEvent, listener: () => void): () => void {
@@ -127,19 +127,24 @@ export class DemoTransport implements Transport {
       if (!raw) return null;
       const db = JSON.parse(raw) as DemoDb;
       if (!db || typeof db !== 'object' || !db.org || !db.workspaces) return null;
-      if (this.o.role) {
-        const me = db.users.find((u) => u.id === 'demo-user');
-        if (me) me.orgRole = this.o.role === 'ORG_ADMIN' ? 'ORG_ADMIN' : 'MEMBER';
-        db.memberships = db.memberships.map((m) =>
-          m.userId === 'demo-user'
-            ? { ...m, role: this.o.role === 'ORG_ADMIN' ? 'WORKSPACE_ADMIN' : (this.o.role as D.WorkspaceRole) }
-            : m,
-        );
-      }
-      return db;
+      return this.withRole(db);
     } catch {
       return null;
     }
+  }
+
+  /** Applies the `role` option (URL `?demoRole=`) to the demo user of a restored database. */
+  private withRole(db: DemoDb): DemoDb {
+    const role = this.o.role;
+    if (!role) return db;
+    const me = db.users.find((u) => u.id === 'demo-user');
+    if (me) me.orgRole = role === 'ORG_ADMIN' ? 'ORG_ADMIN' : 'MEMBER';
+    db.memberships = db.memberships.map((m) =>
+      m.userId === 'demo-user'
+        ? { ...m, role: role === 'ORG_ADMIN' ? 'WORKSPACE_ADMIN' : (role as D.WorkspaceRole) }
+        : m,
+    );
+    return db;
   }
 
   private save(): void {

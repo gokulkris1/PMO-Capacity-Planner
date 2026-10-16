@@ -50,7 +50,8 @@ export function impliedFte(
 export function suggestedBasisLabel(c: D.TribeCalibrationDTO): string | null {
   const b = c.suggestedBasis;
   if (!b || b.sprintNames.length === 0) return null;
-  const names = b.sprintNames.length === 1 ? b.sprintNames[0] : `${b.sprintNames[0]}–${b.sprintNames[b.sprintNames.length - 1]}`;
+  const names =
+    b.sprintNames.length === 1 ? b.sprintNames[0] : `${b.sprintNames[0]}–${b.sprintNames[b.sprintNames.length - 1]}`;
   return `Based on ${names}: ${round1(b.points)} pts, ${round1(b.fte)} FTE`;
 }
 
@@ -89,7 +90,9 @@ export function buildProjectDelivery(
     .slice(0, 3)
     .map((r) => ({ ...r, signal: deliverySignal(r.plannedFte, r.impliedFte) }));
   return {
-    qbr1: q ? { plannedFte: q.plannedFte, impliedFte: q.impliedFte, signal: deliverySignal(q.plannedFte, q.impliedFte) } : null,
+    qbr1: q
+      ? { plannedFte: q.plannedFte, impliedFte: q.impliedFte, signal: deliverySignal(q.plannedFte, q.impliedFte) }
+      : null,
     sprints,
     hasData: !!q || sprints.length > 0,
   };
@@ -122,7 +125,8 @@ export function buildDeliveryTrend(
 
 /* ── sync health (JI-07, RP-01#AC4) ────────────────────────────────────────────────── */
 
-export type SyncPill = 'Succeeded' | 'Failed' | 'Partial' | 'Running' | 'Rate limited' | 'Queued' | 'Stale' | 'Never run';
+export type SyncPill =
+  'Succeeded' | 'Failed' | 'Partial' | 'Running' | 'Rate limited' | 'Queued' | 'Stale' | 'Never run';
 
 export function syncJobLabel(job: D.SyncJobDTO, now: Date): SyncPill {
   if (job.status === 'running' && job.rateLimitedUntil && Date.parse(job.rateLimitedUntil) > now.getTime())
@@ -174,10 +178,16 @@ export function syncHealthBanner(
   if (state === 'failed') {
     const at = h.lastJob?.finishedAt ?? h.lastJob?.startedAt;
     const reason = h.lastJob?.error ?? 'Unknown error';
-    return { kind: 'failed', message: `Jira sync failed ${at ? relativeTime(at, now) : ''}: ${reason}`.replace('  ', ' ') };
+    return {
+      kind: 'failed',
+      message: `Jira sync failed ${at ? relativeTime(at, now) : ''}: ${reason}`.replace('  ', ' '),
+    };
   }
   if (state === 'stale') {
-    return { kind: 'stale', message: `Jira data is stale: last successful sync ${relativeTime(h.lastSuccessAt!, now)}.` };
+    return {
+      kind: 'stale',
+      message: `Jira data is stale: last successful sync ${relativeTime(h.lastSuccessAt!, now)}.`,
+    };
   }
   return null;
 }

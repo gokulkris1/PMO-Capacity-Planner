@@ -104,7 +104,8 @@ export function setBookingRange(
     }
     const keep = before ?? after!;
     ops.push({ op: 'update', id: a.id, version: a.version, patch: { startDate: keep.start, endDate: keep.end } });
-    if (before && after) ops.push({ op: 'create', allocation: copyOf(a, { startDate: after.start, endDate: after.end }) });
+    if (before && after)
+      ops.push({ op: 'create', allocation: copyOf(a, { startDate: after.start, endDate: after.end }) });
   }
 
   if (canCreate && !reused) {
@@ -150,7 +151,9 @@ export function bookingPctAtQuarterEnd(s: D.WorkspaceSnapshot, k: BookingKey, q:
   if (inQuarter.length === 0) return 0;
   const lastDay = inQuarter.reduce((m, { w }) => Math.max(m, dayNumber(minDate(w.end, q.end) ?? q.end)), -Infinity);
   return inQuarter
-    .filter(({ w }) => (w.start === null || dayNumber(w.start) <= lastDay) && (w.end === null || dayNumber(w.end) >= lastDay))
+    .filter(
+      ({ w }) => (w.start === null || dayNumber(w.start) <= lastDay) && (w.end === null || dayNumber(w.end) >= lastDay),
+    )
     .reduce((x, { a }) => x + a.percentage, 0);
 }
 
@@ -233,7 +236,9 @@ export function applyAllocationOps(
     if (op.op === 'delete') out = out.filter((a) => a.id !== op.id);
     else if (op.op === 'update')
       out = out.map((a) =>
-        a.id === op.id ? { ...a, ...op.patch, id: a.id, version: a.version + 1, updatedAt: ctx.now, updatedBy: ctx.user } : a,
+        a.id === op.id
+          ? { ...a, ...op.patch, id: a.id, version: a.version + 1, updatedAt: ctx.now, updatedBy: ctx.user }
+          : a,
       );
     else out.push(materialise(op.allocation, ctx));
   }

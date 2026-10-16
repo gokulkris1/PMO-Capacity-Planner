@@ -160,7 +160,11 @@ export function rawLoadFor(
 
 /** Index of the basis quarter (today and window map to QBR1 for quarter-shaped figures). */
 export function basisIndex(basis: TimeBasis, quarters: QuarterView[]): number {
-  if (basis.kind === 'quarter') return Math.max(0, quarters.findIndex((q) => q.key === basis.key));
+  if (basis.kind === 'quarter')
+    return Math.max(
+      0,
+      quarters.findIndex((q) => q.key === basis.key),
+    );
   return 0;
 }
 
