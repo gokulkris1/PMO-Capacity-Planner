@@ -34,6 +34,7 @@ import {
   isUuid,
   MAX_BATCH_OPS,
   quarterCellOps,
+  quarterCellsOps,
 } from '../utils/viewModels/allocationOps';
 import { ApiRequestError } from '../services/api/errors';
 import { newUuid } from '../services/api/demoTransport';
@@ -79,6 +80,14 @@ export interface Mutations {
       fromQuarterKey: D.QuarterKey;
     }): Promise<void>;
     respond(id: D.ID, r: RespondRequest): Promise<void>;
+    /**
+     * Addition (AL-07): several quarter cells (e.g. a paste from Excel) as ONE atomic batch and ONE
+     * undo step. Rejects with 400 "Enter 0–200" when any value is out of range.
+     */
+    setQuarterCells(
+      cells: Array<{ resourceId: D.ID; projectId: D.ID; craftId: D.ID | null; quarterKey: D.QuarterKey; pct: number }>,
+      label?: string,
+    ): Promise<void>;
   };
   marketplace: {
     propose(r: ProposeRequest): Promise<D.AllocationDTO>;
@@ -231,6 +240,21 @@ export function buildMutations(rt: DataRuntime): Mutations {
         (server) => stable(quarterCellOps(server, quarters(server), a)),
         (s) => stable(quarterCellOps(s, quarters(s), a)),
       );
+    },
+    setQuarterCells(cells, label = cells.length === 1 ? 'Edit booking' : `Paste ${cells.length} cells`) {
+      if (cells.some((c) => !Number.isFinite(c.pct) || c.pct < 0 || c.pct > 200))
+        return Promise.reject(
+          new ApiRequestError(400, 'bad_request', 'Enter 0–200', { fields: { pct: 'Enter 0–200' } }),
+        );
+      if (cells.length === 0) return Promise.resolve();
+      // The same client ids for the optimistic preview and the request.
+      const pool: D.ID[] = [];
+      const build = (snap: D.WorkspaceSnapshot) => {
+        let i = 0;
+        const next = () => ((pool[i] ??= newUuid()), pool[i++]);
+        return quarterCellsOps(snap, quarters(snap), cells, next);
+      };
+      return allocationBatch(label, build, build);
     },
     copyForward(a) {
       return allocationBatch(

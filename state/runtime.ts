@@ -71,6 +71,10 @@ export interface RuntimeOptions {
 }
 
 export const UNDO_LIMIT = 20;
+
+function asApiError(e: unknown): ApiRequestError {
+  return e instanceof ApiRequestError ? e : new ApiRequestError(0, 'server_error', 'Something went wrong.');
+}
 export const LAST_WORKSPACE_KEY = `${UI_STORAGE_PREFIX}lastWorkspace`;
 
 /** One optimistic change waiting for the server. */
@@ -213,8 +217,22 @@ export class DataRuntime {
     } else {
       this.storage.remove('pcp_user');
     }
+    try {
+      await this.loadMe();
+    } catch (e) {
+      // Not a 401: the API is down or being migrated (SH-07#AC4). Surface it through useWorkspaceData().
+      this.set({ status: 'loading', dataStatus: 'error', dataError: asApiError(e) });
+      return;
+    }
+    if (this.getState().status === 'authenticated')
+      await this.selectWorkspace(this.getState().activeWorkspaceId).catch(() => undefined);
+  }
+
+  /** Re-reads `/me` and (re)selects a workspace: after accepting an invitation, creating an org, etc. */
+  async reloadSession(preferredWorkspaceId?: D.ID | null): Promise<void> {
     await this.loadMe();
-    if (this.getState().status === 'authenticated') await this.selectWorkspace(this.getState().activeWorkspaceId);
+    if (this.getState().status === 'authenticated')
+      await this.selectWorkspace(preferredWorkspaceId ?? this.getState().activeWorkspaceId);
   }
 
   private async loadMe(): Promise<D.MeResponse | null> {
@@ -353,6 +371,12 @@ export class DataRuntime {
 
   /** Reloads the active workspace snapshot (also the conflict dialog's "Reload"). */
   async loadSnapshot(): Promise<void> {
+    if (this.getState().status === 'loading' && this.getState().dataStatus === 'error') {
+      // The boot failed (e.g. 503 migration_pending): "Try again" re-runs it.
+      this.started = null;
+      this.set({ dataStatus: 'idle', dataError: null });
+      return this.start();
+    }
     const wsId = this.getState().activeWorkspaceId;
     if (!wsId || this.getState().status !== 'authenticated') return;
     const seq = ++this.snapshotSeq;

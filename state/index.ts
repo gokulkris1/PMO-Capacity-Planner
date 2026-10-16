@@ -6,7 +6,9 @@
 //
 // Frozen (§4.3): useSession, useWorkspace, useFeature, useEntitlements, useQuarters,
 // useWorkspaceData, useConflict, useUndo, useMutations, ApiRequestError, TimeBasis, QuarterView.
-// Additive (handoff-C.md §3): DataProvider, useSessionNotice, useApi, useJiraSync, userMessage.
+// Additive (handoff-C.md §3): DataProvider, useSessionNotice, useApi, useJiraSync, userMessage,
+// useAccountActions, useOrgAdmin, useIntegrationSettings, usePlatformAdmin, useClientGaps,
+// useRecordExport, useDelivery (+ their types).
 export { ApiRequestError, userMessage } from '../services/api/errors';
 export type { TimeBasis, QuarterView } from '../utils/viewModels/types';
 export {
@@ -25,3 +27,32 @@ export {
 } from './hooks';
 export { DataProvider, type DataProviderProps } from './session';
 export type { SessionNotice, SessionNoticeKind } from './runtime';
+export {
+  useAccountActions,
+  useOrgAdmin,
+  useIntegrationSettings,
+  usePlatformAdmin,
+  useClientGaps,
+  useRecordExport,
+  rememberDemoInvitation,
+} from './extraHooks';
+export type {
+  AccountActions,
+  OrgAdmin,
+  IntegrationSettings,
+  PlatformAdmin,
+  ClientGaps,
+  RecordExport,
+  PendingInvitation,
+  JiraConnection,
+  PlanviewConnection,
+  PlatformOverview,
+  InvitationLookup,
+} from './accountActions';
+export {
+  useDelivery,
+  deliverySignalOf,
+  type DeliverySource,
+  type PlanviewApplyResult,
+  type PlanviewFieldTest,
+} from './delivery';
