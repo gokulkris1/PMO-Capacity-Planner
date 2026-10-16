@@ -132,10 +132,12 @@ export async function applyPending(
   opts: { lockWaitMs?: number; migrations?: Migration[] } = {},
 ): Promise<ApplyResult> {
   const all = opts.migrations ?? MIGRATIONS;
-  await s.exec(SCHEMA_TABLE_SQL);
+  // Lock first: concurrent `CREATE TABLE IF NOT EXISTS` on a fresh database races in the catalog
+  // (unique violation on pg_type_typname_nsp_index), which made concurrent cold starts answer 503.
   const locked = await acquireLock(s, opts.lockWaitMs ?? 7000);
   if (!locked) return { applied: [], modified: [], lockAcquired: false };
   try {
+    await s.exec(SCHEMA_TABLE_SQL);
     const applied = await appliedMigrations(s);
     const result: ApplyResult = {
       applied: [],

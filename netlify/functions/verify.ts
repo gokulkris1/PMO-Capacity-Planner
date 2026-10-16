@@ -34,7 +34,7 @@ async function send(ctx: Ctx) {
   }
   const user = await one<{ id: string; email_verified_at: unknown }>(
     ctx.db,
-    'SELECT id, email_verified_at FROM users WHERE email = $1',
+    'SELECT id, email_verified_at FROM users WHERE lower(email) = $1 ORDER BY (email = $1) DESC LIMIT 1',
     [email],
   );
   if (user && !user.email_verified_at) {
@@ -56,7 +56,7 @@ async function check(ctx: Ctx) {
   await verifyOtp(ctx.db, email, otp, 'verify');
   await withTx(async (q) => {
     const rows = await q.query<{ id: string; org_id: string | null }>(
-      'UPDATE users SET email_verified_at = coalesce(email_verified_at, now()) WHERE email = $1 RETURNING id, org_id',
+      'UPDATE users SET email_verified_at = coalesce(email_verified_at, now()) WHERE lower(email) = $1 RETURNING id, org_id',
       [email],
     );
     if (rows[0]) {

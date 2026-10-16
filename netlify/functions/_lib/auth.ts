@@ -57,7 +57,8 @@ export async function loadUserByEmail(
 ): Promise<(UserRow & { password_hash: string }) | null> {
   return one<UserRow & { password_hash: string } & Record<string, unknown>>(
     q,
-    `SELECT ${USER_COLUMNS}, password_hash FROM users WHERE email = $1`,
+    // Case-insensitive: v1.0 (Express) stored emails as typed, v1.1 lower-cased them. An exact lower-case match wins.
+    `SELECT ${USER_COLUMNS}, password_hash FROM users WHERE lower(email) = $1 ORDER BY (email = $1) DESC LIMIT 1`,
     [normaliseEmail(email)],
   );
 }
