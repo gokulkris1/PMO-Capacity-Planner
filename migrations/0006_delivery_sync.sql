@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS tribe_calibrations (
   sprint_length_days INTEGER NOT NULL CHECK (sprint_length_days > 0),
   suggested_value NUMERIC(8, 2),
   suggested_basis JSONB,
+  is_default BOOLEAN NOT NULL DEFAULT false,
   note TEXT,
   version INTEGER NOT NULL DEFAULT 1,
   updated_by UUID,

@@ -52,12 +52,19 @@ export function publicSignupAllowed(): boolean {
   return envFlag('ALLOW_PUBLIC_SIGNUP', appMode() === 'public');
 }
 
-/** Netlify sets CONTEXT to production | deploy-preview | branch-deploy | dev. */
+/**
+ * Netlify sets CONTEXT to production | deploy-preview | branch-deploy | dev. When it is missing we assume
+ * production (fail safe: dev-only behaviour must be opted into).
+ */
 export function deployContext(): string {
-  return optionalEnv('CONTEXT', 'dev');
+  return optionalEnv('CONTEXT', 'production');
 }
 export function isProduction(): boolean {
   return deployContext() === 'production';
+}
+/** `netlify dev` on a developer machine. */
+export function isLocalDev(): boolean {
+  return process.env.NETLIFY_DEV === 'true' || deployContext() === 'dev';
 }
 
 /** Base URL used in links inside emails (invitations, proposals). */

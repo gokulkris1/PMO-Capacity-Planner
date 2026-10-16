@@ -1,139 +1,78 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
-import { Resend } from 'resend';
+/**
+ * /api/verify/send and /api/verify/check — email verification (AC-07, HS-05). Codes are never returned (SEC-01).
+ * `send` answers the same for known and unknown emails; `check` marks `users.email_verified_at`.
+ */
+import type { Ctx } from './_lib/api';
+import { auditCtx, withApi } from './_lib/api';
+import { audit } from './_lib/audit';
+import { normaliseEmail } from './_lib/auth';
+import { one, withTx } from './_lib/db';
+import { emailConfigured } from './_lib/email';
+import { badRequest, notFound, serviceUnavailable } from './_lib/errors';
+import { createOtp, deliverOtp, verifyOtp } from './_lib/otp';
+import { FIFTEEN_MIN, rateLimit } from './_lib/rateLimit';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'PMO Planner <noreply@pmo-planner.com>';
-
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-
-function getCors(event: HandlerEvent) {
-    const origin = event.headers.origin || process.env.URL || '*';
-    return {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'OPTIONS, POST',
-        'Content-Type': 'application/json',
-    };
+function emailFrom(ctx: Ctx): string {
+  const raw = (ctx.body as { email?: unknown })?.email;
+  const email = normaliseEmail(typeof raw === 'string' && raw ? raw : (ctx.actor?.email ?? ''));
+  if (!email) throw badRequest('Email required', { email: 'Email required' });
+  return email;
 }
 
-function ok(event: HandlerEvent, body: unknown) {
-    return { statusCode: 200, headers: getCors(event), body: JSON.stringify(body) };
-}
-function fail(event: HandlerEvent, msg: string, status = 400) {
-    return { statusCode: status, headers: getCors(event), body: JSON.stringify({ error: msg }) };
-}
-
-function generateOTP(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+async function limits(ctx: Ctx, email: string) {
+  await rateLimit(ctx.db, [
+    { key: `verify:email:${email}`, max: 5, windowSec: FIFTEEN_MIN },
+    { key: `verify:ip:${ctx.ip ?? 'unknown'}`, max: 20, windowSec: FIFTEEN_MIN },
+  ]);
 }
 
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: getCors(event), body: '' };
-
-    const subpath = event.path.replace(/.*\/api\/verify/, '') || '/';
-    let body: Record<string, string> = {};
-    try { body = JSON.parse(event.body || '{}'); } catch { }
-
-    const sql = getDb();
-
-    // ── SEND OTP ──────────────────────────────────────────────────
-    if (subpath === '/send' && event.httpMethod === 'POST') {
-        const { email } = body;
-        if (!email) return fail(event, 'Email required');
-
-        const cleanEmail = email.toLowerCase().trim();
-        const otp = generateOTP();
-        const expires = Date.now() + 15 * 60 * 1000; // 15 minutes
-
-        // Store in Postgres safely (Upsert)
-        try {
-            await sql`
-        INSERT INTO otps (email, otp, expires_at, attempts) 
-        VALUES (${cleanEmail}, ${otp}, ${expires}, 0)
-        ON CONFLICT (email) 
-        DO UPDATE SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at, attempts = 0
-      `;
-        } catch (dbErr: any) {
-            console.error('DB OTP Save Error:', dbErr);
-            return fail(event, 'Database error securely storing OTP', 500);
-        }
-
-        if (!RESEND_API_KEY) {
-            // Only echo the code in explicit local development. In any deployed environment a
-            // missing email provider must not turn verification into a no-op.
-            if (process.env.ALLOW_DEV_OTP === 'true' && process.env.CONTEXT !== 'production') {
-                console.log(`[DEV] OTP for ${cleanEmail}: ${otp}`);
-                return ok(event, { sent: true, dev: true, otp });
-            }
-            return fail(event, 'Email delivery is not configured. Contact your administrator.', 503);
-        }
-
-        try {
-            const resend = new Resend(RESEND_API_KEY);
-            const { data, error } = await resend.emails.send({
-                from: FROM_EMAIL,
-                to: cleanEmail,
-                subject: 'Your PMO Planner verification code',
-                html: `
-            <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f172a;padding:32px;border-radius:16px;color:#f1f5f9">
-              <div style="font-size:28px;margin-bottom:8px">📊</div>
-              <h1 style="font-size:22px;margin:0 0 8px;color:#f1f5f9">Verify your email</h1>
-              <p style="color:#94a3b8;margin:0 0 24px">Use this code to complete your PMO Planner sign-up:</p>
-              <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
-                <span style="font-size:36px;font-weight:900;letter-spacing:12px;color:#818cf8">${otp}</span>
-              </div>
-              <p style="color:#64748b;font-size:13px;margin:0">This code expires in 15 minutes. If you didn't request this, you can safely ignore it.</p>
-            </div>
-                `,
-            });
-            if (error) {
-                console.error('Resend SDK Error:', error);
-                throw new Error(error.message);
-            }
-            return ok(event, { sent: true });
-        } catch (e: any) {
-            console.error('Email send error:', e.message);
-            return fail(event, 'Failed to send verification email: ' + e.message, 500);
-        }
+async function send(ctx: Ctx) {
+  const email = emailFrom(ctx);
+  await limits(ctx, email);
+  if (!emailConfigured()) {
+    throw serviceUnavailable('Email delivery is not configured. Contact your administrator.', 'RESEND_API_KEY missing');
+  }
+  const user = await one<{ id: string; email_verified_at: unknown }>(
+    ctx.db,
+    'SELECT id, email_verified_at FROM users WHERE email = $1',
+    [email],
+  );
+  if (user && !user.email_verified_at) {
+    try {
+      const otp = await createOtp(ctx.db, email, 'verify');
+      await deliverOtp(email, otp, 'verify');
+    } catch {
+      // throttled: same answer (no enumeration)
     }
+  }
+  return { sent: true };
+}
 
-    // ── VERIFY OTP ─────────────────────────────────────────────────
-    if (subpath === '/check' && event.httpMethod === 'POST') {
-        const { email, otp } = body;
-        if (!email || !otp) return fail(event, 'Email and code required');
-
-        const cleanEmail = email.toLowerCase().trim();
-
-        try {
-            const records = await sql`SELECT * FROM otps WHERE email = ${cleanEmail}`;
-            if (records.length === 0) return fail(event, 'No verification code found. Request a new one.', 404);
-
-            const stored = records[0];
-
-            if (Date.now() > Number(stored.expires_at)) {
-                await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
-                return fail(event, 'Code expired. Request a new one.', 410);
-            }
-
-            const attempts = stored.attempts || 0;
-            if (stored.otp !== otp.trim()) {
-                await sql`UPDATE otps SET attempts = attempts + 1 WHERE email = ${cleanEmail}`;
-                return fail(event, 'Incorrect code. ' + Math.max(0, 3 - attempts - 1) + ' attempts remaining.', 400);
-            }
-
-            await sql`DELETE FROM otps WHERE email = ${cleanEmail}`;
-            return ok(event, { verified: true });
-
-        } catch (dbErr: any) {
-            console.error('DB OTP Verify Error:', dbErr);
-            return fail(event, 'Database error during OTP verification', 500);
-        }
+async function check(ctx: Ctx) {
+  const email = emailFrom(ctx);
+  const otp = String((ctx.body as { otp?: unknown })?.otp ?? '').trim();
+  if (!otp) throw badRequest('Email and code required', { otp: 'Required' });
+  await limits(ctx, email);
+  await verifyOtp(ctx.db, email, otp, 'verify');
+  await withTx(async (q) => {
+    const rows = await q.query<{ id: string; org_id: string | null }>(
+      'UPDATE users SET email_verified_at = coalesce(email_verified_at, now()) WHERE email = $1 RETURNING id, org_id',
+      [email],
+    );
+    if (rows[0]) {
+      await audit(q, { ...auditCtx(ctx), actorUserId: rows[0].id }, {
+        action: 'auth.email_verified',
+        orgId: rows[0].org_id,
+        targetType: 'user',
+        targetId: rows[0].id,
+      });
     }
+  });
+  return { verified: true };
+}
 
-    return fail(event, 'Not found', 404);
-};
+export const handler = withApi({ fn: 'verify', auth: 'optional', csrf: false }, async (ctx) => {
+  if (ctx.subpath === '/send' && ctx.method === 'POST') return send(ctx);
+  if (ctx.subpath === '/check' && ctx.method === 'POST') return check(ctx);
+  throw notFound('Not found');
+});
