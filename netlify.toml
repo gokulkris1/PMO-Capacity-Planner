@@ -6,6 +6,8 @@
 [build.environment]
   # Node 22: global WebSocket for the Neon transaction pool, matches CI (PL-08).
   NODE_VERSION = "22"
+  # Functions runtime too: the Neon Pool needs the global WebSocket that Node 22 provides.
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
 
 [dev]
   command = "npm run dev:vite"
