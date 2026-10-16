@@ -118,7 +118,9 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     );
   }, [s, quarters, thresholds, craft, chapter, tribe]);
   const at = (r: PersonRow) => r.quarters[qi];
-  const under = people.filter((r) => at(r)?.band === 'under' || at(r)?.band === 'bench').sort((a, z) => at(a).relativePct - at(z).relativePct);
+  const under = people
+    .filter((r) => at(r)?.band === 'under' || at(r)?.band === 'bench')
+    .sort((a, z) => at(a).relativePct - at(z).relativePct);
   const over = people.filter((r) => at(r)?.band === 'over').sort((a, z) => at(z).relativePct - at(a).relativePct);
 
   const filters = [craft, chapter, tribe].filter(Boolean).length;
@@ -146,13 +148,34 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           ]}
         />
         <span className="co-filter">
-          <Select size="sm" ariaLabel="Filter by craft" value={craft} placeholder="Craft: all" onChange={setCraft} options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))} />
+          <Select
+            size="sm"
+            ariaLabel="Filter by craft"
+            value={craft}
+            placeholder="Craft: all"
+            onChange={setCraft}
+            options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))}
+          />
         </span>
         <span className="co-filter">
-          <Select size="sm" ariaLabel="Filter by chapter" value={chapter} placeholder="Chapter: all" onChange={setChapter} options={s.chapters.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Chapter: ${c.name}` }))} />
+          <Select
+            size="sm"
+            ariaLabel="Filter by chapter"
+            value={chapter}
+            placeholder="Chapter: all"
+            onChange={setChapter}
+            options={s.chapters.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Chapter: ${c.name}` }))}
+          />
         </span>
         <span className="co-filter">
-          <Select size="sm" ariaLabel="Filter by tribe" value={tribe} placeholder="Tribe: all" onChange={setTribe} options={s.tribes.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Tribe: ${c.name}` }))} />
+          <Select
+            size="sm"
+            ariaLabel="Filter by tribe"
+            value={tribe}
+            placeholder="Tribe: all"
+            onChange={setTribe}
+            options={s.tribes.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Tribe: ${c.name}` }))}
+          />
         </span>
         {filters > 0 && (
           <Button
@@ -169,7 +192,9 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           </Button>
         )}
         <span className="b2-spacer" />
-        {pivot === 'tribe' && <Checkbox checked={signal === '1'} onChange={(v) => setSignal(v ? '1' : null)} label="Delivery signal" />}
+        {pivot === 'tribe' && (
+          <Checkbox checked={signal === '1'} onChange={(v) => setSignal(v ? '1' : null)} label="Delivery signal" />
+        )}
       </div>
 
       <div className="b2-grid-12">
@@ -191,11 +216,21 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         </div>
       </div>
 
-      {pivot === 'tribe' && signal === '1' && <DeliverySignal snapshot={s} tribeId={tribe || null} canSetUp={can('integrations.run')} wsPath={wsPath} />}
+      {pivot === 'tribe' && signal === '1' && (
+        <DeliverySignal snapshot={s} tribeId={tribe || null} canSetUp={can('integrations.run')} wsPath={wsPath} />
+      )}
 
-      <Card title={`By ${pivot}`} subtitle="Load and supply in FTE; utilisation is load as a % of target; gap is demand not covered by confirmed bookings" flush>
+      <Card
+        title={`By ${pivot}`}
+        subtitle="Load and supply in FTE; utilisation is load as a % of target; gap is demand not covered by confirmed bookings"
+        flush
+      >
         {rows.length === 0 ? (
-          <EmptyState icon={filters ? Funnel : Gauge} title={filters ? 'Nothing matches these filters.' : 'No capacity to show yet'} body={filters ? undefined : 'Add people and bookings to see the outlook.'} />
+          <EmptyState
+            icon={filters ? Funnel : Gauge}
+            title={filters ? 'Nothing matches these filters.' : 'No capacity to show yet'}
+            body={filters ? undefined : 'Add people and bookings to see the outlook.'}
+          />
         ) : (
           <div className="b2-table-wrap">
             <table className="b2-table b2-table--compact co-table">
@@ -214,19 +249,41 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 </tr>
                 <tr>
                   {quarters.map((q, i) => (
-                    <th key={q.key} scope="col" className={cx('b2-num co-sub-h', i === 0 && 'co-first', i === qi && 'is-basis')} title={fmt.quarterTooltip(q)}>
+                    <th
+                      key={q.key}
+                      scope="col"
+                      className={cx('b2-num co-sub-h', i === 0 && 'co-first', i === qi && 'is-basis')}
+                      title={fmt.quarterTooltip(q)}
+                    >
                       {q.label}
                     </th>
                   ))}
-                  <th scope="col" className="b2-num co-sub-h co-first">Supply</th>
-                  <th scope="col" className="b2-num co-sub-h">Load</th>
-                  <th scope="col" className="b2-num co-sub-h">Free</th>
-                  {pivot !== 'person' && <th scope="col" className="b2-num co-sub-h">Demand</th>}
-                  {pivot !== 'person' && <th scope="col" className="b2-num co-sub-h">Gap</th>}
+                  <th scope="col" className="b2-num co-sub-h co-first">
+                    Supply
+                  </th>
+                  <th scope="col" className="b2-num co-sub-h">
+                    Load
+                  </th>
+                  <th scope="col" className="b2-num co-sub-h">
+                    Free
+                  </th>
+                  {pivot !== 'person' && (
+                    <th scope="col" className="b2-num co-sub-h">
+                      Demand
+                    </th>
+                  )}
+                  {pivot !== 'person' && (
+                    <th scope="col" className="b2-num co-sub-h">
+                      Gap
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {[{ id: '__squad', label: scopeLabel || 'Squad', points: model.squad, total: true }, ...rows.map((r) => ({ ...r, total: false }))].map((r) => {
+                {[
+                  { id: '__squad', label: scopeLabel || 'Squad', points: model.squad, total: true },
+                  ...rows.map((r) => ({ ...r, total: false })),
+                ].map((r) => {
                   const st = r.total ? null : staffedFor(r.id);
                   const p = r.points[qi];
                   const load = p ? p.aboveFte + p.belowFte + p.undeclaredFte : 0;
@@ -251,7 +308,11 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       {r.points.map((pt, i) => (
                         <td key={pt.quarterKey} className={cx('b2-num co-util', i === 0 && 'co-first')}>
                           {pt.supplyFte > 0 ? (
-                            <BandCell value={pt.utilisationPct} band={pt.band} label={`${r.label} ${quarters[i]?.label}`} />
+                            <BandCell
+                              value={pt.utilisationPct}
+                              band={pt.band}
+                              label={`${r.label} ${quarters[i]?.label}`}
+                            />
                           ) : (
                             <span className="b2-subtle">—</span>
                           )}
@@ -264,7 +325,9 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       {pivot !== 'person' && (
                         <td className="b2-num">
                           {gap === null ? (
-                            <span className="b2-subtle" title="Not defined for this grouping">—</span>
+                            <span className="b2-subtle" title="Not defined for this grouping">
+                              —
+                            </span>
                           ) : gap > 0.04 ? (
                             <span className="co-gap">{fmt.fte(gap)}</span>
                           ) : (
@@ -284,7 +347,17 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   );
 }
 
-function SideList({ rows, qi, wsPath, empty }: { rows: PersonRow[]; qi: number; wsPath(p: string): string; empty: string }) {
+function SideList({
+  rows,
+  qi,
+  wsPath,
+  empty,
+}: {
+  rows: PersonRow[];
+  qi: number;
+  wsPath(p: string): string;
+  empty: string;
+}) {
   if (rows.length === 0) return <p className="co-empty b2-muted">{empty}</p>;
   return (
     <ul className="b2-list co-list">
@@ -349,7 +422,10 @@ function DeliverySignal({
     );
   }
   return (
-    <Card title={`Delivery signal · ${tribeName}`} subtitle="Planned FTE (bookings) vs FTE implied by Jira story points per sprint · signal, not a timesheet">
+    <Card
+      title={`Delivery signal · ${tribeName}`}
+      subtitle="Planned FTE (bookings) vs FTE implied by Jira story points per sprint · signal, not a timesheet"
+    >
       <div className="b2-stack b2-stack--sm">
         <ul className="b2-legend" aria-label="Legend">
           <li>

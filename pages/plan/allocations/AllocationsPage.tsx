@@ -53,7 +53,12 @@ export default function AllocationsPage() {
         actions={
           <>
             {can('allocations.write') && (
-              <Button icon={Undo2} disabled={!undo.canUndo} onClick={() => void undo.undo()} title={undo.label ? `Undo: ${undo.label}` : 'Nothing to undo'}>
+              <Button
+                icon={Undo2}
+                disabled={!undo.canUndo}
+                onClick={() => void undo.undo()}
+                title={undo.label ? `Undo: ${undo.label}` : 'Nothing to undo'}
+              >
                 Undo
               </Button>
             )}
@@ -65,12 +70,22 @@ export default function AllocationsPage() {
           </>
         }
       />
-      <PageBody label="allocations">{(s) => <AllocationsBody snapshot={s} adding={adding} onAddClose={() => setAdding(false)} />}</PageBody>
+      <PageBody label="allocations">
+        {(s) => <AllocationsBody snapshot={s} adding={adding} onAddClose={() => setAdding(false)} />}
+      </PageBody>
     </div>
   );
 }
 
-function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.WorkspaceSnapshot; adding: boolean; onAddClose(): void }) {
+function AllocationsBody({
+  snapshot: s,
+  adding,
+  onAddClose,
+}: {
+  snapshot: D.WorkspaceSnapshot;
+  adding: boolean;
+  onAddClose(): void;
+}) {
   const { can, thresholds } = useWorkspace();
   const quarters = useQuarters();
   const m = useMutations();
@@ -83,7 +98,11 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
   const includeTentative = tentativeParam !== '0';
   const pv = pivot === 'project' ? 'project' : 'person';
   const group = (
-    pv === 'project' && (groupBy === 'team' || groupBy === 'chapter') ? 'tribe' : ['team', 'chapter', 'tribe', 'none'].includes(groupBy) ? groupBy : 'team'
+    pv === 'project' && (groupBy === 'team' || groupBy === 'chapter')
+      ? 'tribe'
+      : ['team', 'chapter', 'tribe', 'none'].includes(groupBy)
+        ? groupBy
+        : 'team'
   ) as 'team' | 'chapter' | 'tribe' | 'none';
   const canEdit = can('allocations.write');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -132,7 +151,11 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
   );
   const demandByProject = useMemo(() => {
     const map = new Map<D.ID, number[]>();
-    for (const d of buildDemandGrid(s, quarters)) map.set(d.project.id, d.cells.map((c) => c.demandFte));
+    for (const d of buildDemandGrid(s, quarters))
+      map.set(
+        d.project.id,
+        d.cells.map((c) => c.demandFte),
+      );
     return map;
   }, [s, quarters]);
 
@@ -141,7 +164,13 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
 
   const commit = async (a: CellAddress, pct: number) => {
     const res = await run('cell', () =>
-      m.allocations.setQuarterCell({ resourceId: a.personId, projectId: a.projectId, craftId: a.craftId, quarterKey: a.quarterKey, pct }),
+      m.allocations.setQuarterCell({
+        resourceId: a.personId,
+        projectId: a.projectId,
+        craftId: a.craftId,
+        quarterKey: a.quarterKey,
+        pct,
+      }),
     );
     return res.ok;
   };
@@ -150,13 +179,26 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
     const i = quarters.findIndex((x) => x.key === a.fromQuarterKey);
     const later = quarters.slice(i + 1);
     if (later.length === 0) {
-      toast({ tone: 'info', title: 'Nothing to copy to', body: `${quarters[i]?.label} is the last quarter in the window.` });
+      toast({
+        tone: 'info',
+        title: 'Nothing to copy to',
+        body: `${quarters[i]?.label} is the last quarter in the window.`,
+      });
       return;
     }
     void run(
       'copy',
-      () => m.allocations.copyForward({ resourceId: a.personId, projectId: a.projectId, craftId: a.craftId, fromQuarterKey: a.fromQuarterKey }),
-      { success: `Copied to ${later[0].label}${later.length > 1 ? `–${later[later.length - 1].label}` : ''}`, undo: true },
+      () =>
+        m.allocations.copyForward({
+          resourceId: a.personId,
+          projectId: a.projectId,
+          craftId: a.craftId,
+          fromQuarterKey: a.fromQuarterKey,
+        }),
+      {
+        success: `Copied to ${later[0].label}${later.length > 1 ? `–${later[later.length - 1].label}` : ''}`,
+        undo: true,
+      },
     );
   };
 
@@ -172,7 +214,11 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
     const values = block.map((line) => line.map((v) => v.trim().replace('%', '')));
     const bad = values.flat().filter((v) => v !== '' && !Number.isFinite(Number(v)));
     if (bad.length) {
-      toast({ tone: 'error', title: 'Paste cancelled', body: `Only numbers can be pasted. Found "${bad.slice(0, 3).join('", "')}".` });
+      toast({
+        tone: 'error',
+        title: 'Paste cancelled',
+        body: `Only numbers can be pasted. Found "${bad.slice(0, 3).join('", "')}".`,
+      });
       return;
     }
     const cells: Array<CellAddress & { pct: number }> = [];
@@ -182,7 +228,14 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
       line.forEach((v, dc) => {
         const col = Math.max(1, start.col) + dc;
         if (v === '') return;
-        if (!r || r.kind !== 'booking' || col > quarters.length || r.cells[col - 1]?.locked || !r.row?.personId || !r.row.projectId) {
+        if (
+          !r ||
+          r.kind !== 'booking' ||
+          col > quarters.length ||
+          r.cells[col - 1]?.locked ||
+          !r.row?.personId ||
+          !r.row.projectId
+        ) {
           skipped++;
           return;
         }
@@ -192,13 +245,25 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
           skipped++;
           return;
         }
-        cells.push({ personId: r.row.personId, projectId: r.row.projectId, craftId: r.row.craftId, quarterKey: quarters[col - 1].key, pct });
+        cells.push({
+          personId: r.row.personId,
+          projectId: r.row.projectId,
+          craftId: r.row.craftId,
+          quarterKey: quarters[col - 1].key,
+          pct,
+        });
       });
     });
     let done = 0;
     for (const c of cells) {
       try {
-        await m.allocations.setQuarterCell({ resourceId: c.personId, projectId: c.projectId, craftId: c.craftId, quarterKey: c.quarterKey, pct: c.pct });
+        await m.allocations.setQuarterCell({
+          resourceId: c.personId,
+          projectId: c.projectId,
+          craftId: c.craftId,
+          quarterKey: c.quarterKey,
+          pct: c.pct,
+        });
         done++;
       } catch {
         skipped++;
@@ -207,7 +272,15 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
     toast({
       tone: skipped ? 'warning' : 'success',
       title: `${done} cell${done === 1 ? '' : 's'} updated, ${skipped} skipped`,
-      action: done ? { label: 'Undo', onClick: () => void (async () => { for (let i = 0; i < done; i++) await undo.undo(); })() } : undefined,
+      action: done
+        ? {
+            label: 'Undo',
+            onClick: () =>
+              void (async () => {
+                for (let i = 0; i < done; i++) await undo.undo();
+              })(),
+          }
+        : undefined,
     });
   };
 
@@ -222,22 +295,47 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
           items.push({
             label: `Copy ${qq.label} to later quarters`,
             icon: Copy,
-            onSelect: () => copyForward({ personId: row.personId as string, projectId: row.projectId as string, craftId: row.craftId, fromQuarterKey: qq.key }),
+            onSelect: () =>
+              copyForward({
+                personId: row.personId as string,
+                projectId: row.projectId as string,
+                craftId: row.craftId,
+                fromQuarterKey: qq.key,
+              }),
           });
       });
-      items.push({ label: 'Edit dates', icon: CalendarRange, onSelect: () => setDates({ resourceId: row.personId as string, projectId: row.projectId as string, craftId: row.craftId }) });
+      items.push({
+        label: 'Edit dates',
+        icon: CalendarRange,
+        onSelect: () =>
+          setDates({ resourceId: row.personId as string, projectId: row.projectId as string, craftId: row.craftId }),
+      });
     }
     if (uniq.length && (canEdit || can('allocations.respond.own'))) {
       items.push({
         label: 'Confirm',
         icon: Check,
         separatorBefore: true,
-        onSelect: () => void run('confirm', async () => { for (const id of uniq) await m.allocations.respond(id, { decision: 'accept' }); }, { success: 'Booking confirmed', undo: true }),
+        onSelect: () =>
+          void run(
+            'confirm',
+            async () => {
+              for (const id of uniq) await m.allocations.respond(id, { decision: 'accept' });
+            },
+            { success: 'Booking confirmed', undo: true },
+          ),
       });
       items.push({
         label: 'Decline',
         icon: X,
-        onSelect: () => void run('decline', async () => { for (const id of uniq) await m.allocations.respond(id, { decision: 'decline' }); }, { success: 'Booking declined', undo: true }),
+        onSelect: () =>
+          void run(
+            'decline',
+            async () => {
+              for (const id of uniq) await m.allocations.respond(id, { decision: 'decline' });
+            },
+            { success: 'Booking declined', undo: true },
+          ),
       });
     }
     if (canEdit) {
@@ -251,7 +349,11 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
           icon: Trash2,
           danger: true,
           separatorBefore: true,
-          onSelect: () => void run('remove', () => m.allocations.batch(ops, `Remove ${row.label} booking`), { success: 'Booking removed', undo: true }),
+          onSelect: () =>
+            void run('remove', () => m.allocations.batch(ops, `Remove ${row.label} booking`), {
+              success: 'Booking removed',
+              undo: true,
+            }),
         });
     }
     return items;
@@ -266,11 +368,19 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
       <Card flush>
         {selectedRows.length > 0 && canEdit ? (
           <div className="b2-toolbar b2-toolbar--bulk" role="region" aria-label="Bulk actions">
-            <span className="b2-toolbar__count">{selectedRows.length} booking{selectedRows.length === 1 ? '' : 's'} selected</span>
-            <Button size="sm" onClick={() => setBulk('set')}>Set % in a quarter</Button>
-            <Button size="sm" icon={Copy} onClick={() => setBulk('copy')}>Copy to later quarters</Button>
+            <span className="b2-toolbar__count">
+              {selectedRows.length} booking{selectedRows.length === 1 ? '' : 's'} selected
+            </span>
+            <Button size="sm" onClick={() => setBulk('set')}>
+              Set % in a quarter
+            </Button>
+            <Button size="sm" icon={Copy} onClick={() => setBulk('copy')}>
+              Copy to later quarters
+            </Button>
             <span className="b2-spacer" />
-            <Button variant="link" onClick={() => setSelected(new Set())}>Clear</Button>
+            <Button variant="link" onClick={() => setSelected(new Set())}>
+              Clear
+            </Button>
           </div>
         ) : (
           <div className="b2-toolbar al-toolbar">
@@ -302,9 +412,21 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
               />
             </span>
             <span className="al-toolbar__search">
-              <TextField id="al-q" icon={Search} size="sm" value={q} placeholder={pv === 'person' ? 'Find person or project' : 'Find project or person'} ariaLabel="Find in grid" onChange={(v) => setQ(v)} />
+              <TextField
+                id="al-q"
+                icon={Search}
+                size="sm"
+                value={q}
+                placeholder={pv === 'person' ? 'Find person or project' : 'Find project or person'}
+                ariaLabel="Find in grid"
+                onChange={(v) => setQ(v)}
+              />
             </span>
-            <Checkbox checked={includeTentative} onChange={(v) => setTentative(v ? '1' : '0')} label={`Show tentative (${tentativeCount})`} />
+            <Checkbox
+              checked={includeTentative}
+              onChange={(v) => setTentative(v ? '1' : '0')}
+              label={`Show tentative (${tentativeCount})`}
+            />
             <span className="b2-spacer" />
             <ul className="b2-legend" aria-label="Legend">
               <li>
@@ -323,7 +445,11 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
           </div>
         )}
         {empty ? (
-          <EmptyState icon={Grid3x3} title={q ? 'Nothing matches that search.' : 'No bookings yet'} body={q ? undefined : 'Add a booking to start planning the next four quarters.'} />
+          <EmptyState
+            icon={Grid3x3}
+            title={q ? 'Nothing matches that search.' : 'No bookings yet'}
+            body={q ? undefined : 'Add a booking to start planning the next four quarters.'}
+          />
         ) : (
           <div className="b2-table-wrap b2-table-wrap--tall al-wrap">
             <AllocationGrid
@@ -361,7 +487,9 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
         )}
         <div className="b2-card__foot al-foot">
           <span className="b2-caption">
-            {pv === 'person' ? 'Person rows: total load as % of target. Booking rows: % of a full-time week.' : 'Project rows: staffed / demand FTE. Person rows: FTE.'}
+            {pv === 'person'
+              ? 'Person rows: total load as % of target. Booking rows: % of a full-time week.'
+              : 'Project rows: staffed / demand FTE. Person rows: FTE.'}
           </span>
           <span className="b2-spacer" />
           {lockedRule && (
@@ -371,7 +499,8 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
           )}
           {canEdit && (
             <span className="b2-caption al-foot__hint">
-              <Kbd>Enter</Kbd> edit · <Kbd>Tab</Kbd> save and move · <Kbd>Ctrl</Kbd>+<Kbd>Shift</Kbd>+<Kbd>→</Kbd> copy forward · <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd> undo · paste from Excel
+              <Kbd>Enter</Kbd> edit · <Kbd>Tab</Kbd> save and move · <Kbd>Ctrl</Kbd>+<Kbd>Shift</Kbd>+<Kbd>→</Kbd> copy
+              forward · <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd> undo · paste from Excel
             </span>
           )}
         </div>
@@ -399,10 +528,15 @@ function AllocationsBody({ snapshot: s, adding, onAddClose }: { snapshot: D.Work
             if (!r.personId || !r.projectId) continue;
             const a = { resourceId: r.personId, projectId: r.projectId, craftId: r.craftId };
             ops = ops.concat(
-              kind === 'set' ? setQuarterCellOps(s, quarters, { ...a, quarterKey, pct }) : copyForwardOps(s, quarters, { ...a, fromQuarterKey: quarterKey }),
+              kind === 'set'
+                ? setQuarterCellOps(s, quarters, { ...a, quarterKey, pct })
+                : copyForwardOps(s, quarters, { ...a, fromQuarterKey: quarterKey }),
             );
           }
-          const label = kind === 'set' ? `Set ${pct}% in ${quarters.find((x) => x.key === quarterKey)?.label}` : 'Copy to later quarters';
+          const label =
+            kind === 'set'
+              ? `Set ${pct}% in ${quarters.find((x) => x.key === quarterKey)?.label}`
+              : 'Copy to later quarters';
           const res = await run('bulk', () => m.allocations.batch(ops, label), {
             success: `${selectedRows.length} booking${selectedRows.length === 1 ? '' : 's'} updated`,
             body: label,
@@ -436,7 +570,10 @@ function BulkDialog({
   if (!kind) return null;
   const n = Number(pct);
   const invalid = kind === 'set' && !(n >= 0 && n <= 200);
-  const options = (kind === 'copy' ? quarters.slice(0, -1) : quarters).map((x) => ({ value: x.key, label: `${x.label} · ${x.calendarLabel}` }));
+  const options = (kind === 'copy' ? quarters.slice(0, -1) : quarters).map((x) => ({
+    value: x.key,
+    label: `${x.label} · ${x.calendarLabel}`,
+  }));
   return (
     <Dialog
       open
@@ -465,8 +602,22 @@ function BulkDialog({
           <Select id="bulk-q" value={quarterKey} onChange={setQuarterKey} options={options} />
         </FormField>
         {kind === 'set' && (
-          <FormField label="Allocation" htmlFor="bulk-pct" help="0 removes that quarter only." error={invalid ? 'Enter 0–200' : null}>
-            <NumberField id="bulk-pct" unit="%" value={pct} min={0} max={200} step={5} invalid={invalid} onChange={setPct} />
+          <FormField
+            label="Allocation"
+            htmlFor="bulk-pct"
+            help="0 removes that quarter only."
+            error={invalid ? 'Enter 0–200' : null}
+          >
+            <NumberField
+              id="bulk-pct"
+              unit="%"
+              value={pct}
+              min={0}
+              max={200}
+              step={5}
+              invalid={invalid}
+              onChange={setPct}
+            />
           </FormField>
         )}
         <p className="b2-caption b2-form__full">Applied in one change, so a single Undo restores everything.</p>

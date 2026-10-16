@@ -3,7 +3,19 @@ import { useMemo, useState } from 'react';
 import { Copy, Plus, Trash2 } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useMutations, useQuarters, useSession } from '../../../state';
-import { Button, Dialog, FormField, IconButton, NumberField, SegmentedControl, Select, TextField, errorMessage, fmt, toast } from '../_kit';
+import {
+  Button,
+  Dialog,
+  FormField,
+  IconButton,
+  NumberField,
+  SegmentedControl,
+  Select,
+  TextField,
+  errorMessage,
+  fmt,
+  toast,
+} from '../_kit';
 
 interface LineDraft {
   key: string;
@@ -56,7 +68,9 @@ export function DemandCellDialog({
   const owners = useMemo(() => {
     const out = new Map<string, string>();
     if (me?.user) out.set(me.user.id, `${me.user.name} (you)`);
-    for (const l of s.demand) if (l.ownerUserId && !out.has(l.ownerUserId)) out.set(l.ownerUserId, l.updatedBy?.id === l.ownerUserId ? l.updatedBy.name : 'Another member');
+    for (const l of s.demand)
+      if (l.ownerUserId && !out.has(l.ownerUserId))
+        out.set(l.ownerUserId, l.updatedBy?.id === l.ownerUserId ? l.updatedBy.name : 'Another member');
     return [...out.entries()].map(([value, label]) => ({ value, label }));
   }, [me, s.demand]);
 
@@ -94,7 +108,11 @@ export function DemandCellDialog({
           const cur = s.demand.find((x) => x.id === l.id);
           if (
             cur &&
-            (cur.craftId !== patch.craftId || cur.fte !== patch.fte || cur.status !== patch.status || (cur.ownerUserId ?? null) !== patch.ownerUserId || (cur.note ?? null) !== patch.note)
+            (cur.craftId !== patch.craftId ||
+              cur.fte !== patch.fte ||
+              cur.status !== patch.status ||
+              (cur.ownerUserId ?? null) !== patch.ownerUserId ||
+              (cur.note ?? null) !== patch.note)
           )
             await m.demand.update(l.id, { ...patch, version: l.version });
         }
@@ -115,7 +133,10 @@ export function DemandCellDialog({
         l.id,
         later.map((q) => q.key),
       );
-      toast({ tone: 'success', title: `Copied to ${later[0].label}${later.length > 1 ? `–${later[later.length - 1].label}` : ''}` });
+      toast({
+        tone: 'success',
+        title: `Copied to ${later[0].label}${later.length > 1 ? `–${later[later.length - 1].label}` : ''}`,
+      });
     } catch (e) {
       toast({ tone: 'error', title: 'Not copied', body: errorMessage(e) });
     }
@@ -148,12 +169,21 @@ export function DemandCellDialog({
               onChange={(v) => switchTo(v, quarterKey)}
               options={s.projects
                 .filter((p) => p.status !== 'Completed')
-                .map((p) => ({ value: p.id, label: p.name, group: s.tribes.find((t) => t.id === p.tribeId)?.name ?? 'No tribe' }))
+                .map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  group: s.tribes.find((t) => t.id === p.tribeId)?.name ?? 'No tribe',
+                }))
                 .sort((a, z) => a.group.localeCompare(z.group) || a.label.localeCompare(z.label))}
             />
           </FormField>
           <FormField label="Quarter" htmlFor="dc-quarter">
-            <Select id="dc-quarter" value={quarterKey} onChange={(v) => switchTo(projectId, v)} options={quarters.map((q) => ({ value: q.key, label: `${q.label} · ${q.calendarLabel}` }))} />
+            <Select
+              id="dc-quarter"
+              value={quarterKey}
+              onChange={(v) => switchTo(projectId, v)}
+              options={quarters.map((q) => ({ value: q.key, label: `${q.label} · ${q.calendarLabel}` }))}
+            />
           </FormField>
         </div>
         <div className="dc-lines" role="list" aria-label="Craft lines">
@@ -168,7 +198,16 @@ export function DemandCellDialog({
                 onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, craftId: v } : x)))}
                 options={crafts.map((c) => ({ value: c.id, label: `${c.short} · ${c.name}` }))}
               />
-              <NumberField id={`dc-fte-${l.key}`} ariaLabel={`FTE for line ${i + 1}`} unit="FTE" step={0.1} min={0} max={50} value={l.fte} onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, fte: v } : x)))} />
+              <NumberField
+                id={`dc-fte-${l.key}`}
+                ariaLabel={`FTE for line ${i + 1}`}
+                unit="FTE"
+                step={0.1}
+                min={0}
+                max={50}
+                value={l.fte}
+                onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, fte: v } : x)))}
+              />
               <SegmentedControl
                 size="sm"
                 label={`Status for line ${i + 1}`}
@@ -179,9 +218,21 @@ export function DemandCellDialog({
                   { id: 'Confirmed', label: 'Confirmed' },
                 ]}
               />
-              <Select ariaLabel={`Owner for line ${i + 1}`} value={l.ownerUserId} placeholder="No owner" onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, ownerUserId: v } : x)))} options={owners} />
+              <Select
+                ariaLabel={`Owner for line ${i + 1}`}
+                value={l.ownerUserId}
+                placeholder="No owner"
+                onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, ownerUserId: v } : x)))}
+                options={owners}
+              />
               <span className="dc-line__actions">
-                {l.id && later.length > 0 && <IconButton icon={Copy} label={`Copy line ${i + 1} to later quarters`} onClick={() => void copyForward(l)} />}
+                {l.id && later.length > 0 && (
+                  <IconButton
+                    icon={Copy}
+                    label={`Copy line ${i + 1} to later quarters`}
+                    onClick={() => void copyForward(l)}
+                  />
+                )}
                 <IconButton
                   icon={Trash2}
                   label={`Remove line ${i + 1}`}
@@ -192,7 +243,14 @@ export function DemandCellDialog({
                 />
               </span>
               <span className="dc-line__note">
-                <TextField id={`dc-note-${l.key}`} size="sm" value={l.note} placeholder="Note (optional)" ariaLabel={`Note for line ${i + 1}`} onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, note: v } : x)))} />
+                <TextField
+                  id={`dc-note-${l.key}`}
+                  size="sm"
+                  value={l.note}
+                  placeholder="Note (optional)"
+                  ariaLabel={`Note for line ${i + 1}`}
+                  onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, note: v } : x)))}
+                />
               </span>
               {tried && errors[i] && <span className="b2-field__error dc-line__err">{errors[i]}</span>}
             </div>
@@ -205,14 +263,26 @@ export function DemandCellDialog({
             onClick={() =>
               setLines([
                 ...lines,
-                { key: `new-${lines.length}-${removed.length}`, id: null, version: 0, craftId: '', fte: '1.0', status: project?.stage === 'Pipeline' ? 'Forecast' : 'Confirmed', ownerUserId: me?.user.id ?? '', note: '' },
+                {
+                  key: `new-${lines.length}-${removed.length}`,
+                  id: null,
+                  version: 0,
+                  craftId: '',
+                  fte: '1.0',
+                  status: project?.stage === 'Pipeline' ? 'Forecast' : 'Confirmed',
+                  ownerUserId: me?.user.id ?? '',
+                  note: '',
+                },
               ])
             }
           >
             Add craft line
           </Button>
         </div>
-        <p className="b2-caption">Forecast lines are shown dashed on the roadmap; Confirmed lines are solid. Copy to later quarters applies after saving.</p>
+        <p className="b2-caption">
+          Forecast lines are shown dashed on the roadmap; Confirmed lines are solid. Copy to later quarters applies
+          after saving.
+        </p>
       </div>
     </Dialog>
   );

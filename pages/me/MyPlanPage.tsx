@@ -74,7 +74,9 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const canOffer = can('offers.write.own') || can('offers.write');
   const chapter = person.chapterId ? idx.chapters.get(person.chapterId) : undefined;
   const lead = chapter?.leadPersonId ? idx.people.get(chapter.leadPersonId) : undefined;
-  const requests = s.craftRequests.filter((r) => r.personId === person.id).sort((a, z) => z.submittedAt.localeCompare(a.submittedAt));
+  const requests = s.craftRequests
+    .filter((r) => r.personId === person.id)
+    .sort((a, z) => z.submittedAt.localeCompare(a.submittedAt));
   const pending = requests.find((r) => r.status === 'pending');
   const lastDecided = requests.find((r) => r.status !== 'pending');
   const proposals = s.allocations.filter((a) => a.resourceId === person.id && a.state === 'tentative');
@@ -114,12 +116,21 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
 
         <div className="b2-grid-12">
           <div className="b2-col-8 b2-stack">
-            <Card title="Proposed to you" subtitle="Accept to confirm the booking; decline with an optional reason" flush>
+            <Card
+              title="Proposed to you"
+              subtitle="Accept to confirm the booking; decline with an optional reason"
+              flush
+            >
               <Proposals snapshot={s} proposals={proposals} />
             </Card>
             <Card title="My bookings" subtitle="Confirmed bookings, all dates" flush>
               {bookings.length === 0 ? (
-                <EmptyState compact icon={Inbox} title="No confirmed bookings" body="Accepted proposals and planned work will show here." />
+                <EmptyState
+                  compact
+                  icon={Inbox}
+                  title="No confirmed bookings"
+                  body="Accepted proposals and planned work will show here."
+                />
               ) : (
                 <div className="b2-table-wrap">
                   <table className="b2-table b2-table--compact">
@@ -128,7 +139,9 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       <tr>
                         <th scope="col">Project</th>
                         <th scope="col">Craft</th>
-                        <th scope="col" className="b2-num">%</th>
+                        <th scope="col" className="b2-num">
+                          %
+                        </th>
                         <th scope="col">Dates</th>
                         <th scope="col">Source</th>
                       </tr>
@@ -145,10 +158,16 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                               <span className="b2-caption">{idx.tribes.get(p?.tribeId ?? '')?.name}</span>
                             </th>
                             <td>
-                              <CraftChip craft={craftId ? idx.crafts.get(craftId) : null} via={craftId === person.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'} proficiency={sec?.proficiency} />
+                              <CraftChip
+                                craft={craftId ? idx.crafts.get(craftId) : null}
+                                via={craftId === person.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'}
+                                proficiency={sec?.proficiency}
+                              />
                             </td>
                             <td className="b2-num">{a.percentage}%</td>
-                            <td className="b2-tnum">{fmt.dateRange(a.startDate ?? p?.startDate, a.endDate ?? p?.endDate)}</td>
+                            <td className="b2-tnum">
+                              {fmt.dateRange(a.startDate ?? p?.startDate, a.endDate ?? p?.endDate)}
+                            </td>
                             <td>
                               <ProvenanceTag source={a.source} />
                             </td>
@@ -166,7 +185,13 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               title="My crafts"
               actions={
                 (can('people.write.own') || can('people.write')) && (
-                  <Button size="sm" variant="subtle" icon={Pencil} disabled={!!pending} onClick={() => setDrawer('crafts')}>
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    icon={Pencil}
+                    disabled={!!pending}
+                    onClick={() => setDrawer('crafts')}
+                  >
                     Suggest changes
                   </Button>
                 )
@@ -186,7 +211,12 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <ul className="me-craftlist">
                     {person.secondaryCrafts.map((c) => (
                       <li key={c.craftId}>
-                        <CraftChip craft={idx.crafts.get(c.craftId)} via="below" proficiency={c.proficiency} maxPct={c.maxPct} />
+                        <CraftChip
+                          craft={idx.crafts.get(c.craftId)}
+                          via="below"
+                          proficiency={c.proficiency}
+                          maxPct={c.maxPct}
+                        />
                         <span className="b2-ellipsis">{idx.crafts.get(c.craftId)?.name}</span>
                         <span className="b2-caption b2-tnum">up to {c.maxPct}%</span>
                       </li>
@@ -195,7 +225,8 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 </div>
                 {pending && (
                   <Banner tone="info" title="Change waiting for approval">
-                    Pending approval by {lead?.name ?? 'a Planner'} · sent {fmt.relative(pending.submittedAt, s.serverTime)}
+                    Pending approval by {lead?.name ?? 'a Planner'} · sent{' '}
+                    {fmt.relative(pending.submittedAt, s.serverTime)}
                   </Banner>
                 )}
                 {!pending && lastDecided && (
@@ -212,7 +243,13 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 {row.quarters.map((q, i) => (
                   <li key={q.key}>
                     <span className="me-load__q">{quarters[i]?.label}</span>
-                    <QuarterLoadBar above={q.above} below={q.below} undeclared={q.undeclared} target={person.targetUtil} label={quarters[i]?.label ?? q.key} />
+                    <QuarterLoadBar
+                      above={q.above}
+                      below={q.below}
+                      undeclared={q.undeclared}
+                      target={person.targetUtil}
+                      label={quarters[i]?.label ?? q.key}
+                    />
                   </li>
                 ))}
               </ul>
@@ -224,7 +261,11 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   return (
                     <li key={q.key}>
                       <span className="me-load__q">{q.label}</span>
-                      {o ? <StatusPill tone="brand">Offered {o.pct}%</StatusPill> : <span className="b2-subtle">Not offered</span>}
+                      {o ? (
+                        <StatusPill tone="brand">Offered {o.pct}%</StatusPill>
+                      ) : (
+                        <span className="b2-subtle">Not offered</span>
+                      )}
                       <span className="b2-spacer" />
                       {canOffer && (
                         <Button size="sm" variant="subtle" onClick={() => setOfferQ(q)}>
@@ -239,13 +280,21 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           </div>
         </div>
       </div>
-      <PersonDrawer snapshot={s} personId={drawer ? person.id : null} initialTab={drawer ?? 'profile'} onClose={() => setDrawer(null)} />
+      <PersonDrawer
+        snapshot={s}
+        personId={drawer ? person.id : null}
+        initialTab={drawer ?? 'profile'}
+        onClose={() => setDrawer(null)}
+      />
       {offerQ && (
         <OfferDialog
           snapshot={s}
           person={person}
           quarter={offerQ}
-          defaultPct={Math.max(5, Math.round(Math.max(0, person.targetUtil - (row.quarters[offerQ.index]?.loadPct ?? 0)) / 5) * 5)}
+          defaultPct={Math.max(
+            5,
+            Math.round(Math.max(0, person.targetUtil - (row.quarters[offerQ.index]?.loadPct ?? 0)) / 5) * 5,
+          )}
           onClose={() => setOfferQ(null)}
         />
       )}
@@ -260,7 +309,14 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
   const [declining, setDeclining] = useState<D.AllocationDTO | null>(null);
   const [reason, setReason] = useState('');
   if (proposals.length === 0)
-    return <EmptyState compact icon={Send} title="Nothing proposed to you" body="When a Planner proposes you for a project, you can accept or decline it here." />;
+    return (
+      <EmptyState
+        compact
+        icon={Send}
+        title="Nothing proposed to you"
+        body="When a Planner proposes you for a project, you can accept or decline it here."
+      />
+    );
   return (
     <>
       <ul className="b2-list me-proposals">
@@ -278,11 +334,15 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
                   <BookingStatePill state="tentative" />
                 </span>
                 <span className="b2-caption">
-                  {idx.tribes.get(p?.tribeId ?? '')?.name ?? 'No tribe'} · {fmt.dateRange(a.startDate, a.endDate)} · proposed by {a.proposedBy?.name ?? 'a Planner'}{' '}
-                  {fmt.relative(a.proposedAt, s.serverTime)}
+                  {idx.tribes.get(p?.tribeId ?? '')?.name ?? 'No tribe'} · {fmt.dateRange(a.startDate, a.endDate)} ·
+                  proposed by {a.proposedBy?.name ?? 'a Planner'} {fmt.relative(a.proposedAt, s.serverTime)}
                 </span>
               </div>
-              <CraftChip craft={craftId ? idx.crafts.get(craftId) : null} via={craftId === person?.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'} proficiency={sec?.proficiency} />
+              <CraftChip
+                craft={craftId ? idx.crafts.get(craftId) : null}
+                via={craftId === person?.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'}
+                proficiency={sec?.proficiency}
+              />
               <span className="b2-strong b2-tnum me-proposals__pct">{a.percentage}%</span>
               <Button
                 size="sm"
@@ -300,7 +360,12 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
                 variant="primary"
                 icon={Check}
                 loading={busy === `a${a.id}`}
-                onClick={() => void run(`a${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), { success: 'Booking accepted', body: `${p?.name ?? ''} is now confirmed.` })}
+                onClick={() =>
+                  void run(`a${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), {
+                    success: 'Booking accepted',
+                    body: `${p?.name ?? ''} is now confirmed.`,
+                  })
+                }
               >
                 Accept
               </Button>
@@ -320,10 +385,15 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
               loading={busy === 'decline'}
               onClick={async () => {
                 if (!declining) return;
-                const res = await run('decline', () => m.allocations.respond(declining.id, { decision: 'decline', reason: reason.trim() || undefined }), {
-                  success: 'Booking declined',
-                  body: 'The Planner who proposed it will see your reason.',
-                });
+                const res = await run(
+                  'decline',
+                  () =>
+                    m.allocations.respond(declining.id, { decision: 'decline', reason: reason.trim() || undefined }),
+                  {
+                    success: 'Booking declined',
+                    body: 'The Planner who proposed it will see your reason.',
+                  },
+                );
                 if (res.ok) setDeclining(null);
               }}
             >
@@ -332,7 +402,12 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
           </>
         }
       >
-        <FormField label="Reason" htmlFor="me-reason" optional help="For example: already committed elsewhere that quarter.">
+        <FormField
+          label="Reason"
+          htmlFor="me-reason"
+          optional
+          help="For example: already committed elsewhere that quarter."
+        >
           <TextField id="me-reason" multiline value={reason} onChange={setReason} />
         </FormField>
       </Dialog>

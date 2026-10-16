@@ -50,10 +50,16 @@ function Inner({
     const below = person.secondaryCrafts
       .map((x) => ({ x, c: active.find((c) => c.id === x.craftId) }))
       .filter((y): y is { x: D.SecondaryCraftDTO; c: D.CraftDTO } => !!y.c);
-    const rest = active.filter((c) => c.id !== person.primaryCraft && !person.secondaryCrafts.some((x) => x.craftId === c.id));
+    const rest = active.filter(
+      (c) => c.id !== person.primaryCraft && !person.secondaryCrafts.some((x) => x.craftId === c.id),
+    );
     return [
       ...above.map((c) => ({ value: c.id, label: `${c.name} (${c.short})`, group: 'Above the table' })),
-      ...below.map(({ x, c }) => ({ value: c.id, label: `${c.name} (${c.short}·L${x.proficiency}, up to ${x.maxPct}%)`, group: 'Below the table' })),
+      ...below.map(({ x, c }) => ({
+        value: c.id,
+        label: `${c.name} (${c.short}·L${x.proficiency}, up to ${x.maxPct}%)`,
+        group: 'Below the table',
+      })),
       ...rest.map((c) => ({ value: c.id, label: `${c.name} (${c.short})`, group: 'Undeclared' })),
     ];
   }, [s.crafts, person]);
@@ -66,7 +72,10 @@ function Inner({
   };
   const project = s.projects.find((p) => p.id === projectId);
   const q = quarters.find((x) => x.key === quarterKey);
-  const outside = project && q && ((project.endDate && project.endDate < q.start) || (project.startDate && project.startDate > q.end));
+  const outside =
+    project &&
+    q &&
+    ((project.endDate && project.endDate < q.start) || (project.startDate && project.startDate > q.end));
 
   const save = async () => {
     setTried(true);
@@ -114,7 +123,9 @@ function Inner({
               setPersonId(v);
               setCraftId(s.people.find((p) => p.id === v)?.primaryCraft ?? '');
             }}
-            options={[...s.people].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: `${p.name} · ${p.role}` }))}
+            options={[...s.people]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((p) => ({ value: p.id, label: `${p.name} · ${p.role}` }))}
           />
         </FormField>
         <FormField label="Project" htmlFor="ab-project" error={tried ? errors.project : null} className="b2-form__full">
@@ -127,18 +138,51 @@ function Inner({
             options={s.projects
               .filter((p) => p.status !== 'Completed')
               .sort((a, b) => a.name.localeCompare(b.name))
-              .map((p) => ({ value: p.id, label: p.name, group: s.tribes.find((t) => t.id === p.tribeId)?.name ?? 'No tribe' }))
+              .map((p) => ({
+                value: p.id,
+                label: p.name,
+                group: s.tribes.find((t) => t.id === p.tribeId)?.name ?? 'No tribe',
+              }))
               .sort((a, b) => a.group.localeCompare(b.group))}
           />
         </FormField>
-        <FormField label="Craft" htmlFor="ab-craft" help="Defaults to their above-the-table craft." className="b2-form__full">
-          <Select id="ab-craft" value={craftId} placeholder="Their above-the-table craft" onChange={setCraftId} options={craftOptions} />
+        <FormField
+          label="Craft"
+          htmlFor="ab-craft"
+          help="Defaults to their above-the-table craft."
+          className="b2-form__full"
+        >
+          <Select
+            id="ab-craft"
+            value={craftId}
+            placeholder="Their above-the-table craft"
+            onChange={setCraftId}
+            options={craftOptions}
+          />
         </FormField>
-        <FormField label="Quarter" htmlFor="ab-quarter" help={outside ? 'The project does not run in this quarter, so nothing will be booked.' : undefined}>
-          <Select id="ab-quarter" value={quarterKey} onChange={setQuarterKey} options={quarters.map((x) => ({ value: x.key, label: `${x.label} · ${x.calendarLabel}` }))} />
+        <FormField
+          label="Quarter"
+          htmlFor="ab-quarter"
+          help={outside ? 'The project does not run in this quarter, so nothing will be booked.' : undefined}
+        >
+          <Select
+            id="ab-quarter"
+            value={quarterKey}
+            onChange={setQuarterKey}
+            options={quarters.map((x) => ({ value: x.key, label: `${x.label} · ${x.calendarLabel}` }))}
+          />
         </FormField>
         <FormField label="Allocation" htmlFor="ab-pct" error={tried ? errors.pct : null}>
-          <NumberField id="ab-pct" unit="%" value={pct} min={0} max={200} step={5} invalid={tried && !!errors.pct} onChange={setPct} />
+          <NumberField
+            id="ab-pct"
+            unit="%"
+            value={pct}
+            min={0}
+            max={200}
+            step={5}
+            invalid={tried && !!errors.pct}
+            onChange={setPct}
+          />
         </FormField>
       </div>
     </Dialog>

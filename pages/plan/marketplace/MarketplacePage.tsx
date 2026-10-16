@@ -88,25 +88,41 @@ function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           ]}
         />
       )}
-      {tab !== 'proposals' && <div className="b2-row b2-row--wrap mk-controls">
-        <SegmentedControl
-          label="Quarter"
-          value={quarter?.key ?? ''}
-          onChange={(v) => setQuarter(v)}
-          items={quarters.map((q) => ({ id: q.key, label: q.label, title: fmt.quarterTooltip(q) }))}
-        />
-        <span className="b2-caption">{quarter?.calendarLabel}</span>
-        {(
-          <>
-            <span className="mk-filter">
-              <Select size="sm" ariaLabel="Filter by craft" value={craft} placeholder="Craft: all" onChange={setCraft} options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))} />
-            </span>
-            <span className="mk-filter">
-              <Select size="sm" ariaLabel="Filter by tribe" value={tribe} placeholder="Tribe: all" onChange={setTribe} options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))} />
-            </span>
-          </>
-        )}
-      </div>}
+      {tab !== 'proposals' && (
+        <div className="b2-row b2-row--wrap mk-controls">
+          <SegmentedControl
+            label="Quarter"
+            value={quarter?.key ?? ''}
+            onChange={(v) => setQuarter(v)}
+            items={quarters.map((q) => ({ id: q.key, label: q.label, title: fmt.quarterTooltip(q) }))}
+          />
+          <span className="b2-caption">{quarter?.calendarLabel}</span>
+          {
+            <>
+              <span className="mk-filter">
+                <Select
+                  size="sm"
+                  ariaLabel="Filter by craft"
+                  value={craft}
+                  placeholder="Craft: all"
+                  onChange={setCraft}
+                  options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))}
+                />
+              </span>
+              <span className="mk-filter">
+                <Select
+                  size="sm"
+                  ariaLabel="Filter by tribe"
+                  value={tribe}
+                  placeholder="Tribe: all"
+                  onChange={setTribe}
+                  options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))}
+                />
+              </span>
+            </>
+          }
+        </div>
+      )}
       <TabPanel idPrefix="mkt" value={tab}>
         {quarter && tab === 'open' && <OpenDemand snapshot={s} quarter={quarter} craft={craft} tribe={tribe} />}
         {quarter && tab === 'catalogue' && <Catalogue snapshot={s} quarter={quarter} craft={craft} tribe={tribe} />}
@@ -119,7 +135,17 @@ function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
 
 /* ── open demand (DM-03) ─────────────────────────────────────────────────────────── */
 
-function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.WorkspaceSnapshot; quarter: QuarterView; craft: string; tribe: string }) {
+function OpenDemand({
+  snapshot: s,
+  quarter,
+  craft,
+  tribe,
+}: {
+  snapshot: D.WorkspaceSnapshot;
+  quarter: QuarterView;
+  craft: string;
+  tribe: string;
+}) {
   const quarters = useQuarters();
   const { thresholds } = useWorkspace();
   const m = useMutations();
@@ -134,7 +160,12 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
   const booked = useMemo(() => {
     const collect = (includeTentative: boolean) => {
       const map = new Map<string, number>();
-      for (const g of buildAllocationGrid(s, quarters, { groupBy: 'none', pivot: 'person', includeTentative, thresholds }).groups)
+      for (const g of buildAllocationGrid(s, quarters, {
+        groupBy: 'none',
+        pivot: 'person',
+        includeTentative,
+        thresholds,
+      }).groups)
         for (const r of g.rows)
           if (r.kind === 'booking' && r.projectId) {
             const k = `${r.projectId}|${r.craftId ?? ''}`;
@@ -185,7 +216,11 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
           startDate: start,
           endDate: end,
         }),
-      { success: `Proposed ${mt.person.name}`, body: `${mt.suggestedPct}% on ${x.project?.name ?? ''}, ${quarter.label}. They have been notified.`, undo: true },
+      {
+        success: `Proposed ${mt.person.name}`,
+        body: `${mt.suggestedPct}% on ${x.project?.name ?? ''}, ${quarter.label}. They have been notified.`,
+        undo: true,
+      },
     );
   };
 
@@ -196,15 +231,28 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
       subtitle={`${fmt.fte(totalOpen)} FTE not yet staffed across ${lines.length} demand line${lines.length === 1 ? '' : 's'} · expand a line to see ranked matches`}
     >
       {lines.length === 0 ? (
-        <EmptyState icon={Store} title="No open demand" body={`Every demand line in ${quarter.label} is staffed or proposed.`} />
+        <EmptyState
+          icon={Store}
+          title="No open demand"
+          body={`Every demand line in ${quarter.label} is staffed or proposed.`}
+        />
       ) : (
         <ul className="mk-lines">
           {lines.map((x) => {
             const isOpen = open.has(x.line.id);
             const proposedHere = new Set(
-              s.allocations.filter((a) => a.state === 'tentative' && a.projectId === x.line.projectId).map((a) => a.resourceId),
+              s.allocations
+                .filter((a) => a.state === 'tentative' && a.projectId === x.line.projectId)
+                .map((a) => a.resourceId),
             );
-            const matches = isOpen ? rankMatches(catalogue.find((c) => c.craft.id === x.line.craftId), x.project, x.open, proposedHere).slice(0, 5) : [];
+            const matches = isOpen
+              ? rankMatches(
+                  catalogue.find((c) => c.craft.id === x.line.craftId),
+                  x.project,
+                  x.open,
+                  proposedHere,
+                ).slice(0, 5)
+              : [];
             const craftDto = idx.crafts.get(x.line.craftId);
             return (
               <li key={x.line.id} className="mk-line">
@@ -221,18 +269,24 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
                     })
                   }
                 >
-                  {isOpen ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+                  {isOpen ? (
+                    <ChevronDown size={16} aria-hidden="true" />
+                  ) : (
+                    <ChevronRight size={16} aria-hidden="true" />
+                  )}
                   <CraftChip craft={craftDto} />
                   <span className="mk-line__title">
                     <span className="b2-strong">{x.project?.name}</span>
                     <span className="b2-caption">
-                      {idx.tribes.get(x.project?.tribeId ?? '')?.name ?? 'No tribe'} · {craftDto?.name} · {x.line.status}
+                      {idx.tribes.get(x.project?.tribeId ?? '')?.name ?? 'No tribe'} · {craftDto?.name} ·{' '}
+                      {x.line.status}
                     </span>
                   </span>
                   <span className="mk-line__fte b2-tnum">
                     <span className="b2-strong">{fmt.fte(x.open)} FTE open</span>
                     <span className="b2-caption">
-                      {fmt.fte(x.line.fte)} needed · {fmt.fte(x.staffed)} staffed{x.proposed > 0.04 ? ` · ${fmt.fte(x.proposed)} proposed` : ''}
+                      {fmt.fte(x.line.fte)} needed · {fmt.fte(x.staffed)} staffed
+                      {x.proposed > 0.04 ? ` · ${fmt.fte(x.proposed)} proposed` : ''}
                     </span>
                   </span>
                 </button>
@@ -252,8 +306,12 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
                           <tr>
                             <th scope="col">Person</th>
                             <th scope="col">Why</th>
-                            <th scope="col" className="b2-num">Score</th>
-                            <th scope="col" className="b2-num">Propose at</th>
+                            <th scope="col" className="b2-num">
+                              Score
+                            </th>
+                            <th scope="col" className="b2-num">
+                              Propose at
+                            </th>
                             <th scope="col">
                               <span className="b2-sr-only">Action</span>
                             </th>
@@ -280,7 +338,13 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
                               <td className="b2-num">{mt.score}</td>
                               <td className="b2-num">{mt.suggestedPct}%</td>
                               <td className="b2-num">
-                                <Button size="sm" variant="primary" icon={Send} loading={busy === `p${mt.person.id}${x.line.id}`} onClick={() => void propose(x, mt)}>
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  icon={Send}
+                                  loading={busy === `p${mt.person.id}${x.line.id}`}
+                                  onClick={() => void propose(x, mt)}
+                                >
                                   Propose
                                 </Button>
                               </td>
@@ -303,7 +367,17 @@ function OpenDemand({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Worksp
 
 /* ── catalogue (DM-04) ───────────────────────────────────────────────────────────── */
 
-function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.WorkspaceSnapshot; quarter: QuarterView; craft: string; tribe: string }) {
+function Catalogue({
+  snapshot: s,
+  quarter,
+  craft,
+  tribe,
+}: {
+  snapshot: D.WorkspaceSnapshot;
+  quarter: QuarterView;
+  craft: string;
+  tribe: string;
+}) {
   const quarters = useQuarters();
   const { can } = useWorkspace();
   const wsPath = useWsPath();
@@ -312,7 +386,11 @@ function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Workspa
     .filter((e) => !craft || e.craft.id === craft)
     .map((e) => ({
       ...e,
-      people: e.people.filter((p) => (p.freePct > 0 || p.offer) && (!tribe || p.person.tribeAffinity.includes(tribe) || p.person.homeTribeId === tribe)),
+      people: e.people.filter(
+        (p) =>
+          (p.freePct > 0 || p.offer) &&
+          (!tribe || p.person.tribeAffinity.includes(tribe) || p.person.homeTribeId === tribe),
+      ),
     }))
     .filter((e) => e.people.length > 0 || e.freeAboveFte > 0 || e.reachBelowFte > 0)
     .sort((a, z) => z.freeAboveFte + z.reachBelowFte - (a.freeAboveFte + a.reachBelowFte));
@@ -334,7 +412,15 @@ function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Workspa
       toCsv(
         ['craft', 'person', 'via', 'proficiency', 'free_pct', 'offered_pct', 'offer_note'],
         shown.flatMap((e) =>
-          e.people.map((p) => [e.craft.name, p.person.name, p.via === 'above' ? 'above the table' : 'below the table', p.proficiency ? `L${p.proficiency}` : '', Math.round(p.freePct), p.offer?.pct ?? '', p.offer?.note ?? '']),
+          e.people.map((p) => [
+            e.craft.name,
+            p.person.name,
+            p.via === 'above' ? 'above the table' : 'below the table',
+            p.proficiency ? `L${p.proficiency}` : '',
+            Math.round(p.freePct),
+            p.offer?.pct ?? '',
+            p.offer?.note ?? '',
+          ]),
         ),
       ),
     );
@@ -358,7 +444,11 @@ function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Workspa
       }
     >
       {shown.length === 0 ? (
-        <EmptyState icon={craft || tribe ? Funnel : Users} title="No spare capacity to offer" body={`The squad is fully planned in ${quarter.label}${craft || tribe ? ' for these filters' : ''}.`} />
+        <EmptyState
+          icon={craft || tribe ? Funnel : Users}
+          title="No spare capacity to offer"
+          body={`The squad is fully planned in ${quarter.label}${craft || tribe ? ' for these filters' : ''}.`}
+        />
       ) : (
         <div className="mk-catalogue">
           {shown.map((e) => (
@@ -369,16 +459,23 @@ function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Workspa
               </header>
               <div className="mk-craft__stats b2-tnum">
                 <span>
-                  <span className="b2-strong">{fmt.fte(e.freeAboveFte)}</span> <span className="b2-caption">FTE above</span>
+                  <span className="b2-strong">{fmt.fte(e.freeAboveFte)}</span>{' '}
+                  <span className="b2-caption">FTE above</span>
                 </span>
                 <span>
-                  <span className="b2-strong">{fmt.fte(e.reachBelowFte)}</span> <span className="b2-caption">FTE reach below</span>
+                  <span className="b2-strong">{fmt.fte(e.reachBelowFte)}</span>{' '}
+                  <span className="b2-caption">FTE reach below</span>
                 </span>
               </div>
               <ul className="mk-craft__people">
                 {e.people.slice(0, 6).map((p) => (
                   <li key={p.person.id}>
-                    <PersonLabel name={p.person.name} sub={p.offer?.note ?? (p.via === 'above' ? 'Above the table' : `Below the table · L${p.proficiency}`)} />
+                    <PersonLabel
+                      name={p.person.name}
+                      sub={
+                        p.offer?.note ?? (p.via === 'above' ? 'Above the table' : `Below the table · L${p.proficiency}`)
+                      }
+                    />
                     <span className="b2-spacer" />
                     {p.offer && <StatusPill tone="brand">Offered {p.offer.pct}%</StatusPill>}
                     <span className="b2-tnum b2-strong mk-free">{Math.round(p.freePct)}%</span>
@@ -396,7 +493,17 @@ function Catalogue({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Workspa
 
 /* ── under target (DM-05) ────────────────────────────────────────────────────────── */
 
-function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.WorkspaceSnapshot; quarter: QuarterView; craft: string; tribe: string }) {
+function UnderTarget({
+  snapshot: s,
+  quarter,
+  craft,
+  tribe,
+}: {
+  snapshot: D.WorkspaceSnapshot;
+  quarter: QuarterView;
+  craft: string;
+  tribe: string;
+}) {
   const quarters = useQuarters();
   const { thresholds, can } = useWorkspace();
   const m = useMutations();
@@ -407,13 +514,23 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
   const rows = useMemo(() => buildPeopleRows(s, quarters, thresholds), [s, quarters, thresholds]);
   const under = rows
     .filter((r) => r.quarters[qi] && (r.quarters[qi].band === 'under' || r.quarters[qi].band === 'bench'))
-    .filter((r) => !craft || r.person.primaryCraft === craft || r.person.secondaryCrafts.some((c) => c.craftId === craft))
+    .filter(
+      (r) => !craft || r.person.primaryCraft === craft || r.person.secondaryCrafts.some((c) => c.craftId === craft),
+    )
     .filter((r) => !tribe || r.person.tribeAffinity.includes(tribe) || r.person.homeTribeId === tribe)
     .sort((a, z) => a.quarters[qi].relativePct - z.quarters[qi].relativePct);
   return (
-    <Card flush title={`Under target · ${quarter.label}`} subtitle="People below the on-target band. Offer their spare capacity so tribes can see it in the catalogue.">
+    <Card
+      flush
+      title={`Under target · ${quarter.label}`}
+      subtitle="People below the on-target band. Offer their spare capacity so tribes can see it in the catalogue."
+    >
       {under.length === 0 ? (
-        <EmptyState icon={Users} title="Everyone is at or above target" body={`Nobody is under target in ${quarter.label}.`} />
+        <EmptyState
+          icon={Users}
+          title="Everyone is at or above target"
+          body={`Nobody is under target in ${quarter.label}.`}
+        />
       ) : (
         <div className="b2-table-wrap">
           <table className="b2-table">
@@ -422,8 +539,12 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
               <tr>
                 <th scope="col">Person</th>
                 <th scope="col">Crafts</th>
-                <th scope="col" className="b2-num">Load</th>
-                <th scope="col" className="b2-num">Free</th>
+                <th scope="col" className="b2-num">
+                  Load
+                </th>
+                <th scope="col" className="b2-num">
+                  Free
+                </th>
                 <th scope="col">Offer</th>
                 <th scope="col">
                   <span className="b2-sr-only">Action</span>
@@ -444,7 +565,13 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
                       <span className="b2-chips">
                         <CraftChip craft={r.primary} />
                         {r.secondary.map((c) => (
-                          <CraftChip key={c.craft.id} craft={c.craft} via="below" proficiency={c.proficiency} maxPct={c.maxPct} />
+                          <CraftChip
+                            key={c.craft.id}
+                            craft={c.craft}
+                            via="below"
+                            proficiency={c.proficiency}
+                            maxPct={c.maxPct}
+                          />
                         ))}
                       </span>
                     </td>
@@ -456,7 +583,9 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
                       {offer ? (
                         <span className="b2-row">
                           <StatusPill tone="brand">Offered {offer.pct}%</StatusPill>
-                          <span className="b2-caption b2-ellipsis">{offer.craftIds.map((c) => idx.crafts.get(c)?.short).join(', ')}</span>
+                          <span className="b2-caption b2-ellipsis">
+                            {offer.craftIds.map((c) => idx.crafts.get(c)?.short).join(', ')}
+                          </span>
                         </span>
                       ) : (
                         <span className="b2-subtle">Not offered</span>
@@ -469,7 +598,12 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
                             size="sm"
                             variant="subtle"
                             loading={busy === `w${r.person.id}`}
-                            onClick={() => void run(`w${r.person.id}`, () => m.marketplace.withdrawOffer(r.person.id, quarter.key), { success: 'Offer withdrawn', undo: true })}
+                            onClick={() =>
+                              void run(`w${r.person.id}`, () => m.marketplace.withdrawOffer(r.person.id, quarter.key), {
+                                success: 'Offer withdrawn',
+                                undo: true,
+                              })
+                            }
                           >
                             Withdraw offer
                           </Button>
@@ -486,7 +620,25 @@ function UnderTarget({ snapshot: s, quarter, craft, tribe }: { snapshot: D.Works
           </table>
         </div>
       )}
-      <OfferDialog snapshot={s} person={offering} quarter={quarter} defaultPct={offering ? Math.max(5, Math.round(Math.max(0, offering.targetUtil - (rows.find((r) => r.person.id === offering.id)?.quarters[qi]?.loadPct ?? 0)) / 5) * 5) : 0} onClose={() => setOffering(null)} />
+      <OfferDialog
+        snapshot={s}
+        person={offering}
+        quarter={quarter}
+        defaultPct={
+          offering
+            ? Math.max(
+                5,
+                Math.round(
+                  Math.max(
+                    0,
+                    offering.targetUtil - (rows.find((r) => r.person.id === offering.id)?.quarters[qi]?.loadPct ?? 0),
+                  ) / 5,
+                ) * 5,
+              )
+            : 0
+        }
+        onClose={() => setOffering(null)}
+      />
     </Card>
   );
 }
@@ -505,10 +657,31 @@ export function OfferDialog({
   onClose(): void;
 }) {
   if (!person) return null;
-  return <OfferInner key={person.id + quarter.key} s={s} person={person} quarter={quarter} defaultPct={defaultPct} onClose={onClose} />;
+  return (
+    <OfferInner
+      key={person.id + quarter.key}
+      s={s}
+      person={person}
+      quarter={quarter}
+      defaultPct={defaultPct}
+      onClose={onClose}
+    />
+  );
 }
 
-function OfferInner({ s, person, quarter, defaultPct, onClose }: { s: D.WorkspaceSnapshot; person: D.PersonDTO; quarter: QuarterView; defaultPct: number; onClose(): void }) {
+function OfferInner({
+  s,
+  person,
+  quarter,
+  defaultPct,
+  onClose,
+}: {
+  s: D.WorkspaceSnapshot;
+  person: D.PersonDTO;
+  quarter: QuarterView;
+  defaultPct: number;
+  onClose(): void;
+}) {
   const m = useMutations();
   const { run, busy } = useAction();
   const all = [person.primaryCraft, ...person.secondaryCrafts.map((c) => c.craftId)].filter((x): x is string => !!x);
@@ -531,11 +704,22 @@ function OfferInner({ s, person, quarter, defaultPct, onClose }: { s: D.Workspac
             disabled={invalid}
             loading={busy === 'offer'}
             onClick={async () => {
-              const res = await run('offer', () => m.marketplace.setOffer({ personId: person.id, quarterKey: quarter.key, pct: n, craftIds: [...crafts], note: note.trim() || null }), {
-                success: 'Offered on the Marketplace',
-                body: `${person.name} · ${n}% in ${quarter.label}`,
-                undo: true,
-              });
+              const res = await run(
+                'offer',
+                () =>
+                  m.marketplace.setOffer({
+                    personId: person.id,
+                    quarterKey: quarter.key,
+                    pct: n,
+                    craftIds: [...crafts],
+                    note: note.trim() || null,
+                  }),
+                {
+                  success: 'Offered on the Marketplace',
+                  body: `${person.name} · ${n}% in ${quarter.label}`,
+                  undo: true,
+                },
+              );
               if (res.ok) onClose();
             }}
           >
@@ -581,19 +765,30 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const m = useMutations();
   const { run, busy } = useAction();
   const idx = useMemo(() => indexSnapshot(s), [s]);
-  const tentative = s.allocations.filter((a) => a.state === 'tentative').sort((a, z) => (a.proposedAt ?? '').localeCompare(z.proposedAt ?? ''));
+  const tentative = s.allocations
+    .filter((a) => a.state === 'tentative')
+    .sort((a, z) => (a.proposedAt ?? '').localeCompare(z.proposedAt ?? ''));
   const responded = s.allocations
     .filter((a) => a.respondedAt && a.proposedAt)
     .sort((a, z) => (z.respondedAt ?? '').localeCompare(a.respondedAt ?? ''))
     .slice(0, 8);
   const hours = (a: string, b: string) => Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / 3600000);
-  const timeToStaff = (h: number) => (h < 1 ? 'under an hour' : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`);
+  const timeToStaff = (h: number) =>
+    h < 1 ? 'under an hour' : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`;
   const canDecide = can('allocations.write');
   return (
     <div className="b2-stack">
-      <Card flush title="Waiting for a response" subtitle="Tentative bookings proposed from the Marketplace. The person accepts in My plan; a Planner can confirm or decline here.">
+      <Card
+        flush
+        title="Waiting for a response"
+        subtitle="Tentative bookings proposed from the Marketplace. The person accepts in My plan; a Planner can confirm or decline here."
+      >
         {tentative.length === 0 ? (
-          <EmptyState icon={Send} title="No proposals waiting" body="Propose people from Open demand to see them here." />
+          <EmptyState
+            icon={Send}
+            title="No proposals waiting"
+            body="Propose people from Open demand to see them here."
+          />
         ) : (
           <div className="b2-table-wrap">
             <table className="b2-table">
@@ -603,7 +798,9 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <th scope="col">Person</th>
                   <th scope="col">Project</th>
                   <th scope="col">Craft</th>
-                  <th scope="col" className="b2-num">%</th>
+                  <th scope="col" className="b2-num">
+                    %
+                  </th>
                   <th scope="col">Dates</th>
                   <th scope="col">Proposed</th>
                   <th scope="col">
@@ -623,7 +820,11 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       </th>
                       <td>{idx.projects.get(a.projectId)?.name}</td>
                       <td>
-                        <CraftChip craft={craftId ? idx.crafts.get(craftId) : null} via={craftId === p?.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'} proficiency={sec?.proficiency} />
+                        <CraftChip
+                          craft={craftId ? idx.crafts.get(craftId) : null}
+                          via={craftId === p?.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'}
+                          proficiency={sec?.proficiency}
+                        />
                       </td>
                       <td className="b2-num">{a.percentage}%</td>
                       <td className="b2-tnum">{fmt.dateRange(a.startDate, a.endDate)}</td>
@@ -635,10 +836,31 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       <td className="b2-num">
                         {canDecide && (
                           <span className="b2-row mk-actions">
-                            <Button size="sm" icon={X} disabled={busy !== null} onClick={() => void run(`d${a.id}`, () => m.allocations.respond(a.id, { decision: 'decline' }), { success: 'Proposal declined', undo: true })}>
+                            <Button
+                              size="sm"
+                              icon={X}
+                              disabled={busy !== null}
+                              onClick={() =>
+                                void run(`d${a.id}`, () => m.allocations.respond(a.id, { decision: 'decline' }), {
+                                  success: 'Proposal declined',
+                                  undo: true,
+                                })
+                              }
+                            >
                               Decline
                             </Button>
-                            <Button size="sm" variant="primary" icon={Check} loading={busy === `c${a.id}`} onClick={() => void run(`c${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), { success: 'Booking confirmed', undo: true })}>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              icon={Check}
+                              loading={busy === `c${a.id}`}
+                              onClick={() =>
+                                void run(`c${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), {
+                                  success: 'Booking confirmed',
+                                  undo: true,
+                                })
+                              }
+                            >
                               Confirm
                             </Button>
                           </span>
@@ -657,10 +879,19 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <ul className="b2-list mk-answered">
             {responded.map((a) => (
               <li key={a.id}>
-                <PersonLabel name={idx.people.get(a.resourceId)?.name ?? a.resourceId} sub={idx.projects.get(a.projectId)?.name} />
+                <PersonLabel
+                  name={idx.people.get(a.resourceId)?.name ?? a.resourceId}
+                  sub={idx.projects.get(a.projectId)?.name}
+                />
                 <span className="b2-spacer" />
-                {a.state === 'confirmed' ? <StatusPill tone="success">Accepted</StatusPill> : <StatusPill>Declined</StatusPill>}
-                <span className="b2-caption b2-tnum">Time to staff {timeToStaff(hours(a.proposedAt ?? '', a.respondedAt ?? ''))}</span>
+                {a.state === 'confirmed' ? (
+                  <StatusPill tone="success">Accepted</StatusPill>
+                ) : (
+                  <StatusPill>Declined</StatusPill>
+                )}
+                <span className="b2-caption b2-tnum">
+                  Time to staff {timeToStaff(hours(a.proposedAt ?? '', a.respondedAt ?? ''))}
+                </span>
               </li>
             ))}
           </ul>

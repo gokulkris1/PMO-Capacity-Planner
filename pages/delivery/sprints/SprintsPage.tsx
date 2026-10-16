@@ -23,7 +23,11 @@ export default function SprintsPage() {
       />
       {!enabled || !org || !workspace ? (
         <Card>
-          <EmptyState icon={CalendarDays} title="Sprint planning is turned off" body="An Org Admin can switch it on in Settings › Features." />
+          <EmptyState
+            icon={CalendarDays}
+            title="Sprint planning is turned off"
+            body="An Org Admin can switch it on in Settings › Features."
+          />
         </Card>
       ) : (
         <Suspense fallback={<Skeleton variant="table" label="sprint planning" />}>

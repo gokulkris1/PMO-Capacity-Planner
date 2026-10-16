@@ -81,7 +81,14 @@ export function AllocationGrid({
       for (const r of g.rows) {
         if (r.depth === 0) {
           parentKey = r.key;
-          out.push({ kind: r.kind === 'project' ? 'project' : 'person', key: r.key, groupId: g.id, label: r.label, row: r, cells: r.cells });
+          out.push({
+            kind: r.kind === 'project' ? 'project' : 'person',
+            key: r.key,
+            groupId: g.id,
+            label: r.label,
+            row: r,
+            cells: r.cells,
+          });
         } else if (!collapsed.has(parentKey)) {
           out.push({ kind: 'booking', key: r.key, groupId: g.id, label: r.label, row: r, cells: r.cells });
         }
@@ -91,7 +98,13 @@ export function AllocationGrid({
   }, [model, collapsed]);
 
   const [active, setActive] = useState<{ key: string; col: number }>({ key: '', col: 1 });
-  const [editing, setEditing] = useState<{ key: string; col: number; value: string; error: string | null; typed?: boolean } | null>(null);
+  const [editing, setEditing] = useState<{
+    key: string;
+    col: number;
+    value: string;
+    error: string | null;
+    typed?: boolean;
+  } | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const focusAfterRender = useRef(false);
   const committed = useRef(false);
@@ -136,7 +149,13 @@ export function AllocationGrid({
     if (!isEditable(activeRow, activeCol)) return;
     const cell = activeRow.cells[activeCol - 1];
     const current = pivot === 'project' ? fmt.fte(cell.pct / 100) : String(Math.round(cell.pct));
-    beginEdit({ key: activeRow.key, col: activeCol, value: initial ?? current, error: null, typed: initial !== undefined });
+    beginEdit({
+      key: activeRow.key,
+      col: activeCol,
+      value: initial ?? current,
+      error: null,
+      typed: initial !== undefined,
+    });
   };
 
   const commit = async (then?: { dRow: number; dCol: number }) => {
@@ -185,7 +204,12 @@ export function AllocationGrid({
       e.preventDefault();
       const addr = activeRow && addressOf(activeRow, activeCol);
       if (addr && isEditable(activeRow, activeCol))
-        onCopyForward({ personId: addr.personId, projectId: addr.projectId, craftId: addr.craftId, fromQuarterKey: addr.quarterKey });
+        onCopyForward({
+          personId: addr.personId,
+          projectId: addr.projectId,
+          craftId: addr.craftId,
+          fromQuarterKey: addr.quarterKey,
+        });
       return;
     }
     switch (e.key) {
@@ -244,7 +268,7 @@ export function AllocationGrid({
   const onPasteBlock = (e: ClipboardEvent<HTMLTableElement>) => {
     if (editing || !canEdit) return;
     const text = e.clipboardData.getData('text/plain');
-    if (!text || !/[\t\n]/.test(text.trim()) && !/^\s*[\d.]+\s*$/.test(text)) return;
+    if (!text || (!/[\t\n]/.test(text.trim()) && !/^\s*[\d.]+\s*$/.test(text))) return;
     e.preventDefault();
     const block = text
       .replace(/\r/g, '')
@@ -274,7 +298,14 @@ export function AllocationGrid({
             {pivot === 'person' ? 'Person · project' : 'Project · person'}
           </th>
           {quarters.map((q, i) => (
-            <th key={q.key} scope="col" role="columnheader" aria-colindex={i + 2} className="b2-num al-col-q" title={fmt.quarterTooltip(q)}>
+            <th
+              key={q.key}
+              scope="col"
+              role="columnheader"
+              aria-colindex={i + 2}
+              className="b2-num al-col-q"
+              title={fmt.quarterTooltip(q)}
+            >
               <span className="al-qhead">
                 {q.label}
                 <span className="al-qhead__sub">{q.calendarLabel}</span>
@@ -348,7 +379,11 @@ export function AllocationGrid({
               aria-rowindex={rowIndex}
               aria-level={parent ? 1 : 2}
               aria-expanded={parent ? !isCollapsed : undefined}
-              className={cx(parent ? 'al-row--parent' : 'al-row--booking', tentative && 'is-tentative', selected.has(r.key) && 'is-selected')}
+              className={cx(
+                parent ? 'al-row--parent' : 'al-row--booking',
+                tentative && 'is-tentative',
+                selected.has(r.key) && 'is-selected',
+              )}
             >
               <th
                 scope="row"
@@ -368,7 +403,11 @@ export function AllocationGrid({
                       aria-label={isCollapsed ? `Expand ${r.label}` : `Collapse ${r.label}`}
                       onClick={() => onToggle(r.key)}
                     >
-                      {isCollapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                      {isCollapsed ? (
+                        <ChevronRight size={16} aria-hidden="true" />
+                      ) : (
+                        <ChevronDown size={16} aria-hidden="true" />
+                      )}
                     </button>
                     <span className="al-name__text">
                       <span className="b2-strong b2-ellipsis" title={r.label}>
@@ -377,7 +416,9 @@ export function AllocationGrid({
                       <span className="b2-caption b2-ellipsis">
                         {r.kind === 'person'
                           ? (person?.role ?? '')
-                          : [project?.stage, project ? fmt.dateRange(project.startDate, project.endDate) : null].filter(Boolean).join(' · ')}
+                          : [project?.stage, project ? fmt.dateRange(project.startDate, project.endDate) : null]
+                              .filter(Boolean)
+                              .join(' · ')}
                       </span>
                     </span>
                   </span>
@@ -405,16 +446,21 @@ export function AllocationGrid({
                 const isActive = cellKey(r, col);
                 const isEditing = editing && editing.key === r.key && editing.col === col;
                 const editable = isEditable(r, col);
-                const over =
-                  r.kind === 'booking' && r.row?.personId && c.pct > 0 ? overInfo(r.row.personId, i) : null;
+                const over = r.kind === 'booking' && r.row?.personId && c.pct > 0 ? overInfo(r.row.personId, i) : null;
                 const partialText = c.partial
                   ? c.allocationIds
                       .map((id) => idx.allocations.get(id))
                       .filter((a): a is D.AllocationDTO => !!a)
                       .map((a) => {
                         const p = idx.projects.get(a.projectId);
-                        const from = (a.startDate ?? p?.startDate ?? quarters[i].start) < quarters[i].start ? quarters[i].start : (a.startDate ?? p?.startDate ?? quarters[i].start);
-                        const to = (a.endDate ?? p?.endDate ?? quarters[i].end) > quarters[i].end ? quarters[i].end : (a.endDate ?? p?.endDate ?? quarters[i].end);
+                        const from =
+                          (a.startDate ?? p?.startDate ?? quarters[i].start) < quarters[i].start
+                            ? quarters[i].start
+                            : (a.startDate ?? p?.startDate ?? quarters[i].start);
+                        const to =
+                          (a.endDate ?? p?.endDate ?? quarters[i].end) > quarters[i].end
+                            ? quarters[i].end
+                            : (a.endDate ?? p?.endDate ?? quarters[i].end);
                         return `${fmt.dateShort(from)} – ${fmt.dateShort(to)} at ${a.percentage}%`;
                       })
                       .join('; ')
@@ -428,7 +474,12 @@ export function AllocationGrid({
                     aria-readonly={!editable}
                     aria-label={label}
                     aria-selected={isActive}
-                    className={cx('b2-num al-cell', editable && 'is-editable', isActive && 'is-active', c.locked && 'is-locked')}
+                    className={cx(
+                      'b2-num al-cell',
+                      editable && 'is-editable',
+                      isActive && 'is-active',
+                      c.locked && 'is-locked',
+                    )}
                     tabIndex={isActive && !isEditing ? 0 : -1}
                     data-active={isActive && !isEditing}
                     title={
@@ -462,7 +513,9 @@ export function AllocationGrid({
                           aria-label={`Edit ${label}`}
                           aria-invalid={!!editing.error || undefined}
                           value={editing.value}
-                          onChange={(e) => setEditing({ ...editing, value: e.target.value.replace(/[^\d.]/g, ''), error: null })}
+                          onChange={(e) =>
+                            setEditing({ ...editing, value: e.target.value.replace(/[^\d.]/g, ''), error: null })
+                          }
                           onBlur={() => void commit()}
                           onFocus={(e) => {
                             const el = e.currentTarget;
@@ -479,7 +532,9 @@ export function AllocationGrid({
                     ) : r.kind === 'booking' ? (
                       <span className={cx('al-val', tentative && c.pct > 0 && 'al-val--tentative')}>
                         {c.locked && <Lock size={12} strokeWidth={2} aria-hidden="true" className="b2-subtle" />}
-                        {c.partial && <CalendarRange size={12} strokeWidth={2} aria-hidden="true" className="b2-subtle" />}
+                        {c.partial && (
+                          <CalendarRange size={12} strokeWidth={2} aria-hidden="true" className="b2-subtle" />
+                        )}
                         {over && over.band === 'over' && (
                           <TriangleAlert
                             size={12}
@@ -490,7 +545,11 @@ export function AllocationGrid({
                           />
                         )}
                         {c.pct > 0 ? (
-                          pivot === 'project' ? fmt.fte(c.pct / 100) : fmt.pct(c.pct)
+                          pivot === 'project' ? (
+                            fmt.fte(c.pct / 100)
+                          ) : (
+                            fmt.pct(c.pct)
+                          )
                         ) : (
                           <span className="al-val--empty">{editable ? '–' : ''}</span>
                         )}
@@ -521,7 +580,17 @@ export function AllocationGrid({
   );
 }
 
-function ValueCell({ cell, pivot, total, label }: { cell: GridCell; pivot: 'person' | 'project'; total?: boolean; label: string }) {
+function ValueCell({
+  cell,
+  pivot,
+  total,
+  label,
+}: {
+  cell: GridCell;
+  pivot: 'person' | 'project';
+  total?: boolean;
+  label: string;
+}) {
   if (pivot === 'project' || cell.band === null) {
     return (
       <span className={cx('al-val', total && 'b2-strong')} aria-label={label}>
@@ -553,4 +622,3 @@ function ProjectCell({ pct, demand }: { pct: number; demand: number }) {
     </span>
   );
 }
-

@@ -16,7 +16,12 @@ export interface Match {
   suggestedPct: number;
 }
 
-export function rankMatches(entry: CatalogueEntry | undefined, project: D.ProjectDTO | undefined, gapFte: number, exclude: Set<D.ID>): Match[] {
+export function rankMatches(
+  entry: CatalogueEntry | undefined,
+  project: D.ProjectDTO | undefined,
+  gapFte: number,
+  exclude: Set<D.ID>,
+): Match[] {
   if (!entry) return [];
   const needPct = Math.max(5, Math.round(gapFte * 100));
   return entry.people

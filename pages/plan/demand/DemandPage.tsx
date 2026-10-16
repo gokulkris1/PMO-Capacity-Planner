@@ -62,7 +62,10 @@ function DemandBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const [tab, setTab] = useQueryParam('tab', 'project');
   const grid = useMemo(() => buildDemandGrid(s, quarters), [s, quarters]);
   const missing = grid.filter(
-    (d) => d.project.stage && NEEDS_DEMAND.includes(d.project.stage) && d.cells.slice(0, 2).every((c) => c.lines.length === 0),
+    (d) =>
+      d.project.stage &&
+      NEEDS_DEMAND.includes(d.project.stage) &&
+      d.cells.slice(0, 2).every((c) => c.lines.length === 0),
   );
   const [, setMissing] = useQueryParam('missing');
   return (
@@ -94,7 +97,11 @@ function DemandBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         )}
       </div>
       <TabPanel idPrefix="demand" value={tab === 'craft' ? 'craft' : 'project'}>
-        {tab === 'craft' ? <ByCraft snapshot={s} /> : <ByProject snapshot={s} grid={grid} missingIds={new Set(missing.map((m) => m.project.id))} />}
+        {tab === 'craft' ? (
+          <ByCraft snapshot={s} />
+        ) : (
+          <ByProject snapshot={s} grid={grid} missingIds={new Set(missing.map((m) => m.project.id))} />
+        )}
       </TabPanel>
     </div>
   );
@@ -138,28 +145,60 @@ function ByProject({
       map.get(id)?.rows.push(d);
     }
     for (const g of map.values())
-      g.rows.sort((a, z) => fmt.STAGE_ORDER.indexOf(a.project.stage ?? 'Pipeline') - fmt.STAGE_ORDER.indexOf(z.project.stage ?? 'Pipeline') || a.project.name.localeCompare(z.project.name));
+      g.rows.sort(
+        (a, z) =>
+          fmt.STAGE_ORDER.indexOf(a.project.stage ?? 'Pipeline') -
+            fmt.STAGE_ORDER.indexOf(z.project.stage ?? 'Pipeline') || a.project.name.localeCompare(z.project.name),
+      );
     return [...map.values()].sort((a, z) => a.label.localeCompare(z.label));
   }, [rows]);
 
   // `?project=<id>` (from Home / Projects) opens that project's first quarter editor once.
-  const openFromLink = projectParam && !cell && canEdit ? { projectId: projectParam, quarterKey: quarters[0]?.key ?? '' } : null;
-  const dialogTarget = cell ?? openFromLink ?? (edit === 'new' ? { projectId: '', quarterKey: quarters[0]?.key ?? '' } : null);
+  const openFromLink =
+    projectParam && !cell && canEdit ? { projectId: projectParam, quarterKey: quarters[0]?.key ?? '' } : null;
+  const dialogTarget =
+    cell ?? openFromLink ?? (edit === 'new' ? { projectId: '', quarterKey: quarters[0]?.key ?? '' } : null);
   const filters = [stage, tribe, missingOnly, q].filter(Boolean).length;
 
   return (
     <Card flush>
       <div className="b2-toolbar">
         <span className="dm-search">
-          <TextField id="dm-q" icon={Search} size="sm" value={q} placeholder="Find a project" ariaLabel="Find a project" onChange={(v) => setQ(v)} />
+          <TextField
+            id="dm-q"
+            icon={Search}
+            size="sm"
+            value={q}
+            placeholder="Find a project"
+            ariaLabel="Find a project"
+            onChange={(v) => setQ(v)}
+          />
         </span>
         <span className="dm-filter">
-          <Select size="sm" ariaLabel="Filter by stage" value={stage} placeholder="Stage: all" onChange={setStage} options={fmt.STAGE_ORDER.map((x) => ({ value: x, label: `Stage: ${x}` }))} />
+          <Select
+            size="sm"
+            ariaLabel="Filter by stage"
+            value={stage}
+            placeholder="Stage: all"
+            onChange={setStage}
+            options={fmt.STAGE_ORDER.map((x) => ({ value: x, label: `Stage: ${x}` }))}
+          />
         </span>
         <span className="dm-filter">
-          <Select size="sm" ariaLabel="Filter by tribe" value={tribe} placeholder="Tribe: all" onChange={setTribe} options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))} />
+          <Select
+            size="sm"
+            ariaLabel="Filter by tribe"
+            value={tribe}
+            placeholder="Tribe: all"
+            onChange={setTribe}
+            options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))}
+          />
         </span>
-        {missingOnly && <StatusPill tone="warning" icon={TriangleAlert}>Without demand</StatusPill>}
+        {missingOnly && (
+          <StatusPill tone="warning" icon={TriangleAlert}>
+            Without demand
+          </StatusPill>
+        )}
         {filters > 0 && (
           <Button
             size="sm"
@@ -189,7 +228,11 @@ function ByProject({
         filters ? (
           <EmptyState icon={Funnel} title="No projects match these filters." />
         ) : (
-          <EmptyState icon={MapIcon} title="No projects yet" body="Add a project, then capture the crafts it needs per quarter." />
+          <EmptyState
+            icon={MapIcon}
+            title="No projects yet"
+            body="Add a project, then capture the crafts it needs per quarter."
+          />
         )
       ) : (
         <div className="b2-table-wrap b2-table-wrap--tall">
@@ -197,7 +240,9 @@ function ByProject({
             <caption className="b2-sr-only">Demand by project and quarter</caption>
             <thead>
               <tr>
-                <th scope="col" className="b2-sticky-col dm-col-project">Project</th>
+                <th scope="col" className="b2-sticky-col dm-col-project">
+                  Project
+                </th>
                 {quarters.map((qq) => (
                   <th key={qq.key} scope="col" className="dm-col-q" title={fmt.quarterTooltip(qq)}>
                     {qq.label} <span className="dm-sub">{qq.calendarLabel}</span>
@@ -227,13 +272,19 @@ function ByProject({
                     <tr key={d.project.id}>
                       <th scope="row" className="b2-sticky-col dm-col-project">
                         <span className="dm-project">
-                          <Link className="b2-link b2-strong b2-ellipsis" to={`${wsPath('org/projects')}?project=${d.project.id}`} title={d.project.name}>
+                          <Link
+                            className="b2-link b2-strong b2-ellipsis"
+                            to={`${wsPath('org/projects')}?project=${d.project.id}`}
+                            title={d.project.name}
+                          >
                             {d.project.name}
                           </Link>
                           <span className="dm-project__meta">
                             {d.project.stage && <StatusPill>{d.project.stage}</StatusPill>}
                             <span className="b2-caption">
-                              {d.project.initiatedOn ? `Initiated ${fmt.date(d.project.initiatedOn)}` : fmt.dateRange(d.project.startDate, d.project.endDate)}
+                              {d.project.initiatedOn
+                                ? `Initiated ${fmt.date(d.project.initiatedOn)}`
+                                : fmt.dateRange(d.project.startDate, d.project.endDate)}
                             </span>
                           </span>
                           {missingIds.has(d.project.id) && (
@@ -251,21 +302,31 @@ function ByProject({
                               {c.lines.map((l) => (
                                 <span
                                   key={l.id}
-                                  className={cx('b2-chip', l.status === 'Confirmed' ? 'b2-chip--demand-confirmed' : 'b2-chip--demand-forecast')}
+                                  className={cx(
+                                    'b2-chip',
+                                    l.status === 'Confirmed' ? 'b2-chip--demand-confirmed' : 'b2-chip--demand-forecast',
+                                  )}
                                   title={`${idx.crafts.get(l.craftId)?.name ?? l.craftId} · ${fmt.fte(l.fte)} FTE · ${l.status}${l.note ? ` · ${l.note}` : ''}`}
                                 >
                                   {idx.crafts.get(l.craftId)?.short ?? '?'} {fmt.fte(l.fte)}
                                 </span>
                               ))}
                             </span>
-                            {(c.demandFte > 0 || c.staffedFte > 0) && <StaffBar demand={c.demandFte} staffed={c.staffedFte} proposed={c.proposedFte} />}
+                            {(c.demandFte > 0 || c.staffedFte > 0) && (
+                              <StaffBar demand={c.demandFte} staffed={c.staffedFte} proposed={c.proposedFte} />
+                            )}
                           </>
                         );
                         const label = `${d.project.name}, ${quarters[i].label}: demand ${fmt.fte(c.demandFte)} FTE, staffed ${fmt.fte(c.staffedFte)}, gap ${fmt.fte(Math.max(0, c.gapFte))}`;
                         return (
                           <td key={c.quarterKey} className="dm-cell">
                             {canEdit ? (
-                              <button type="button" className="dm-cellbtn" aria-label={`Edit demand. ${label}`} onClick={() => setCell({ projectId: d.project.id, quarterKey: c.quarterKey })}>
+                              <button
+                                type="button"
+                                className="dm-cellbtn"
+                                aria-label={`Edit demand. ${label}`}
+                                onClick={() => setCell({ projectId: d.project.id, quarterKey: c.quarterKey })}
+                              >
                                 {content}
                               </button>
                             ) : (
@@ -285,7 +346,10 @@ function ByProject({
         </div>
       )}
       <div className="b2-card__foot">
-        <span className="b2-caption">Bar: confirmed bookings (blue) and proposals (outlined) against demand. Gap = demand not yet staffed by confirmed bookings.</span>
+        <span className="b2-caption">
+          Bar: confirmed bookings (blue) and proposals (outlined) against demand. Gap = demand not yet staffed by
+          confirmed bookings.
+        </span>
       </div>
       {dialogTarget && (
         <DemandCellDialog
@@ -310,7 +374,9 @@ function StaffBar({ demand, staffed, proposed }: { demand: number; staffed: numb
     <span className="dm-staff">
       <span className="dm-staff__track" aria-hidden="true">
         <span className="dm-staff__fill" style={{ width: `${(Math.min(staffed, scale) / scale) * 100}%` }} />
-        {proposed > 0 && <span className="dm-staff__prop" style={{ width: `${(Math.min(proposed, scale) / scale) * 100}%` }} />}
+        {proposed > 0 && (
+          <span className="dm-staff__prop" style={{ width: `${(Math.min(proposed, scale) / scale) * 100}%` }} />
+        )}
         {demand > 0 && <span className="dm-staff__demand" style={{ left: `${(demand / scale) * 100}%` }} />}
       </span>
       <span className="dm-staff__label b2-tnum">
@@ -327,10 +393,18 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const wsPath = useWsPath();
   const b = useBasis();
   const qi = b.quarterIndex;
-  const outlook = useMemo(() => buildCapacityOutlook(s, quarters, { pivot: 'craft', thresholds }), [s, quarters, thresholds]);
+  const outlook = useMemo(
+    () => buildCapacityOutlook(s, quarters, { pivot: 'craft', thresholds }),
+    [s, quarters, thresholds],
+  );
   const committed = useMemo(() => {
     const map = new Map<string, number[]>();
-    for (const g of buildAllocationGrid(s, quarters, { groupBy: 'none', pivot: 'person', includeTentative: false, thresholds }).groups)
+    for (const g of buildAllocationGrid(s, quarters, {
+      groupBy: 'none',
+      pivot: 'person',
+      includeTentative: false,
+      thresholds,
+    }).groups)
       for (const r of g.rows)
         if (r.kind === 'booking' && r.craftId)
           map.set(
@@ -368,7 +442,11 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           label="Quarter for detail"
           value={(b.id === 'today' || b.id === 'window' ? 'qbr1' : b.id) as BasisId}
           onChange={(v) => b.set(v)}
-          items={quarters.map((q, i) => ({ id: `qbr${i + 1}` as BasisId, label: q.label, title: fmt.quarterTooltip(q) }))}
+          items={quarters.map((q, i) => ({
+            id: `qbr${i + 1}` as BasisId,
+            label: q.label,
+            title: fmt.quarterTooltip(q),
+          }))}
         />
       }
     >
@@ -377,9 +455,15 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <caption className="b2-sr-only">Supply and demand by craft</caption>
           <thead>
             <tr>
-              <th scope="col" rowSpan={2} className="b2-sticky-col">Craft</th>
-              <th scope="colgroup" colSpan={quarters.length} className="dm-craft__group">Gap (demand − committed)</th>
-              <th scope="colgroup" colSpan={6} className="dm-craft__group is-basis">{b.caption}</th>
+              <th scope="col" rowSpan={2} className="b2-sticky-col">
+                Craft
+              </th>
+              <th scope="colgroup" colSpan={quarters.length} className="dm-craft__group">
+                Gap (demand − committed)
+              </th>
+              <th scope="colgroup" colSpan={6} className="dm-craft__group is-basis">
+                {b.caption}
+              </th>
             </tr>
             <tr>
               {quarters.map((q, i) => (
@@ -387,12 +471,24 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   {q.label}
                 </th>
               ))}
-              <th scope="col" className="b2-num dm-first">Supply</th>
-              <th scope="col" className="b2-num">Committed</th>
-              <th scope="col" className="b2-num">Demand</th>
-              <th scope="col" className="b2-num">Gap</th>
-              <th scope="col" className="b2-num">Bench</th>
-              <th scope="col" className="b2-num">Reach below</th>
+              <th scope="col" className="b2-num dm-first">
+                Supply
+              </th>
+              <th scope="col" className="b2-num">
+                Committed
+              </th>
+              <th scope="col" className="b2-num">
+                Demand
+              </th>
+              <th scope="col" className="b2-num">
+                Gap
+              </th>
+              <th scope="col" className="b2-num">
+                Bench
+              </th>
+              <th scope="col" className="b2-num">
+                Reach below
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -410,7 +506,11 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   {r.gaps.map((g, i) => (
                     <td key={quarters[i].key} className={cx('b2-num', i === 0 && 'dm-first')}>
                       {g > 0.04 ? (
-                        <Link className="dm-gaplink" to={`${wsPath('plan/marketplace')}?craft=${r.id}&quarter=${quarters[i].key}`} title={`Open demand for ${r.label} in ${quarters[i].label} on the Marketplace`}>
+                        <Link
+                          className="dm-gaplink"
+                          to={`${wsPath('plan/marketplace')}?craft=${r.id}&quarter=${quarters[i].key}`}
+                          title={`Open demand for ${r.label} in ${quarters[i].label} on the Marketplace`}
+                        >
                           {fmt.fte(g)}
                         </Link>
                       ) : (
@@ -421,7 +521,13 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <td className="b2-num dm-first">{fmt.fte(p.supplyFte)}</td>
                   <td className="b2-num">{fmt.fte(r.committed[qi])}</td>
                   <td className="b2-num">{fmt.fte(p.demandFte)}</td>
-                  <td className="b2-num">{r.gaps[qi] > 0.04 ? <span className="dm-gap">{fmt.fte(r.gaps[qi])}</span> : <span className="b2-subtle">0.0</span>}</td>
+                  <td className="b2-num">
+                    {r.gaps[qi] > 0.04 ? (
+                      <span className="dm-gap">{fmt.fte(r.gaps[qi])}</span>
+                    ) : (
+                      <span className="b2-subtle">0.0</span>
+                    )}
+                  </td>
                   <td className="b2-num">{fmt.fte(p.freeFte)}</td>
                   <td className="b2-num">{fmt.fte(r.reach[qi])}</td>
                 </tr>
@@ -431,7 +537,10 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         </table>
       </div>
       <div className="b2-card__foot">
-        <span className="b2-caption">A positive gap links to the Marketplace filtered to that craft and quarter. A “+” value means more is committed than demanded.</span>
+        <span className="b2-caption">
+          A positive gap links to the Marketplace filtered to that craft and quarter. A “+” value means more is
+          committed than demanded.
+        </span>
       </div>
     </Card>
   );
