@@ -1,32 +1,29 @@
-import { neon } from '@neondatabase/serverless';
-import * as dotenv from 'dotenv';
+/**
+ * Wipes every tenant, user and capacity row. Development databases only (HS-16#AC2):
+ *   ALLOW_DESTRUCTIVE=yes PROD_DB_HOST=<prod host> DATABASE_URL=<dev url> npx tsx scripts/wipe_all.ts
+ * Exits 1 before connecting without ALLOW_DESTRUCTIVE=yes, without PROD_DB_HOST, or when the URL is production.
+ */
+import 'dotenv/config';
+import pg from 'pg';
+import { assertDestructiveAllowed } from './lib/destructiveGuard';
 
-dotenv.config();
+const url = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || '';
+assertDestructiveAllowed(url);
 
-const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL!);
-
-async function wipeDatabase() {
-    try {
-        console.log('Initiating database wipe...');
-
-        // Cascade truncate all main tables to completely reset the application state
-        await sql`
-            TRUNCATE TABLE 
-                allocations, 
-                projects, 
-                resources, 
-                workspaces, 
-                users, 
-                organizations 
-            CASCADE;
-        `;
-
-        console.log('✅ Successfully wiped all tenant, user, and capacity data from the database. Starting fresh.');
-        process.exit(0);
-    } catch (err) {
-        console.error('❌ Failed to wipe database:', err);
-        process.exit(1);
-    }
+async function wipeDatabase(): Promise<void> {
+  const client = new pg.Client({ connectionString: url, ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: true } });
+  await client.connect();
+  try {
+    await client.query(
+      'TRUNCATE TABLE allocations, projects, resources, workspaces, users, organizations, audit_events RESTART IDENTITY CASCADE',
+    );
+    console.log('Wiped all tenant, user and capacity data.');
+  } finally {
+    await client.end();
+  }
 }
 
-wipeDatabase();
+wipeDatabase().catch((err: unknown) => {
+  console.error('Failed to wipe the database:', err instanceof Error ? err.message : err);
+  process.exit(1);
+});

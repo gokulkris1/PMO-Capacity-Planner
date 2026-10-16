@@ -73,6 +73,9 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  // JSON responses never need to render anything (HS-12); netlify.toml headers cover pages and assets.
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
 // ── Cookies (AC-03) ────────────────────────────────────────────────────────
