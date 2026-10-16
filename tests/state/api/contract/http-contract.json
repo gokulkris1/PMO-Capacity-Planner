@@ -1,0 +1,2654 @@
+{
+  "recordedFrom": "HTTP (Node fetch + cookie jar) against a local harness serving the 4.3 routes; re-record against the preview API with record.ts once A ships /api/v2 (handoff-C.md 5)",
+  "recordedAt": "2026-10-16T22:30:41.941Z",
+  "credentials": {
+    "email": "tom.hayes@company.ie",
+    "password": "<redacted>"
+  },
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "tom.hayes@company.ie",
+          "password": "demo-password-wrong"
+        },
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_30b8d0d5"
+        },
+        "body": {
+          "error": "Email or password is incorrect.",
+          "code": "unauthorized",
+          "requestId": "req_30b8d0d5"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "tom.hayes@company.ie",
+          "password": "demo-password"
+        },
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_663bfe8e"
+        },
+        "body": {
+          "user": {
+            "id": "u-tom",
+            "email": "tom.hayes@company.ie",
+            "name": "Tom Hayes",
+            "isPlatformAdmin": false,
+            "emailVerified": true,
+            "twoFactorEnabled": false
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/me",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_4e4ad423"
+        },
+        "body": {
+          "user": {
+            "id": "u-tom",
+            "email": "tom.hayes@company.ie",
+            "name": "Tom Hayes",
+            "isPlatformAdmin": false,
+            "emailVerified": true,
+            "twoFactorEnabled": false
+          },
+          "org": {
+            "id": "demo-org",
+            "name": "Demo Organisation",
+            "slug": "demo",
+            "logoUrl": null,
+            "role": "MEMBER",
+            "plan": "ENTERPRISE",
+            "features": {
+              "qbrSprintModule": false,
+              "aiAssistant": false,
+              "scenarios": false,
+              "planviewScheduledImport": false,
+              "jiraScheduledSync": true
+            },
+            "planning": {
+              "fiscalYearStartMonth": 1,
+              "thresholds": {
+                "benchBelow": 50,
+                "onTargetFrom": 90,
+                "onTargetTo": 105
+              },
+              "defaultTargetUtil": 100,
+              "sprintLengthDays": 14,
+              "planviewOwnership": "locked"
+            }
+          },
+          "workspaces": [
+            {
+              "id": "demo",
+              "name": "IE Portfolio & Change Office",
+              "role": "PLANNER",
+              "implicit": false,
+              "permissions": [
+                "org.view",
+                "data.read",
+                "people.write",
+                "people.write.own",
+                "craftProfile.approve",
+                "projects.write",
+                "demand.write",
+                "allocations.write",
+                "allocations.propose",
+                "allocations.respond.own",
+                "offers.write",
+                "offers.write.own",
+                "scenario.write",
+                "qbr.write",
+                "integrations.view",
+                "integrations.run",
+                "import.csv",
+                "export",
+                "ai.use"
+              ],
+              "linkedPersonId": "r1"
+            }
+          ],
+          "entitlements": {
+            "plan": "ENTERPRISE",
+            "maxPeople": null,
+            "maxProjects": null,
+            "maxWorkspaces": null,
+            "aiQueriesPerMonth": null,
+            "scenarios": true,
+            "csvImport": true,
+            "csvExport": true,
+            "pdfExport": true,
+            "integrations": true,
+            "billingVisible": false
+          },
+          "appMode": "internal"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/workspaces/demo/snapshot",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_23ad5cdd"
+        },
+        "body": {
+          "org": {
+            "version": 1,
+            "updatedAt": "2026-10-01T09:00:00.000Z",
+            "updatedBy": null,
+            "id": "demo-org",
+            "name": "Demo Organisation",
+            "slug": "demo",
+            "logoUrl": null,
+            "plan": "ENTERPRISE",
+            "features": {
+              "qbrSprintModule": false,
+              "aiAssistant": false,
+              "scenarios": false,
+              "planviewScheduledImport": false,
+              "jiraScheduledSync": true
+            },
+            "planning": {
+              "fiscalYearStartMonth": 1,
+              "thresholds": {
+                "benchBelow": 50,
+                "onTargetFrom": 90,
+                "onTargetTo": 105
+              },
+              "defaultTargetUtil": 100,
+              "sprintLengthDays": 14,
+              "planviewOwnership": "locked"
+            },
+            "defaultWorkspaceVisibility": "org"
+          },
+          "workspace": {
+            "id": "demo",
+            "orgId": "demo-org",
+            "name": "IE Portfolio & Change Office",
+            "dataVersion": 1,
+            "createdAt": "2026-10-01T09:00:00.000Z"
+          },
+          "people": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r1",
+              "name": "Tom Hayes",
+              "email": "tom.hayes@company.ie",
+              "role": "Chapter Lead \u2013 Business Delivery",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": "chapter-programme-mgmt",
+              "homeTribeId": "tribe-payments",
+              "linkedUserId": "u-tom",
+              "primaryCraft": "programme-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "risk-governance",
+                  "proficiency": 3,
+                  "maxPct": 30
+                },
+                {
+                  "craftId": "digital-planning",
+                  "proficiency": 2,
+                  "maxPct": 20
+                }
+              ],
+              "tribeAffinity": ["tribe-payments", "tribe-lending"],
+              "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r2",
+              "name": "Claire Ryan",
+              "email": "claire.ryan@company.ie",
+              "role": "Programme Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": "chapter-programme-mgmt",
+              "homeTribeId": "tribe-digital",
+              "linkedUserId": null,
+              "primaryCraft": "programme-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "project-mgmt",
+                  "proficiency": 3,
+                  "maxPct": 50
+                },
+                {
+                  "craftId": "change-mgmt",
+                  "proficiency": 2,
+                  "maxPct": 30
+                }
+              ],
+              "tribeAffinity": ["tribe-digital"],
+              "skills": ["MSP", "Change Comms"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r3",
+              "name": "Agnese Markusevska",
+              "email": "agnese.m@company.ie",
+              "role": "Programme Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": "chapter-programme-mgmt",
+              "homeTribeId": "tribe-payments",
+              "linkedUserId": null,
+              "primaryCraft": "programme-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "vendor-mgmt",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "risk-governance",
+                  "proficiency": 2,
+                  "maxPct": 20
+                }
+              ],
+              "tribeAffinity": ["tribe-payments"],
+              "skills": ["Vendor SOWs", "PCI"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r4",
+              "name": "Kerrie Dalton",
+              "email": "kerrie.dalton@company.ie",
+              "role": "Programme Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": "chapter-programme-mgmt",
+              "homeTribeId": "tribe-lending",
+              "linkedUserId": null,
+              "primaryCraft": "programme-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "pmo-analytics",
+                  "proficiency": 2,
+                  "maxPct": 30
+                }
+              ],
+              "tribeAffinity": ["tribe-lending", "tribe-operations"],
+              "skills": ["Power BI", "Benefits"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r5",
+              "name": "Emer Ward",
+              "email": "emer.ward@company.ie",
+              "role": "Digital Planning Lead",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t2",
+              "chapterId": "chapter-digital-planning",
+              "homeTribeId": "tribe-digital",
+              "linkedUserId": null,
+              "primaryCraft": "digital-planning",
+              "secondaryCrafts": [
+                {
+                  "craftId": "business-analysis",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "pmo-analytics",
+                  "proficiency": 3,
+                  "maxPct": 40
+                }
+              ],
+              "tribeAffinity": ["tribe-digital", "tribe-payments"],
+              "skills": ["Roadmapping", "OKRs"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r6",
+              "name": "Maria Kelly",
+              "email": "maria.kelly@company.ie",
+              "role": "Telephony Product Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t3",
+              "chapterId": "chapter-product-mgmt",
+              "homeTribeId": "tribe-operations",
+              "linkedUserId": null,
+              "primaryCraft": "product-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "business-analysis",
+                  "proficiency": 2,
+                  "maxPct": 30
+                },
+                {
+                  "craftId": "vendor-mgmt",
+                  "proficiency": 2,
+                  "maxPct": 20
+                }
+              ],
+              "tribeAffinity": ["tribe-operations"],
+              "skills": ["Telephony", "Genesys"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r7",
+              "name": "Mary Vithalani",
+              "email": "mary.vithalani@company.ie",
+              "role": "Automation Product Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t3",
+              "chapterId": "chapter-product-mgmt",
+              "homeTribeId": "tribe-operations",
+              "linkedUserId": null,
+              "primaryCraft": "product-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "business-analysis",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "tooling-admin",
+                  "proficiency": 2,
+                  "maxPct": 20
+                }
+              ],
+              "tribeAffinity": ["tribe-operations", "tribe-lending"],
+              "skills": ["RPA", "Process Mining"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r8",
+              "name": "Noma Odigie",
+              "email": "noma.odigie@company.ie",
+              "role": "Scrum Master",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t4",
+              "chapterId": "chapter-scrum-master",
+              "homeTribeId": "tribe-digital",
+              "linkedUserId": "u-noma",
+              "primaryCraft": "scrum-master",
+              "secondaryCrafts": [
+                {
+                  "craftId": "release-coord",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "tooling-admin",
+                  "proficiency": 3,
+                  "maxPct": 30
+                }
+              ],
+              "tribeAffinity": ["tribe-digital", "tribe-payments"],
+              "skills": ["Scrum", "Kanban", "Jira Admin"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r9",
+              "name": "Gokul Gurijala",
+              "email": "gokul.gurijala@company.ie",
+              "role": "Project Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t5",
+              "chapterId": "chapter-project-mgmt",
+              "homeTribeId": "tribe-payments",
+              "linkedUserId": "demo-user",
+              "primaryCraft": "project-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "scrum-master",
+                  "proficiency": 3,
+                  "maxPct": 50
+                },
+                {
+                  "craftId": "pmo-analytics",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "tooling-admin",
+                  "proficiency": 3,
+                  "maxPct": 30
+                }
+              ],
+              "tribeAffinity": ["tribe-payments", "tribe-digital"],
+              "skills": ["SAFe", "Jira", "Planview"],
+              "targetUtil": 100
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "r10",
+              "name": "Linda O'Dwyer",
+              "email": "linda.odwyer@company.ie",
+              "role": "Project Manager",
+              "type": "Permanent",
+              "department": "IE Portfolio & Change Office",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t5",
+              "chapterId": "chapter-project-mgmt",
+              "homeTribeId": "tribe-operations",
+              "linkedUserId": null,
+              "primaryCraft": "project-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "change-mgmt",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "business-analysis",
+                  "proficiency": 1,
+                  "maxPct": 20
+                }
+              ],
+              "tribeAffinity": ["tribe-operations"],
+              "skills": ["Prince2", "Training Design"],
+              "targetUtil": 100
+            }
+          ],
+          "projects": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p1",
+              "name": "Apollo Revamp",
+              "status": "Active",
+              "priority": "High",
+              "description": "Major UI overhaul of the main customer portal.",
+              "startDate": "2026-07-06",
+              "endDate": "2027-01-29",
+              "budget": 250000,
+              "tribeId": "tribe-digital",
+              "stage": "In Flight",
+              "initiatedOn": "2026-05-11",
+              "ownerUserId": null,
+              "jiraKey": "APOLLO",
+              "planviewId": null,
+              "source": "manual"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p2",
+              "name": "Skyline API",
+              "status": "Active",
+              "priority": "Medium",
+              "description": "Internal API modernization project.",
+              "startDate": "2026-09-01",
+              "endDate": "2027-03-31",
+              "budget": 180000,
+              "tribeId": "tribe-payments",
+              "stage": "In Flight",
+              "initiatedOn": "2026-06-22",
+              "ownerUserId": null,
+              "jiraKey": "SKY",
+              "planviewId": null,
+              "source": "manual"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p3",
+              "name": "Nebula Analytics",
+              "status": "Planning",
+              "priority": "Critical",
+              "description": "Next-gen data visualization tool development.",
+              "startDate": "2027-01-11",
+              "endDate": "2027-09-30",
+              "budget": 420000,
+              "tribeId": "tribe-lending",
+              "stage": "Initiated",
+              "initiatedOn": "2026-09-15",
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p4",
+              "name": "Legacy Patching",
+              "status": "On Hold",
+              "priority": "Low",
+              "description": "Ongoing maintenance for v1.0 platforms.",
+              "startDate": "2026-10-01",
+              "endDate": "2027-06-30",
+              "budget": 50000,
+              "tribeId": "tribe-operations",
+              "stage": "Closing",
+              "initiatedOn": "2025-10-01",
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": "PV-0004",
+              "source": "planview"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p5",
+              "name": "Phoenix Mobile",
+              "status": "Active",
+              "priority": "High",
+              "description": "New React Native mobile app for field teams.",
+              "startDate": "2026-08-03",
+              "endDate": "2027-05-28",
+              "budget": 300000,
+              "tribeId": "tribe-digital",
+              "stage": "In Flight",
+              "initiatedOn": "2026-06-01",
+              "ownerUserId": null,
+              "jiraKey": "PHX",
+              "planviewId": null,
+              "source": "manual"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p6",
+              "name": "Orion Security",
+              "status": "Planning",
+              "priority": "Critical",
+              "description": "Security hardening and compliance audit.",
+              "startDate": "2026-11-02",
+              "endDate": "2027-04-30",
+              "budget": 120000,
+              "tribeId": "tribe-payments",
+              "stage": "Mobilising",
+              "initiatedOn": "2026-09-28",
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "p7",
+              "name": "Telephony Cloud Migration",
+              "status": "Planning",
+              "priority": "High",
+              "description": "Move contact-centre telephony to cloud (Genesys).",
+              "startDate": "2027-04-05",
+              "endDate": "2027-12-17",
+              "budget": 380000,
+              "tribeId": "tribe-operations",
+              "stage": "Pipeline",
+              "initiatedOn": "2026-09-30",
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual"
+            }
+          ],
+          "allocations": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a1",
+              "resourceId": "r1",
+              "projectId": "p1",
+              "percentage": 20,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a2",
+              "resourceId": "r1",
+              "projectId": "p2",
+              "percentage": 25,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a3",
+              "resourceId": "r1",
+              "projectId": "p6",
+              "percentage": 20,
+              "startDate": "2026-11-02",
+              "endDate": "2027-04-30",
+              "craftId": "risk-governance",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a4",
+              "resourceId": "r2",
+              "projectId": "p1",
+              "percentage": 60,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "project-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a5",
+              "resourceId": "r2",
+              "projectId": "p5",
+              "percentage": 40,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a6",
+              "resourceId": "r3",
+              "projectId": "p2",
+              "percentage": 50,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a7",
+              "resourceId": "r3",
+              "projectId": "p2",
+              "percentage": 30,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "vendor-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a8",
+              "resourceId": "r3",
+              "projectId": "p6",
+              "percentage": 20,
+              "startDate": "2026-11-02",
+              "endDate": "2027-04-30",
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a9",
+              "resourceId": "r4",
+              "projectId": "p4",
+              "percentage": 30,
+              "startDate": "2026-10-01",
+              "endDate": "2027-03-31",
+              "craftId": "project-mgmt",
+              "source": "planview",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": "PVA-9",
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a10",
+              "resourceId": "r4",
+              "projectId": "p3",
+              "percentage": 60,
+              "startDate": "2027-01-11",
+              "endDate": "2027-09-30",
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a11",
+              "resourceId": "r5",
+              "projectId": "p1",
+              "percentage": 30,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "digital-planning",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a12",
+              "resourceId": "r5",
+              "projectId": "p5",
+              "percentage": 30,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "digital-planning",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a13",
+              "resourceId": "r5",
+              "projectId": "p3",
+              "percentage": 40,
+              "startDate": "2027-01-11",
+              "endDate": "2027-06-30",
+              "craftId": "business-analysis",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a14",
+              "resourceId": "r6",
+              "projectId": "p2",
+              "percentage": 60,
+              "startDate": "2026-09-01",
+              "endDate": "2026-12-31",
+              "craftId": "business-analysis",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a15",
+              "resourceId": "r6",
+              "projectId": "p5",
+              "percentage": 50,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "product-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a16",
+              "resourceId": "r7",
+              "projectId": "p3",
+              "percentage": 40,
+              "startDate": "2027-01-11",
+              "endDate": "2027-09-30",
+              "craftId": "business-analysis",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a17",
+              "resourceId": "r7",
+              "projectId": "p6",
+              "percentage": 30,
+              "startDate": "2026-11-02",
+              "endDate": "2027-04-30",
+              "craftId": "business-analysis",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a18",
+              "resourceId": "r8",
+              "projectId": "p1",
+              "percentage": 40,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "scrum-master",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a19",
+              "resourceId": "r8",
+              "projectId": "p2",
+              "percentage": 40,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "scrum-master",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a20",
+              "resourceId": "r8",
+              "projectId": "p5",
+              "percentage": 35,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "scrum-master",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a21",
+              "resourceId": "r9",
+              "projectId": "p6",
+              "percentage": 50,
+              "startDate": "2026-11-02",
+              "endDate": "2027-04-30",
+              "craftId": "project-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a22",
+              "resourceId": "r9",
+              "projectId": "p1",
+              "percentage": 25,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "pmo-analytics",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a23",
+              "resourceId": "r10",
+              "projectId": "p4",
+              "percentage": 30,
+              "startDate": "2026-10-01",
+              "endDate": "2027-06-30",
+              "craftId": "project-mgmt",
+              "source": "planview",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": "PVA-23",
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "a24",
+              "resourceId": "r10",
+              "projectId": "p1",
+              "percentage": 30,
+              "startDate": "2026-10-01",
+              "endDate": "2027-01-29",
+              "craftId": "change-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": {
+                "id": "u-tom",
+                "name": "Tom Hayes"
+              },
+              "id": "a-proposal-1",
+              "resourceId": "r9",
+              "projectId": "p3",
+              "percentage": 20,
+              "startDate": "2027-01-11",
+              "endDate": "2027-03-31",
+              "craftId": "pmo-analytics",
+              "source": "marketplace",
+              "state": "tentative",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": "d-p3-2027-Q1-pmo-analytics",
+              "proposedAt": "2026-10-12T10:15:00.000Z",
+              "proposedBy": {
+                "id": "u-tom",
+                "name": "Tom Hayes"
+              },
+              "respondedAt": null
+            }
+          ],
+          "demand": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p1-2026-Q4-project-mgmt",
+              "projectId": "p1",
+              "quarterKey": "2026-Q4",
+              "craftId": "project-mgmt",
+              "fte": 1,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p1-2026-Q4-scrum-master",
+              "projectId": "p1",
+              "quarterKey": "2026-Q4",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p1-2026-Q4-change-mgmt",
+              "projectId": "p1",
+              "quarterKey": "2026-Q4",
+              "craftId": "change-mgmt",
+              "fte": 0.3,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p1-2027-Q1-project-mgmt",
+              "projectId": "p1",
+              "quarterKey": "2027-Q1",
+              "craftId": "project-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p1-2027-Q1-change-mgmt",
+              "projectId": "p1",
+              "quarterKey": "2027-Q1",
+              "craftId": "change-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p2-2026-Q4-programme-mgmt",
+              "projectId": "p2",
+              "quarterKey": "2026-Q4",
+              "craftId": "programme-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p2-2026-Q4-scrum-master",
+              "projectId": "p2",
+              "quarterKey": "2026-Q4",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p2-2026-Q4-vendor-mgmt",
+              "projectId": "p2",
+              "quarterKey": "2026-Q4",
+              "craftId": "vendor-mgmt",
+              "fte": 0.3,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p2-2027-Q1-programme-mgmt",
+              "projectId": "p2",
+              "quarterKey": "2027-Q1",
+              "craftId": "programme-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p2-2027-Q1-scrum-master",
+              "projectId": "p2",
+              "quarterKey": "2027-Q1",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q1-programme-mgmt",
+              "projectId": "p3",
+              "quarterKey": "2027-Q1",
+              "craftId": "programme-mgmt",
+              "fte": 0.6,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q1-business-analysis",
+              "projectId": "p3",
+              "quarterKey": "2027-Q1",
+              "craftId": "business-analysis",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q1-pmo-analytics",
+              "projectId": "p3",
+              "quarterKey": "2027-Q1",
+              "craftId": "pmo-analytics",
+              "fte": 0.4,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q2-programme-mgmt",
+              "projectId": "p3",
+              "quarterKey": "2027-Q2",
+              "craftId": "programme-mgmt",
+              "fte": 0.6,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q2-project-mgmt",
+              "projectId": "p3",
+              "quarterKey": "2027-Q2",
+              "craftId": "project-mgmt",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q2-business-analysis",
+              "projectId": "p3",
+              "quarterKey": "2027-Q2",
+              "craftId": "business-analysis",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q2-pmo-analytics",
+              "projectId": "p3",
+              "quarterKey": "2027-Q2",
+              "craftId": "pmo-analytics",
+              "fte": 0.4,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q3-project-mgmt",
+              "projectId": "p3",
+              "quarterKey": "2027-Q3",
+              "craftId": "project-mgmt",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q3-change-mgmt",
+              "projectId": "p3",
+              "quarterKey": "2027-Q3",
+              "craftId": "change-mgmt",
+              "fte": 0.5,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p3-2027-Q3-pmo-analytics",
+              "projectId": "p3",
+              "quarterKey": "2027-Q3",
+              "craftId": "pmo-analytics",
+              "fte": 0.4,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p4-2026-Q4-project-mgmt",
+              "projectId": "p4",
+              "quarterKey": "2026-Q4",
+              "craftId": "project-mgmt",
+              "fte": 0.3,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p4-2027-Q1-project-mgmt",
+              "projectId": "p4",
+              "quarterKey": "2027-Q1",
+              "craftId": "project-mgmt",
+              "fte": 0.3,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2026-Q4-programme-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2026-Q4",
+              "craftId": "programme-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2026-Q4-product-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2026-Q4",
+              "craftId": "product-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2026-Q4-scrum-master",
+              "projectId": "p5",
+              "quarterKey": "2026-Q4",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q1-programme-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2027-Q1",
+              "craftId": "programme-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q1-product-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2027-Q1",
+              "craftId": "product-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q1-scrum-master",
+              "projectId": "p5",
+              "quarterKey": "2027-Q1",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q1-release-coord",
+              "projectId": "p5",
+              "quarterKey": "2027-Q1",
+              "craftId": "release-coord",
+              "fte": 0.3,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q2-project-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2027-Q2",
+              "craftId": "project-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q2-release-coord",
+              "projectId": "p5",
+              "quarterKey": "2027-Q2",
+              "craftId": "release-coord",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p5-2027-Q2-change-mgmt",
+              "projectId": "p5",
+              "quarterKey": "2027-Q2",
+              "craftId": "change-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2026-Q4-project-mgmt",
+              "projectId": "p6",
+              "quarterKey": "2026-Q4",
+              "craftId": "project-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2026-Q4-risk-governance",
+              "projectId": "p6",
+              "quarterKey": "2026-Q4",
+              "craftId": "risk-governance",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2027-Q1-project-mgmt",
+              "projectId": "p6",
+              "quarterKey": "2027-Q1",
+              "craftId": "project-mgmt",
+              "fte": 1,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2027-Q1-risk-governance",
+              "projectId": "p6",
+              "quarterKey": "2027-Q1",
+              "craftId": "risk-governance",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2027-Q1-vendor-mgmt",
+              "projectId": "p6",
+              "quarterKey": "2027-Q1",
+              "craftId": "vendor-mgmt",
+              "fte": 0.3,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2027-Q2-project-mgmt",
+              "projectId": "p6",
+              "quarterKey": "2027-Q2",
+              "craftId": "project-mgmt",
+              "fte": 0.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p6-2027-Q2-risk-governance",
+              "projectId": "p6",
+              "quarterKey": "2027-Q2",
+              "craftId": "risk-governance",
+              "fte": 0.3,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q2-product-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q2",
+              "craftId": "product-mgmt",
+              "fte": 0.6,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q2-project-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q2",
+              "craftId": "project-mgmt",
+              "fte": 0.5,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q2-vendor-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q2",
+              "craftId": "vendor-mgmt",
+              "fte": 0.4,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q3-product-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q3",
+              "craftId": "product-mgmt",
+              "fte": 0.6,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q3-project-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q3",
+              "craftId": "project-mgmt",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q3-scrum-master",
+              "projectId": "p7",
+              "quarterKey": "2027-Q3",
+              "craftId": "scrum-master",
+              "fte": 0.5,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q3-change-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q3",
+              "craftId": "change-mgmt",
+              "fte": 0.5,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "d-p7-2027-Q3-vendor-mgmt",
+              "projectId": "p7",
+              "quarterKey": "2027-Q3",
+              "craftId": "vendor-mgmt",
+              "fte": 0.4,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-01T09:00:00.000Z"
+            }
+          ],
+          "tribes": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "tribe-digital",
+              "name": "Digital",
+              "leadName": "Aoife Byrne",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "tribe-payments",
+              "name": "Payments",
+              "leadName": "Declan Moore",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "tribe-lending",
+              "name": "Lending",
+              "leadName": null,
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "tribe-operations",
+              "name": "Operations",
+              "leadName": null,
+              "archived": false
+            }
+          ],
+          "chapters": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "chapter-programme-mgmt",
+              "name": "Programme Management",
+              "craftId": "programme-mgmt",
+              "leadPersonId": "r1",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "chapter-digital-planning",
+              "name": "Digital Planning",
+              "craftId": "digital-planning",
+              "leadPersonId": "r5",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "chapter-product-mgmt",
+              "name": "Product Management",
+              "craftId": "product-mgmt",
+              "leadPersonId": null,
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "chapter-scrum-master",
+              "name": "Scrum Master / Agile Delivery",
+              "craftId": "scrum-master",
+              "leadPersonId": null,
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "chapter-project-mgmt",
+              "name": "Project Management",
+              "craftId": "project-mgmt",
+              "leadPersonId": null,
+              "archived": false
+            }
+          ],
+          "teams": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "t1",
+              "name": "Programme Management",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "t2",
+              "name": "Digital Planning",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "t3",
+              "name": "Product Management",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "t4",
+              "name": "Delivery",
+              "archived": false
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "t5",
+              "name": "Project Management",
+              "archived": false
+            }
+          ],
+          "crafts": [
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "programme-mgmt",
+              "name": "Programme Management",
+              "short": "PGM",
+              "description": "Multi-project programmes, benefits and governance",
+              "family": "Delivery",
+              "archived": false,
+              "sortOrder": 0
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "project-mgmt",
+              "name": "Project Management",
+              "short": "PM",
+              "description": "Plan, run and close a single project",
+              "family": "Delivery",
+              "archived": false,
+              "sortOrder": 1
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "scrum-master",
+              "name": "Scrum Master / Agile Delivery",
+              "short": "SM",
+              "description": "Sprint facilitation, flow, impediments",
+              "family": "Delivery",
+              "archived": false,
+              "sortOrder": 2
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "product-mgmt",
+              "name": "Product Management",
+              "short": "PDM",
+              "description": "Backlog ownership, discovery, roadmaps",
+              "family": "Product",
+              "archived": false,
+              "sortOrder": 3
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "business-analysis",
+              "name": "Business Analysis",
+              "short": "BA",
+              "description": "Requirements, process mapping, acceptance",
+              "family": "Product",
+              "archived": false,
+              "sortOrder": 4
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "digital-planning",
+              "name": "Digital Planning",
+              "short": "DP",
+              "description": "Portfolio sequencing, roadmap and demand planning",
+              "family": "Planning",
+              "archived": false,
+              "sortOrder": 5
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "change-mgmt",
+              "name": "Change & Adoption",
+              "short": "CM",
+              "description": "Stakeholder readiness, comms, training",
+              "family": "Change",
+              "archived": false,
+              "sortOrder": 6
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "pmo-analytics",
+              "name": "PMO Analytics & Reporting",
+              "short": "AN",
+              "description": "Dashboards, status reporting, capacity data",
+              "family": "Planning",
+              "archived": false,
+              "sortOrder": 7
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "risk-governance",
+              "name": "Risk, Governance & Compliance",
+              "short": "RG",
+              "description": "RAID, audit, regulatory gates",
+              "family": "Governance",
+              "archived": false,
+              "sortOrder": 8
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "vendor-mgmt",
+              "name": "Vendor & Commercial Management",
+              "short": "VM",
+              "description": "Contracts, SOWs, supplier delivery",
+              "family": "Governance",
+              "archived": false,
+              "sortOrder": 9
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "release-coord",
+              "name": "Release & Delivery Coordination",
+              "short": "RC",
+              "description": "Release trains, cutover, dependency tracking",
+              "family": "Delivery",
+              "archived": false,
+              "sortOrder": 10
+            },
+            {
+              "version": 1,
+              "updatedAt": "2026-10-01T09:00:00.000Z",
+              "updatedBy": null,
+              "id": "tooling-admin",
+              "name": "Jira / Tooling Administration",
+              "short": "JA",
+              "description": "Jira, Planview and workflow configuration",
+              "family": "Tooling",
+              "archived": false,
+              "sortOrder": 11
+            }
+          ],
+          "offers": [
+            {
+              "personId": "r4",
+              "quarterKey": "2026-Q4",
+              "pct": 50,
+              "craftIds": ["programme-mgmt", "pmo-analytics"],
+              "note": "Free until Nebula starts in January",
+              "createdBy": {
+                "id": "u-tom",
+                "name": "Tom Hayes"
+              },
+              "createdAt": "2026-10-08T08:30:00.000Z"
+            }
+          ],
+          "craftRequests": [
+            {
+              "id": "cr-1",
+              "personId": "r8",
+              "current": [
+                {
+                  "craftId": "release-coord",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "tooling-admin",
+                  "proficiency": 3,
+                  "maxPct": 30
+                }
+              ],
+              "proposed": [
+                {
+                  "craftId": "release-coord",
+                  "proficiency": 3,
+                  "maxPct": 40
+                },
+                {
+                  "craftId": "tooling-admin",
+                  "proficiency": 3,
+                  "maxPct": 30
+                },
+                {
+                  "craftId": "change-mgmt",
+                  "proficiency": 1,
+                  "maxPct": 20
+                }
+              ],
+              "status": "pending",
+              "submittedBy": {
+                "id": "u-noma",
+                "name": "Noma Odigie"
+              },
+              "submittedAt": "2026-10-14T15:20:00.000Z",
+              "decidedBy": null,
+              "decidedAt": null,
+              "reason": null
+            }
+          ],
+          "delivery": {
+            "health": {
+              "provider": "jira",
+              "configured": true,
+              "state": "ok",
+              "lastSuccessAt": "2026-10-16T11:32:38.039Z",
+              "lastJob": {
+                "id": "job-3",
+                "provider": "jira",
+                "trigger": "schedule",
+                "status": "succeeded",
+                "pagesDone": 6,
+                "issuesSeen": 214,
+                "error": null,
+                "rateLimitedUntil": null,
+                "startedAt": "2026-10-16T11:30:38.039Z",
+                "finishedAt": "2026-10-16T11:32:38.039Z",
+                "requestedBy": null
+              },
+              "recentJobs": [
+                {
+                  "id": "job-3",
+                  "provider": "jira",
+                  "trigger": "schedule",
+                  "status": "succeeded",
+                  "pagesDone": 6,
+                  "issuesSeen": 214,
+                  "error": null,
+                  "rateLimitedUntil": null,
+                  "startedAt": "2026-10-16T11:30:38.039Z",
+                  "finishedAt": "2026-10-16T11:32:38.039Z",
+                  "requestedBy": null
+                },
+                {
+                  "id": "job-2",
+                  "provider": "jira",
+                  "trigger": "schedule",
+                  "status": "succeeded",
+                  "pagesDone": 6,
+                  "issuesSeen": 214,
+                  "error": null,
+                  "rateLimitedUntil": null,
+                  "startedAt": "2026-10-15T11:30:38.039Z",
+                  "finishedAt": "2026-10-15T11:32:38.039Z",
+                  "requestedBy": null
+                },
+                {
+                  "id": "job-1",
+                  "provider": "jira",
+                  "trigger": "schedule",
+                  "status": "succeeded",
+                  "pagesDone": 6,
+                  "issuesSeen": 214,
+                  "error": null,
+                  "rateLimitedUntil": null,
+                  "startedAt": "2026-10-14T11:30:38.039Z",
+                  "finishedAt": "2026-10-14T11:32:38.039Z",
+                  "requestedBy": null
+                }
+              ]
+            },
+            "byProjectQbr1": [
+              {
+                "projectId": "p1",
+                "plannedFte": 2.05,
+                "impliedFte": 2.8
+              },
+              {
+                "projectId": "p2",
+                "plannedFte": 2.05,
+                "impliedFte": 1.83
+              },
+              {
+                "projectId": "p5",
+                "plannedFte": 1.55,
+                "impliedFte": 2.25
+              }
+            ]
+          },
+          "serverTime": "2026-10-16T22:30:41.892Z"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/workspaces/demo/people/r1",
+        "body": {
+          "version": 1,
+          "patch": {
+            "targetUtil": 95
+          }
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_e8ca6a0f"
+        },
+        "body": {
+          "version": 2,
+          "updatedAt": "2026-10-16T22:30:41.906Z",
+          "updatedBy": {
+            "id": "u-tom",
+            "name": "Tom Hayes"
+          },
+          "id": "r1",
+          "name": "Tom Hayes",
+          "email": "tom.hayes@company.ie",
+          "role": "Chapter Lead \u2013 Business Delivery",
+          "type": "Permanent",
+          "department": "IE Portfolio & Change Office",
+          "location": "Dublin",
+          "totalCapacity": 100,
+          "dailyRate": null,
+          "teamId": "t1",
+          "chapterId": "chapter-programme-mgmt",
+          "homeTribeId": "tribe-payments",
+          "linkedUserId": "u-tom",
+          "primaryCraft": "programme-mgmt",
+          "secondaryCrafts": [
+            {
+              "craftId": "risk-governance",
+              "proficiency": 3,
+              "maxPct": 30
+            },
+            {
+              "craftId": "digital-planning",
+              "proficiency": 2,
+              "maxPct": 20
+            }
+          ],
+          "tribeAffinity": ["tribe-payments", "tribe-lending"],
+          "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
+          "targetUtil": 95
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/workspaces/demo/people/r1",
+        "body": {
+          "version": 1,
+          "patch": {
+            "targetUtil": 80
+          }
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_1dc10cb5"
+        },
+        "body": {
+          "error": "This record changed since you loaded it.",
+          "code": "conflict",
+          "requestId": "req_1dc10cb5",
+          "current": {
+            "version": 2,
+            "updatedAt": "2026-10-16T22:30:41.906Z",
+            "updatedBy": {
+              "id": "u-tom",
+              "name": "Tom Hayes"
+            },
+            "id": "r1",
+            "name": "Tom Hayes",
+            "email": "tom.hayes@company.ie",
+            "role": "Chapter Lead \u2013 Business Delivery",
+            "type": "Permanent",
+            "department": "IE Portfolio & Change Office",
+            "location": "Dublin",
+            "totalCapacity": 100,
+            "dailyRate": null,
+            "teamId": "t1",
+            "chapterId": "chapter-programme-mgmt",
+            "homeTribeId": "tribe-payments",
+            "linkedUserId": "u-tom",
+            "primaryCraft": "programme-mgmt",
+            "secondaryCrafts": [
+              {
+                "craftId": "risk-governance",
+                "proficiency": 3,
+                "maxPct": 30
+              },
+              {
+                "craftId": "digital-planning",
+                "proficiency": 2,
+                "maxPct": 20
+              }
+            ],
+            "tribeAffinity": ["tribe-payments", "tribe-lending"],
+            "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
+            "targetUtil": 95
+          },
+          "changedBy": {
+            "id": "u-tom",
+            "name": "Tom Hayes"
+          },
+          "changedAt": "2026-10-16T22:30:41.906Z"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/demo/allocations/batch",
+        "body": null,
+        "csrf": true,
+        "bodyOmitted": true
+      },
+      "response": {
+        "status": 413,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_ad608562"
+        },
+        "body": {
+          "error": "A batch can hold at most 500 operations.",
+          "code": "payload_too_large",
+          "requestId": "req_ad608562"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/demo/allocations/batch",
+        "body": {
+          "ops": [
+            {
+              "op": "update",
+              "id": "a1",
+              "version": 1,
+              "patch": {
+                "percentage": 33
+              }
+            }
+          ],
+          "label": "contract"
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_3e828401"
+        },
+        "body": {
+          "upserted": [
+            {
+              "version": 2,
+              "updatedAt": "2026-10-16T22:30:41.917Z",
+              "updatedBy": {
+                "id": "u-tom",
+                "name": "Tom Hayes"
+              },
+              "id": "a1",
+              "resourceId": "r1",
+              "projectId": "p1",
+              "percentage": 33,
+              "startDate": null,
+              "endDate": null,
+              "craftId": "programme-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null
+            }
+          ],
+          "deleted": [],
+          "dataVersion": 3
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/demo/demand",
+        "body": {
+          "projectId": "p1",
+          "quarterKey": "2027-Q5",
+          "craftId": "project-mgmt",
+          "fte": 99,
+          "status": "Forecast",
+          "ownerUserId": null,
+          "note": null
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_0e746eac"
+        },
+        "body": {
+          "error": "Some details need correcting.",
+          "code": "bad_request",
+          "requestId": "req_0e746eac",
+          "fields": {
+            "quarterKey": "Use a quarter like 2027-Q1",
+            "fte": "Enter 0\u201350 FTE"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/demo/people",
+        "body": {
+          "name": ""
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_e4aa2491"
+        },
+        "body": {
+          "error": "Some details need correcting.",
+          "code": "bad_request",
+          "requestId": "req_e4aa2491",
+          "fields": {
+            "name": "Enter a name"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/workspaces/00000000-0000-4000-8000-000000000000/snapshot",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_df2388f8"
+        },
+        "body": {
+          "error": "Workspace not found.",
+          "code": "not_found",
+          "requestId": "req_df2388f8"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/workspace",
+        "body": {},
+        "csrf": true
+      },
+      "response": {
+        "status": 410,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_5859c08b"
+        },
+        "body": {
+          "error": "This endpoint was retired in Release 2.0.",
+          "code": "gone",
+          "requestId": "req_5859c08b"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/ai",
+        "body": {
+          "wsId": "demo",
+          "question": "How are we doing?"
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_14c746c5"
+        },
+        "body": {
+          "error": "The AI assistant is turned off for your organisation.",
+          "code": "feature_disabled",
+          "requestId": "req_14c746c5"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "body": null,
+        "csrf": true
+      },
+      "response": {
+        "status": 204,
+        "headers": {
+          "content-type": "",
+          "x-request-id": "req_563ac664"
+        },
+        "body": null
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/me",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_0bb8b1dc"
+        },
+        "body": {
+          "error": "Please sign in.",
+          "code": "unauthorized",
+          "requestId": "req_0bb8b1dc"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/refresh",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "x-request-id": "req_bbbd549a"
+        },
+        "body": {
+          "error": "Please sign in again.",
+          "code": "unauthorized",
+          "requestId": "req_bbbd549a"
+        }
+      }
+    }
+  ]
+}
