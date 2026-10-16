@@ -19,7 +19,7 @@ export interface TabsProps {
   onChange: (id: string) => void;
   /** Accessible name of the tab list. */
   label: string;
-  /** Prefix for tab/panel ids; pair with <TabPanel idBase=… />. */
+  /** Prefix for tab/panel ids; pass it when you render <TabPanel idBase=… /> (sets aria-controls). */
   idBase?: string;
   className?: string;
 }
@@ -59,7 +59,7 @@ export function Tabs({ tabs, value, onChange, label, idBase, className }: TabsPr
             type="button"
             role="tab"
             id={`${base}-tab-${t.id}`}
-            aria-controls={`${base}-panel-${t.id}`}
+            aria-controls={idBase ? `${base}-panel-${t.id}` : undefined}
             aria-selected={selected}
             tabIndex={selected ? 0 : -1}
             disabled={t.disabled}

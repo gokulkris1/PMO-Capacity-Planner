@@ -85,7 +85,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <Portal>
-        <div className="pcp-toasts" aria-label="Notifications">
+        <div className="pcp-toasts">
           {items.map((t) => (
             <ToastCard key={t.id} item={t} onDismiss={() => dismiss(t.id)} />
           ))}
