@@ -34,12 +34,16 @@ type R = Record<string, unknown>;
 /** OFFER_COLUMNS with the offers alias renamed (the outer query uses `o` for organizations). */
 const OFFER_COLUMNS_O2 = OFFER_COLUMNS.replace(/\bo\./g, 'o2.');
 
-export async function buildSnapshot(q: Queryable, access: WorkspaceAccess): Promise<WorkspaceSnapshot> {
+export async function buildSnapshot(
+  q: Queryable,
+  access: WorkspaceAccess,
+  actorId: string | null,
+): Promise<WorkspaceSnapshot> {
   const wsId = access.workspaceId;
   const requestFilter = has(access, 'craftProfile.approve')
     ? 'TRUE'
-    : has(access, 'people.write.own') && access.linkedPersonId
-      ? 'c.person_id = $2'
+    : has(access, 'people.write.own') && actorId
+      ? `c.person_id IN (SELECT r2.id FROM resources r2 WHERE r2.workspace_id = w.id AND r2.linked_user_id::text = $2)`
       : 'FALSE';
   const structure = q.query(
     `SELECT w.id, w.org_id, w.name, w.data_version, w.created_at, (SELECT name FROM users WHERE id = o.updated_by) AS org_updated_by_name,
@@ -52,7 +56,7 @@ export async function buildSnapshot(q: Queryable, access: WorkspaceAccess): Prom
        (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (SELECT ${CRAFT_REQUEST_COLUMNS} FROM craft_change_requests c ${CRAFT_REQUEST_JOINS}
           WHERE c.workspace_id = w.id AND c.status = 'pending' AND ${requestFilter} ORDER BY c.submitted_at DESC) t) AS craft_requests
      FROM workspaces w JOIN organizations o ON o.id = w.org_id WHERE w.id = $1`,
-    requestFilter === 'c.person_id = $2' ? [wsId, access.linkedPersonId] : [wsId],
+    requestFilter.includes('$2') ? [wsId, actorId] : [wsId],
   );
   const [structRows, people, projects, allocations, demand] = await Promise.all([
     structure,
@@ -84,7 +88,7 @@ export async function buildSnapshot(q: Queryable, access: WorkspaceAccess): Prom
 
 export async function getSnapshot(ctx: Ctx, p: Params): Promise<WorkspaceSnapshot> {
   const access = await requireWorkspace(ctx, p.wsId, 'data.read');
-  return buildSnapshot(ctx.db, access);
+  return buildSnapshot(ctx.db, access, ctx.actor?.userId ?? null);
 }
 
 // ── Sample data (fresh UUIDs, never r1/p1) ─────────────────────────────────
@@ -290,5 +294,5 @@ export async function installSampleData(ctx: Ctx, p: Params) {
     });
   });
   const fresh = await requireWorkspace(ctx, p.wsId, 'data.read');
-  return reply(201, await buildSnapshot(ctx.db, fresh));
+  return reply(201, await buildSnapshot(ctx.db, fresh, actor.userId));
 }

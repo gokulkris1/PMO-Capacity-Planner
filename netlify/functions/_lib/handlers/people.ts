@@ -17,7 +17,15 @@ import type { Queryable } from '../db';
 import { json, one, withTx } from '../db';
 import { badRequest, conflict, forbidden, notFound, payloadTooLarge } from '../errors';
 import { bumpDataVersion, newId, requireVersion, staleOrMissing } from '../entity';
-import { assertCraft, assertOrgRow, assertOrgUser, loadCraftRequests, loadPeople, loadPerson } from '../loaders';
+import {
+  assertCraft,
+  assertOrgRow,
+  assertOrgUser,
+  isOwnPerson,
+  loadCraftRequests,
+  loadPeople,
+  loadPerson,
+} from '../loaders';
 import type { Params } from '../router';
 
 // Typed explicitly: zod's inference degrades when a file is also checked without strictNullChecks (tsconfig.json).
@@ -501,7 +509,7 @@ export async function importPeople(ctx: Ctx, p: Params) {
 
 export async function submitCraftRequest(ctx: Ctx, p: Params) {
   const access = await requireWorkspace(ctx, p.wsId, ['people.write', 'people.write.own']);
-  const own = access.linkedPersonId === p.personId;
+  const own = await isOwnPerson(ctx.db, p.wsId, p.personId, requireActor(ctx).userId);
   if (!has(access, 'people.write') && !(has(access, 'people.write.own') && own)) {
     throw forbidden('You can only suggest changes to your own crafts.');
   }
@@ -553,8 +561,17 @@ export async function listCraftRequests(ctx: Ctx, p: Params) {
   const status =
     ctx.query.status && ['pending', 'approved', 'rejected'].includes(ctx.query.status) ? ctx.query.status : undefined;
   if (has(access, 'craftProfile.approve')) return loadCraftRequests(ctx.db, p.wsId, { status });
-  if (has(access, 'people.write.own') && access.linkedPersonId) {
-    return loadCraftRequests(ctx.db, p.wsId, { status, personId: access.linkedPersonId });
+  if (has(access, 'people.write.own')) {
+    const all = await loadCraftRequests(ctx.db, p.wsId, { status });
+    const mine = new Set(
+      (
+        await ctx.db.query<{ id: string }>(
+          `SELECT id FROM resources WHERE workspace_id = $1 AND linked_user_id::text = $2`,
+          [p.wsId, requireActor(ctx).userId],
+        )
+      ).map((r) => r.id),
+    );
+    return all.filter((r) => mine.has(r.personId));
   }
   return [];
 }

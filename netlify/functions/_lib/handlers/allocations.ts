@@ -19,7 +19,7 @@ import { appBaseUrl } from '../env';
 import { badRequest, conflict, forbidden, notFound, payloadTooLarge } from '../errors';
 import { proposalEmail, sendEmail } from '../email';
 import { ISO_DATE_RE, bumpDataVersion, newId, quarterRange, requireVersion, staleOrMissing } from '../entity';
-import { assertCraft, loadAllocation, loadAllocations, loadDemandLine } from '../loaders';
+import { assertCraft, isOwnPerson, loadAllocation, loadAllocations, loadDemandLine } from '../loaders';
 import type { Params } from '../router';
 import { PLANVIEW_LOCKED, planviewLocked, withOpIndex } from './projects';
 
@@ -312,7 +312,7 @@ export async function respondAllocation(ctx: Ctx, p: Params) {
   return withTx(async (q) => {
     const before = await loadAllocation(q, p.wsId, p.id);
     if (!before) throw notFound('This booking no longer exists.');
-    if (!has(access, 'allocations.write') && before.resourceId !== access.linkedPersonId) {
+    if (!has(access, 'allocations.write') && !(await isOwnPerson(q, p.wsId, before.resourceId, actor.userId))) {
       throw forbidden('You can only respond to bookings proposed to you.');
     }
     if (before.state !== 'tentative') throw conflict('This booking was already answered.');
@@ -451,7 +451,7 @@ async function loadOffer(
 
 async function offerAccess(ctx: Ctx, p: Params) {
   const access = await requireWorkspace(ctx, p.wsId, ['offers.write', 'offers.write.own']);
-  if (!has(access, 'offers.write') && access.linkedPersonId !== p.personId) {
+  if (!has(access, 'offers.write') && !(await isOwnPerson(ctx.db, p.wsId, p.personId, requireActor(ctx).userId))) {
     throw forbidden('You can only offer your own capacity.');
   }
   if (!QUARTER_KEY_RE.test(p.quarterKey)) throw badRequest('Use YYYY-Qn', { quarterKey: 'Use YYYY-Qn' });

@@ -23,8 +23,8 @@ const ORG_MEMBERS_SQL = `
          coalesce(om.role, CASE WHEN u.role IN ('ORG_ADMIN', 'ADMIN', 'SUPERUSER') THEN 'ORG_ADMIN' ELSE 'MEMBER' END) AS org_role
   FROM users u
   LEFT JOIN org_memberships om ON om.user_id = u.id AND om.org_id = $1
-  WHERE om.org_id = $1
-     OR (om.user_id IS NULL AND u.org_id = $1 AND NOT EXISTS (SELECT 1 FROM org_memberships x WHERE x.user_id = u.id))`;
+  WHERE (om.org_id = $1
+     OR (om.user_id IS NULL AND u.org_id = $1 AND NOT EXISTS (SELECT 1 FROM org_memberships x WHERE x.user_id = u.id)))`;
 
 export async function loadMembers(q: Queryable, orgId: string, userId?: string): Promise<MemberDTO[]> {
   const users = await q.query(

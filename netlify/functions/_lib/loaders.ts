@@ -167,3 +167,12 @@ export async function syncProjectCraftDemand(q: Queryable, projectId: string): P
     [projectId],
   );
 }
+
+/** "Own" record check for Contributor permissions: the person is linked to the signed-in user. */
+export async function isOwnPerson(q: Queryable, wsId: string, personId: string, userId: string): Promise<boolean> {
+  return !!(await one(
+    q,
+    `SELECT 1 AS x FROM resources WHERE workspace_id = $1 AND id = $2 AND linked_user_id::text = $3`,
+    [wsId, personId, userId],
+  ));
+}
