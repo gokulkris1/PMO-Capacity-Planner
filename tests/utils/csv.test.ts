@@ -30,7 +30,7 @@ describe('csv', () => {
   });
 
   it('parses quoted fields, escaped quotes, embedded newlines, CRLF and a BOM', () => {
-    const text = '﻿name,note\r\n"Ann, PM","He said ""ok""\nthen left"\r\nBob,\n\n';
+    const text = '\uFEFFname,note\r\n"Ann, PM","He said ""ok""\nthen left"\r\nBob,\n\n';
     expect(parseCsv(text)).toEqual([
       ['name', 'note'],
       ['Ann, PM', 'He said "ok"\nthen left'],
@@ -125,7 +125,7 @@ describe('people CSV (PPL-04)', () => {
 
   it('exports the same columns and round-trips through the parser (PPL-04#AC4)', async () => {
     const s = await demoSnapshot();
-    const text = peopleToCsv(s);
+    const text = peopleToCsv(s.people, s);
     const [header, tom] = parseCsv(text);
     expect(header).toEqual([...PEOPLE_CSV_HEADERS]);
     expect(tom).toEqual([
@@ -140,7 +140,7 @@ describe('people CSV (PPL-04)', () => {
       '100',
       'PGM',
       'RG:3:30|DP:2:20',
-      'Stakeholder Mgmt|Benefits Tracking',
+      'Stakeholder Mgmt;Benefits Tracking',
     ]);
     const back = parsePeopleCsv(text, s);
     expect(back.invalidCount).toBe(0);

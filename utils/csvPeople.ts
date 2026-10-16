@@ -59,6 +59,10 @@ export interface ParsedPeopleRow {
   row: number;
   name: string;
   value: PeopleImportRow | null;
+  /** The row as parsed so far, also for invalid rows (for the preview table). */
+  draft: PeopleImportRow;
+  /** True when an existing person matches by email (else name). */
+  matched: boolean;
   errors: string[];
   /** Structure the import would create (only when createMissingStructure is ticked). */
   creates: string[];
@@ -201,23 +205,31 @@ export function parsePeopleCsv(
     const match = s.people.find(
       (p) => (email && p.email && norm(p.email) === norm(email)) || (!email && name && norm(p.name) === norm(name)),
     );
-    const value: PeopleImportRow | null = errors.length
-      ? null
-      : {
-          name,
-          ...(email !== undefined && { email }),
-          ...(r.job_title && { jobTitle: r.job_title }),
-          ...(type && { type }),
-          ...(r.location && { location: r.location }),
-          ...(chapter && { chapter }),
-          ...(team && { team }),
-          ...(homeTribe && { homeTribe }),
-          ...(targetPct !== undefined && { targetPct }),
-          ...(aboveCraft && { aboveCraft }),
-          ...(belowCrafts && { belowCrafts }),
-          ...(skills && { skills }),
-        };
-    return { row, name, value, errors, creates, action: value ? (match ? 'update' : 'create') : null };
+    const draft: PeopleImportRow = {
+      name,
+      ...(email !== undefined && { email }),
+      ...(r.job_title && { jobTitle: r.job_title }),
+      ...(type && { type }),
+      ...(r.location && { location: r.location }),
+      ...(chapter && { chapter }),
+      ...(team && { team }),
+      ...(homeTribe && { homeTribe }),
+      ...(targetPct !== undefined && { targetPct }),
+      ...(aboveCraft && { aboveCraft }),
+      ...(belowCrafts && { belowCrafts }),
+      ...(skills && { skills }),
+    };
+    const value = errors.length ? null : draft;
+    return {
+      row,
+      name,
+      value,
+      draft,
+      errors,
+      creates,
+      matched: !!match,
+      action: value ? (match ? 'update' : 'create') : null,
+    };
   });
   const validRows = headerErrors.some((e) => e.startsWith('The file needs'))
     ? []
@@ -225,8 +237,15 @@ export function parsePeopleCsv(
   return { headerErrors, rows, validRows, invalidCount: rows.length - validRows.length };
 }
 
-/** Export (PPL-04#AC4): the template columns for the given people (e.g. the current filter). */
-export function peopleToCsv(s: D.WorkspaceSnapshot, people: readonly D.PersonDTO[] = s.people): string {
+/**
+ * Export (PPL-04#AC4): the template columns for the given people (e.g. the current filter). Same
+ * signature as B2's interim `peopleToCsv(people, s)`; skills are `;`-separated (the parser accepts `|`
+ * or `;`).
+ */
+export function peopleToCsv(
+  people: readonly D.PersonDTO[],
+  s: Pick<D.WorkspaceSnapshot, 'crafts' | 'chapters' | 'teams' | 'tribes'>,
+): string {
   const crafts = new Map(s.crafts.map((c) => [c.id, c]));
   const chapters = new Map(s.chapters.map((c) => [c.id, c.name]));
   const teams = new Map(s.teams.map((t) => [t.id, t.name]));
@@ -247,7 +266,46 @@ export function peopleToCsv(s: D.WorkspaceSnapshot, people: readonly D.PersonDTO
       header: 'below_crafts',
       value: (p) => p.secondaryCrafts.map((c) => `${short(c.craftId)}:${c.proficiency}:${c.maxPct}`).join('|'),
     },
-    { header: 'skills', value: (p) => p.skills.join('|') },
+    { header: 'skills', value: (p) => p.skills.join(';') },
   ];
   return toCsv(people, cols);
+}
+
+/* ── B2 interim API (pages/org/people/_parts/peopleCsv.ts): same names and shapes ───── */
+
+export const PEOPLE_CSV_COLUMNS = PEOPLE_CSV_HEADERS;
+export const peopleTemplateCsv = peopleCsvTemplate;
+export { parseCsv } from './csv';
+
+export interface ParsedPersonRow {
+  /** 1-based line in the file (the header is line 1). */
+  line: number;
+  row: PeopleImportRow;
+  errors: string[];
+  match: 'create' | 'update';
+}
+
+/**
+ * B2-compatible validation: every data row with its errors and create/update match. Unknown chapters,
+ * teams and tribes are not errors here (the server creates them when "Create missing" is ticked,
+ * otherwise it reports the row).
+ */
+export function validatePeopleCsv(
+  text: string,
+  s: Pick<D.WorkspaceSnapshot, 'crafts' | 'people'> &
+    Partial<Pick<D.WorkspaceSnapshot, 'chapters' | 'teams' | 'tribes'>>,
+): { rows: ParsedPersonRow[]; headerError: string | null } {
+  if (!text.replace(/^\uFEFF/, '').trim()) return { rows: [], headerError: 'The file is empty.' };
+  const report = parsePeopleCsv(text, { chapters: [], teams: [], tribes: [], ...s }, { createMissingStructure: true });
+  if (report.headerErrors.some((e) => e.startsWith('The file needs')))
+    return { rows: [], headerError: 'Missing column "name". Download the template to see the format.' };
+  return {
+    headerError: null,
+    rows: report.rows.map((r) => ({
+      line: r.row + 1,
+      row: r.draft,
+      errors: r.errors,
+      match: r.matched ? 'update' : 'create',
+    })),
+  };
 }

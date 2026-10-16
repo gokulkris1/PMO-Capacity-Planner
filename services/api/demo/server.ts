@@ -533,11 +533,12 @@ const auth: Record<string, Handler> = {
     return { ok: true };
   },
   verifySend(c) {
-    requireUser(c);
+    if (!str(obj(c.body).email)) requireUser(c);
     return { sent: true };
   },
   verifyCheck(c) {
-    const u = requireUser(c);
+    const email = str(obj(c.body).email).toLowerCase();
+    const u = (email && c.db.users.find((x) => x.email.toLowerCase() === email)) || requireUser(c);
     if (obj(c.body).code !== DEMO_OTP) badRequest({ code: 'That code is incorrect or expired.' });
     u.emailVerified = true;
     return { verified: true };
@@ -2272,6 +2273,222 @@ const planview: Record<string, Handler> = {
   },
 };
 
+/* ── extras: profile, invitation resend, legacy integration settings, checkout, platform ── */
+
+export interface DemoIntegrationSettings {
+  jira: {
+    domain: string;
+    email: string;
+    projectKeys: string[];
+    boardIds: number[];
+    storyPointsFieldId?: string;
+    hasSecret: boolean;
+  };
+  planview: {
+    flavour: 'adaptivework' | 'generic';
+    baseUrl: string;
+    username?: string;
+    hasSecret: boolean;
+    generic?: { projectsPath: string; assignmentsPath: string; fieldMap: Record<string, string> };
+  };
+}
+
+function integrationSettings(ws: DemoWorkspace): DemoIntegrationSettings {
+  const w = ws as DemoWorkspace & { integrationSettings?: DemoIntegrationSettings };
+  w.integrationSettings ??= {
+    jira: ws.jiraConfigured
+      ? {
+          domain: 'demo-pmo.atlassian.net',
+          email: 'pmo.integration@example.com',
+          projectKeys: ws.jiraProjects.map((m) => m.jiraKey),
+          boardIds: ws.jiraProjects.flatMap((m) => m.boardIds),
+          storyPointsFieldId: 'customfield_10016',
+          hasSecret: true,
+        }
+      : { domain: '', email: '', projectKeys: [], boardIds: [], hasSecret: false },
+    planview: ws.planviewConfigured
+      ? {
+          flavour: 'generic',
+          baseUrl: 'https://planview.example.com',
+          username: 'pmo-sync',
+          hasSecret: true,
+          generic: {
+            projectsPath: '/api/projects',
+            assignmentsPath: '/api/assignments',
+            fieldMap: { 'project.id': 'Id', 'project.name': 'Name', 'assignment.percent': 'Allocation' },
+          },
+        }
+      : { flavour: 'generic', baseUrl: '', hasSecret: false },
+  };
+  return w.integrationSettings;
+}
+
+function legacyConfig(ws: DemoWorkspace) {
+  const st = integrationSettings(ws);
+  return {
+    jira: { ...st.jira, configured: !!(st.jira.domain && st.jira.email && st.jira.hasSecret) },
+    planview: { ...st.planview, configured: !!(st.planview.baseUrl && st.planview.hasSecret) },
+    settings: { calibration: {}, mappings: { jira: {}, planview: {} } },
+  };
+}
+
+function legacyWs(c: Ctx): WsAccess {
+  if (!c.query.wsId) badRequest({ wsId: 'wsId query parameter is required' });
+  return access(c, c.query.wsId);
+}
+
+const extras: Record<string, Handler> = {
+  updateProfile(c) {
+    const u = requireUser(c);
+    const name = str(obj(c.body).name);
+    if (!name) badRequest({ name: 'Enter your name' });
+    u.name = name;
+    audit(c, 'user.update', { type: 'user', id: u.id });
+    return buildMe(c.db, u).user;
+  },
+  resendInvitation(c) {
+    const { perms, user } = orgPerms(c);
+    if (!perms.has('org.members.manage') && adminWorkspaces(c, user).size === 0) forbidden();
+    const inv = c.db.invitations.find((i) => i.id === c.params.id && !i.acceptedAt && !i.revokedAt);
+    if (!inv) notFound('Invitation');
+    inv.token = c.newId().replace(/-/g, '');
+    inv.expiresAt = new Date(Date.parse(c.now) + 7 * 86_400_000).toISOString();
+    audit(c, 'member.invite_resend', { type: 'invitation', id: inv.id });
+    return {
+      invitation: { id: inv.id, email: inv.email, expiresAt: inv.expiresAt },
+      inviteUrl: `/invite/${inv.token}`,
+    };
+  },
+  integrationsConfig(c) {
+    const a = legacyWs(c);
+    need(a, 'integrations.view');
+    const cfg = legacyConfig(a.ws);
+    return cfg;
+  },
+  saveIntegrationsConfig(c) {
+    const a = legacyWs(c);
+    need(a, 'integrations.manage');
+    const st = integrationSettings(a.ws);
+    const b = obj(c.body);
+    if (b.jira !== undefined) {
+      const j = obj(b.jira);
+      const domain =
+        j.domain !== undefined
+          ? str(j.domain)
+              .replace(/^https?:\/\//, '')
+              .replace(/\/.*$/, '')
+          : st.jira.domain;
+      if (j.domain !== undefined && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain))
+        badRequest(
+          { 'jira.domain': 'Use a hostname such as your-site.atlassian.net' },
+          'jira.domain must be a hostname such as your-site.atlassian.net',
+        );
+      const changedSite = domain !== st.jira.domain;
+      st.jira = {
+        domain,
+        email: j.email !== undefined ? str(j.email) : st.jira.email,
+        projectKeys: Array.isArray(j.projectKeys)
+          ? j.projectKeys.map((k) => String(k).toUpperCase())
+          : st.jira.projectKeys,
+        boardIds: Array.isArray(j.boardIds) ? j.boardIds.map(Number).filter(Number.isFinite) : st.jira.boardIds,
+        storyPointsFieldId: changedSite ? undefined : st.jira.storyPointsFieldId,
+        // HS-08#AC1: changing the site clears the stored token unless a new one is sent.
+        hasSecret: str(j.apiToken) ? true : changedSite ? false : st.jira.hasSecret,
+      };
+      a.ws.jiraConfigured = !!(st.jira.domain && st.jira.email && st.jira.hasSecret);
+    }
+    if (b.planview !== undefined) {
+      const p = obj(b.planview);
+      const baseUrl = p.baseUrl !== undefined ? str(p.baseUrl) : st.planview.baseUrl;
+      if (p.baseUrl !== undefined && !/^https:\/\//.test(baseUrl))
+        badRequest({ 'planview.baseUrl': 'Use an https:// address' }, 'planview.baseUrl must be an https:// URL');
+      const g = obj(p.generic);
+      st.planview = {
+        flavour:
+          p.flavour === 'adaptivework' ? 'adaptivework' : p.flavour === 'generic' ? 'generic' : st.planview.flavour,
+        baseUrl,
+        username: p.username !== undefined ? str(p.username) || undefined : st.planview.username,
+        hasSecret: str(p.secret) ? true : st.planview.hasSecret,
+        generic:
+          p.generic !== undefined
+            ? {
+                projectsPath: str(g.projectsPath) || st.planview.generic?.projectsPath || '',
+                assignmentsPath: str(g.assignmentsPath) || st.planview.generic?.assignmentsPath || '',
+                fieldMap: (g.fieldMap as Record<string, string>) ?? st.planview.generic?.fieldMap ?? {},
+              }
+            : st.planview.generic,
+      };
+      a.ws.planviewConfigured = !!(st.planview.baseUrl && st.planview.hasSecret);
+    }
+    audit(c, 'integration.config', { type: 'workspace', id: a.ws.workspace.id, workspaceId: a.ws.workspace.id });
+    return legacyConfig(a.ws);
+  },
+  testJira(c) {
+    const a = legacyWs(c);
+    need(a, 'integrations.manage');
+    const st = integrationSettings(a.ws);
+    if (!st.jira.domain || !st.jira.hasSecret)
+      badRequest({}, 'Jira is not configured for this workspace (domain, email and API token are required)');
+    st.jira.storyPointsFieldId ??= 'customfield_10016';
+    return {
+      ok: true,
+      displayName: 'PMO Integration',
+      accountId: 'demo-account',
+      storyPointsFieldId: st.jira.storyPointsFieldId,
+      sprintFieldId: 'customfield_10020',
+    };
+  },
+  testPlanview(c) {
+    const a = legacyWs(c);
+    need(a, 'integrations.manage');
+    const st = integrationSettings(a.ws);
+    if (!st.planview.baseUrl || !st.planview.hasSecret)
+      badRequest({}, 'Planview is not configured for this workspace (baseUrl and secret are required)');
+    return { ok: true, flavour: st.planview.flavour, projectCount: a.ws.planviewSource.projects.length };
+  },
+  checkout(c) {
+    const u = requireUser(c);
+    if (c.db.appMode === 'internal') notFound('Billing');
+    if (u.orgRole !== 'ORG_ADMIN') forbidden();
+    const plan = str(obj(c.body).plan);
+    if (!['BASIC', 'PRO', 'MAX'].includes(plan)) badRequest({ plan: 'Invalid plan selected' }, 'Invalid plan selected');
+    return { url: `https://checkout.stripe.com/c/pay/demo_${plan.toLowerCase()}` };
+  },
+  platformOverview(c) {
+    const u = requireUser(c);
+    if (!u.isPlatformAdmin) notFound('Route');
+    const members = c.db.users.filter((x) => x.orgRole).length;
+    return {
+      stats: {
+        orgs: 1,
+        users: c.db.users.length,
+        workspaces: Object.keys(c.db.workspaces).length,
+        activeLast30d: c.db.users.filter(
+          (x) => x.lastSignInAt && Date.parse(c.now) - Date.parse(x.lastSignInAt) < 30 * 86_400_000,
+        ).length,
+      },
+      orgs: [
+        {
+          id: c.db.org.id,
+          name: c.db.org.name,
+          slug: c.db.org.slug,
+          plan: c.db.org.plan,
+          members,
+          workspaces: Object.keys(c.db.workspaces).length,
+          lastActivityAt: c.db.audit[0]?.occurredAt ?? null,
+        },
+      ],
+      events: c.db.audit.slice(0, 50).map((e) => ({
+        id: e.id,
+        at: e.occurredAt,
+        actor: e.actor?.name ?? 'System',
+        action: e.action,
+        org: c.db.org.name,
+      })),
+    };
+  },
+};
+
 /* ── route table ───────────────────────────────────────────────────────────────────── */
 
 const legacyGone: Handler = () => fail(410, 'gone', 'This endpoint was retired in Release 2.0.');
@@ -2293,6 +2510,14 @@ const routes: Array<[string, RegExp, string[], Handler]> = [
   ['GET', /^\/api\/health$/, [], auth.health],
   ['POST', /^\/api\/ai$/, [], auth.ai],
   ['GET', /^\/api\/v2\/me$/, [], auth.me],
+  ['PATCH', /^\/api\/v2\/me$/, [], extras.updateProfile],
+  ['GET', /^\/api\/v2\/platform\/overview$/, [], extras.platformOverview],
+  ['GET', /^\/api\/integrations\/config$/, [], extras.integrationsConfig],
+  ['POST', /^\/api\/integrations\/config$/, [], extras.saveIntegrationsConfig],
+  ['POST', /^\/api\/integrations\/jira\/test$/, [], extras.testJira],
+  ['POST', /^\/api\/integrations\/planview\/test$/, [], extras.testPlanview],
+  ['POST', /^\/api\/checkout$/, [], extras.checkout],
+  ['POST', new RegExp(`^/api/v2/orgs/${R}/invitations/${R}/resend$`), ['orgId', 'id'], extras.resendInvitation],
   ['POST', /^\/api\/workspace$/, [], legacyGone],
   ['POST', /^\/api\/auth\/users\/invite$/, [], legacyGone],
   ['PUT', new RegExp(`^/api/auth/users/${R}$`), ['id'], legacyGone],

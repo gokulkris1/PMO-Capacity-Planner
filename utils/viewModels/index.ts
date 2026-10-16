@@ -19,7 +19,7 @@ import type { AllocationOp } from '../../shared/contracts/api';
 import { bandFor, type UtilBand, type UtilisationThresholds } from '../../shared/utilisation';
 import { today } from '../clock';
 import { craftRelation, headroomOf, type RangeLoad } from '../craftEngine';
-import { copyForwardOps, effectiveCraft, quarterCellOps } from './allocationOps';
+import { copyForwardOps, effectiveCraft, quarterCellOps, quarterCellsOps, type QuarterCellEdit } from './allocationOps';
 import {
   basisIndex,
   byId,
@@ -765,4 +765,15 @@ export function buildSearchIndex(
 export * from './marketplace';
 export * from './planning';
 export * from './delivery';
-export { MAX_CELL_PCT, MAX_BATCH_OPS, inverseOps } from './allocationOps';
+export * from './matching';
+export { MAX_CELL_PCT, MAX_BATCH_OPS, inverseOps, diffAllocations, type QuarterCellEdit } from './allocationOps';
+
+/** AL-07: several quarter cells as one atomic batch (one undo step); creates get ids from `newId`. */
+export function setQuarterCells(
+  s: D.WorkspaceSnapshot,
+  quarters: QuarterView[],
+  cells: QuarterCellEdit[],
+  newId: () => D.ID,
+): AllocationOp[] {
+  return quarterCellsOps(s, quarters, cells, newId);
+}

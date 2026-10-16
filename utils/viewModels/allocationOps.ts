@@ -298,3 +298,54 @@ export function inverseOps(before: D.AllocationDTO[], r: AllocationBatchResponse
   }
   return ops;
 }
+
+/**
+ * The net batch that turns `before` into `after` (both full allocation lists): rows only in `before`
+ * are deleted, changed rows are updated with their original version, rows only in `after` are
+ * created with their (client) ids. Lets several edits on the same booking go out as one atomic batch.
+ */
+export function diffAllocations(before: D.AllocationDTO[], after: D.AllocationDTO[]): AllocationOp[] {
+  const prev = new Map(before.map((a) => [a.id, a]));
+  const next = new Map(after.map((a) => [a.id, a]));
+  const ops: AllocationOp[] = [];
+  for (const a of before) if (!next.has(a.id)) ops.push({ op: 'delete', id: a.id, version: a.version });
+  for (const a of after) {
+    const old = prev.get(a.id);
+    if (!old) {
+      ops.push({ op: 'create', allocation: { ...(restorable(a) as NewAllocation), id: a.id } });
+      continue;
+    }
+    const patch: Record<string, unknown> = {};
+    for (const k of RESTORABLE) {
+      const key = k as keyof D.AllocationDTO;
+      if (JSON.stringify(old[key]) !== JSON.stringify(a[key])) patch[k] = a[key];
+    }
+    if (Object.keys(patch).length) ops.push({ op: 'update', id: a.id, version: old.version, patch });
+  }
+  return ops;
+}
+
+export interface QuarterCellEdit extends BookingKey {
+  quarterKey: D.QuarterKey;
+  pct: number;
+}
+
+/**
+ * Several quarter-cell edits (a paste from Excel, AL-07) as ONE net batch: the edits are applied in
+ * order to a scratch copy, then diffed against the original. Creates get ids from `newId`. Throws a
+ * RangeError for any value outside 0–200.
+ */
+export function quarterCellsOps(
+  s: D.WorkspaceSnapshot,
+  quarters: QuarterView[],
+  cells: QuarterCellEdit[],
+  newId: () => D.ID,
+): AllocationOp[] {
+  let scratch = s;
+  const ctx = { newId, now: '', user: null };
+  for (const c of cells) {
+    const ops = quarterCellOps(scratch, quarters, c);
+    scratch = { ...scratch, allocations: applyAllocationOps(scratch.allocations, ops, ctx) };
+  }
+  return diffAllocations(s.allocations, scratch.allocations);
+}

@@ -21,7 +21,11 @@ const KIND_ORDER: SearchKind[] = ['person', 'project', 'tribe', 'craft'];
 export const SEARCH_LIMIT_PER_KIND = 5;
 
 export function normalise(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 interface Entry extends SearchResult {

@@ -106,9 +106,12 @@ export function createApiClient(t: Transport) {
       setTwoFactor: (r: { enabled: boolean; password: string }) => post<{ ok: true }>(API.twoFactor, r),
       changePassword: (r: { currentPassword: string; newPassword: string }) =>
         post<{ ok: true }>(API.changePassword, r),
-      verifySend: () => post<{ sent: true }>(API.verifySend),
-      verifyCheck: (code: string) => post<{ verified: true }>(API.verifyCheck, { code }),
+      verifySend: (email?: string) => post<{ sent: true }>(API.verifySend, email ? { email } : {}),
+      verifyCheck: (code: string, email?: string) =>
+        post<{ verified: true }>(API.verifyCheck, email ? { email, code } : { code }),
       me: () => get<D.MeResponse>(API.me),
+      /** ST-01#AC4 profile name. Not in the §4.3 table yet: requested from A (handoff-C.md §7). */
+      updateProfile: (r: { name: string }) => patch<D.SessionUser>(API.me, r),
     },
 
     health: () => get<HealthResponse>(API.health),
@@ -153,6 +156,8 @@ export function createApiClient(t: Transport) {
           Array<InvitationResponse['invitation'] & { orgRole: D.OrgRole; workspaces: InvitationRequest['workspaces'] }>
         >(API.invitations(orgId)),
       revoke: (orgId: D.ID, id: D.ID) => del(API.invitations(orgId, id)),
+      /** ST-02#AC1 "Resend". Not in the §4.3 table yet: requested from A (handoff-C.md §7). */
+      resend: (orgId: D.ID, id: D.ID) => post<InvitationResponse>(`${API.invitations(orgId, id)}/resend`),
       lookup: (token: string) => get<InvitationLookup>(API.invitationByToken(token)),
       accept: (token: string, r: { name?: string; password?: string }) =>
         post<{ user: D.SessionUser }>(API.invitationAccept(token), r),
@@ -248,5 +253,93 @@ export function createApiClient(t: Transport) {
       testMapping: (wsId: D.ID) =>
         post<{ source: unknown; mapped: Record<string, unknown>; missing: string[] }>(API.planviewTestMapping(wsId)),
     },
+
+    /** Legacy connection settings (HS-08 rules), `/api/integrations/*?wsId=` with their v1.1 shapes. */
+    integrationSettings: {
+      config: (wsId: D.ID) => get<LegacyIntegrationConfig>(LEGACY.integrationsConfig, { wsId }),
+      save: (wsId: D.ID, body: LegacyIntegrationSave) =>
+        t.request<LegacyIntegrationConfig>('POST', LEGACY.integrationsConfig, body, { query: { wsId } }),
+      testJira: (wsId: D.ID) =>
+        t.request<{ ok: boolean; displayName?: string; storyPointsFieldId: string | null }>(
+          'POST',
+          LEGACY.jiraTest,
+          {},
+          { query: { wsId } },
+        ),
+      testPlanview: (wsId: D.ID) =>
+        t.request<{ ok: boolean; flavour?: string; projectCount?: number }>(
+          'POST',
+          LEGACY.planviewTest,
+          {},
+          { query: { wsId } },
+        ),
+    },
+
+    /** Legacy Stripe checkout (public mode, ST-06): `{ plan, orgSlug }` → `{ url }`. */
+    billing: {
+      checkout: (plan: D.Plan, orgSlug: string) => post<{ url: string }>(LEGACY.checkout, { plan, orgSlug }),
+    },
+
+    /** ST-09 cockpit. `GET /api/v2/platform/overview` is requested from A (handoff-C.md §7). */
+    platform: {
+      overview: () => get<PlatformOverviewResponse>(LEGACY.platformOverview),
+    },
   };
+}
+
+/** Routes outside the §4.3 `API` builder (legacy v1.1 endpoints kept by the coordinator, plus requests to A). */
+export const LEGACY = {
+  integrationsConfig: '/api/integrations/config',
+  jiraTest: '/api/integrations/jira/test',
+  planviewTest: '/api/integrations/planview/test',
+  checkout: '/api/checkout',
+  platformOverview: '/api/v2/platform/overview',
+} as const;
+
+export interface LegacyIntegrationConfig {
+  jira: {
+    configured: boolean;
+    domain: string;
+    email: string;
+    projectKeys: string[];
+    boardIds: number[];
+    storyPointsFieldId?: string;
+    hasSecret: boolean;
+  };
+  planview: {
+    configured: boolean;
+    flavour: 'adaptivework' | 'generic';
+    baseUrl: string;
+    username?: string;
+    hasSecret: boolean;
+    generic?: {
+      projectsPath: string;
+      assignmentsPath: string;
+      authHeaderName?: string;
+      fieldMap: Record<string, string>;
+    };
+  };
+  settings?: unknown;
+}
+
+export interface LegacyIntegrationSave {
+  jira?: Partial<Omit<LegacyIntegrationConfig['jira'], 'configured' | 'hasSecret'>> & { apiToken?: string };
+  planview?: Partial<Omit<LegacyIntegrationConfig['planview'], 'configured' | 'hasSecret' | 'generic'>> & {
+    secret?: string;
+    generic?: Partial<NonNullable<LegacyIntegrationConfig['planview']['generic']>>;
+  };
+}
+
+export interface PlatformOverviewResponse {
+  stats: { orgs: number; users: number; workspaces: number; activeLast30d: number };
+  orgs: Array<{
+    id: D.ID;
+    name: string;
+    slug: string;
+    plan: D.Plan;
+    members: number;
+    workspaces: number;
+    lastActivityAt: D.ISODateTime | null;
+  }>;
+  events: Array<{ id: string; at: D.ISODateTime; actor: string; action: string; org: string | null }>;
 }
