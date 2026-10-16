@@ -9,7 +9,7 @@ import { Legend, SegmentedControl, cx, type SwatchKind } from './primitives';
 import { useElementWidth } from './hooks';
 
 /** "Nice" axis maximum and ticks (1, 2, 2.5, 5 × 10ⁿ steps). */
-export function niceScale(max: number, targetTicks = 4): { max: number; ticks: number[] } {
+export function niceScale(max: number, targetTicks = 5): { max: number; ticks: number[] } {
   if (!(max > 0)) return { max: 1, ticks: [0, 0.25, 0.5, 0.75, 1] };
   const raw = max / targetTicks;
   const mag = 10 ** Math.floor(Math.log10(raw));

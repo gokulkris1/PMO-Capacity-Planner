@@ -1,0 +1,183 @@
+/* Demand roadmap (DM-02) — tokens only. */
+.dm-head {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+.dm-head .b2-tabs {
+  border-bottom: 0;
+}
+.dm-search {
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+.dm-filter {
+  flex: 0 1 170px;
+  min-width: 130px;
+}
+.dm-legend-chip {
+  height: 18px;
+}
+.dm-table {
+  table-layout: fixed;
+  min-width: 960px;
+}
+.dm-table .dm-col-project {
+  width: 260px;
+}
+.dm-table .dm-col-q {
+  width: auto;
+}
+.dm-sub {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.dm-project {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-050);
+  padding: var(--space-100) 0;
+  min-width: 0;
+}
+.dm-project > a {
+  max-width: 100%;
+}
+.dm-project__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.dm-table td.dm-cell {
+  padding: var(--space-050);
+  vertical-align: top;
+  border-left: 1px solid var(--color-border);
+}
+.dm-cellbtn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-075);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-100);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dm-cellbtn:hover {
+  border-color: var(--color-border-input);
+  background: var(--color-surface);
+}
+.dm-cellbtn--ro {
+  cursor: default;
+}
+.dm-cellbtn--ro:hover {
+  border-color: transparent;
+}
+.dm-lines {
+  min-height: 20px;
+}
+.dm-staff {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+.dm-staff__track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-sunken);
+  display: flex;
+  gap: 2px;
+  min-width: 48px;
+}
+.dm-staff__fill {
+  height: 100%;
+  background: var(--chart-1);
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+}
+.dm-staff__prop {
+  height: 100%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--chart-1);
+}
+.dm-staff__demand {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--chart-4);
+}
+.dm-staff__label {
+  flex: 0 0 auto;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+}
+.dm-gap {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.dm-total {
+  font-size: var(--text-caption-size);
+  color: var(--color-text-secondary);
+  border-left: 1px solid var(--color-border);
+}
+.dm-craft .dm-first {
+  border-left: 1px solid var(--color-border);
+}
+.dm-craft thead th.dm-craft__group {
+  text-align: center;
+  border-left: 1px solid var(--color-border);
+}
+.dm-craft thead th.is-basis {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+.dm-craft thead tr:nth-child(2) th {
+  top: 36px;
+  height: 28px;
+  font-weight: 500;
+}
+.dm-gaplink {
+  display: inline-block;
+  padding: 0 var(--space-075);
+  border-radius: var(--radius-xs);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: 600;
+  text-decoration: none;
+}
+.dm-gaplink:hover {
+  text-decoration: underline;
+}
+/* demand cell dialog */
+.dc-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+}
+.dc-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 112px auto minmax(0, 1fr) auto;
+  gap: var(--space-100);
+  align-items: center;
+  padding-bottom: var(--space-150);
+  border-bottom: 1px solid var(--color-border);
+}
+.dc-line__note {
+  grid-column: 1 / -1;
+}
+.dc-line__err {
+  grid-column: 1 / -1;
+}
+.dc-line__actions {
+  display: flex;
+  gap: var(--space-025);
+}

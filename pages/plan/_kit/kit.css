@@ -991,7 +991,7 @@ textarea.b2-input {
 }
 .b2-input-wrap--suffix > .b2-input {
   padding-left: var(--space-100);
-  padding-right: var(--space-400);
+  padding-right: var(--space-500);
 }
 .b2-check {
   display: inline-flex;
@@ -1053,6 +1053,9 @@ textarea.b2-input {
 }
 .b2-table tbody th {
   font-weight: 400;
+}
+.b2-table .b2-num {
+  text-align: right;
 }
 .b2-table thead th {
   position: sticky;
