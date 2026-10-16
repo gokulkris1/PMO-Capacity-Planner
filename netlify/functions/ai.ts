@@ -1,113 +1,94 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import jwt from 'jsonwebtoken';
-import { neon } from '@neondatabase/serverless';
+/**
+ * POST /api/ai (HS-11, SEC-16, SEC-29): off unless the org enables `aiAssistant`; the client sends
+ * `{ wsId, question }` only and the server builds the prompt from workspace data; per-org monthly quota with an
+ * atomic check-and-increment; upstream failures return a generic 502; only OPENAI_API_KEY is read.
+ */
+import { z } from 'zod';
+import { auditCtx, parseWith, withApi } from './_lib/api';
+import { audit } from './_lib/audit';
+import { orgEntitlements, requireFeature, requireWorkspace } from './_lib/authz';
+import { buildSystemPrompt } from './_lib/aiPrompt';
+import { optionalEnv } from './_lib/env';
+import { badRequest, forbidden, notFound, rateLimited, serviceUnavailable, upstreamError } from './_lib/errors';
+import { buildSnapshot } from './_lib/handlers/snapshot';
+import { readJson, safeFetch } from './_lib/net';
+import { errorFields, log } from './_lib/log';
 
-const sql = neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
+const schema = z.object({
+  wsId: z.string().uuid('Choose a workspace'),
+  question: z.string().trim().min(1, 'Ask a question').max(2000, 'Keep questions under 2,000 characters'),
+});
 
-const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'OPTIONS, POST',
-};
+export const handler = withApi({ fn: 'ai' }, async (ctx) => {
+  if (ctx.method !== 'POST') throw notFound('Not found');
+  const raw = (ctx.body ?? {}) as { question?: unknown };
+  if (typeof raw.question === 'string' && raw.question.length > 2000) {
+    throw badRequest('Keep questions under 2,000 characters', { question: 'Keep questions under 2,000 characters' });
+  }
+  const body = parseWith(schema, ctx.body);
+  const access = await requireWorkspace(ctx, body.wsId);
+  requireFeature(access.org, 'aiAssistant');
+  if (!access.permissions.has('ai.use')) throw forbidden();
+  const apiKey = optionalEnv('OPENAI_API_KEY');
+  if (!apiKey) throw serviceUnavailable('The AI service is not configured.', 'OPENAI_API_KEY missing');
 
-function ok(body: unknown) { return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }; }
-function fail(msg: string, status = 400) { return { statusCode: status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: msg }) }; }
+  const limit = orgEntitlements(access.org).aiQueriesPerMonth;
+  const used = await ctx.db.query<{ n: number }>(
+    `UPDATE organizations SET
+       ai_queries_month = CASE WHEN ai_quota_reset_at < date_trunc('month', now()) THEN 1 ELSE ai_queries_month + 1 END,
+       ai_quota_reset_at = CASE WHEN ai_quota_reset_at < date_trunc('month', now()) THEN date_trunc('month', now()) ELSE ai_quota_reset_at END
+     WHERE id = $1 AND ($2::int IS NULL OR ai_quota_reset_at < date_trunc('month', now()) OR ai_queries_month < $2::int)
+     RETURNING ai_queries_month AS n`,
+    [access.orgId, limit],
+  );
+  if (!used.length) {
+    const reset = new Date();
+    const next = Date.UTC(reset.getUTCFullYear(), reset.getUTCMonth() + 1, 1);
+    throw rateLimited(`Your organisation has used this month's ${limit} AI questions.`, (next - Date.now()) / 1000);
+  }
 
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
-
-    // Authenticate user
-    const authHeader = event.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return fail('Unauthorized', 401);
-    const token = authHeader.split(' ')[1];
-
-    let userId: string;
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        userId = decoded.id;
-    } catch {
-        return fail('Invalid token', 401);
-    }
-
-    if (event.httpMethod !== 'POST') return fail('Method not allowed', 405);
-
-    try {
-        const { systemPrompt, userPrompt } = JSON.parse(event.body || '{}');
-
-        // Removed slow ALTER TABLE auto-migration from critical hotpath to prevent Lambda timeout
-
-        // Check Quotas
-        const res = await sql`
-            SELECT plan, ai_queries_month, last_reset_date 
-            FROM users WHERE id = ${userId} LIMIT 1
-        `;
-        if (res.length === 0) return fail('User not found', 400);
-
-        let { plan, ai_queries_month, last_reset_date } = res[0];
-
-        // Reset quota if older than 30 days
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        if (new Date(last_reset_date) < thirtyDaysAgo) {
-            await sql`UPDATE users SET ai_queries_month = 0, last_reset_date = NOW() WHERE id = ${userId}`;
-            ai_queries_month = 0;
-        }
-
-        const limits: Record<string, number> = { 'BASIC': 25, 'PRO': 100, 'MAX': 999999 };
-        const userLimit = limits[plan || 'BASIC'] || 25;
-
-        if (ai_queries_month >= userLimit) {
-            return fail(`You have reached your limit of ${userLimit} AI queries this month. Please upgrade your plan.`, 429);
-        }
-
-        if (!OPENAI_API_KEY) {
-            return ok({ response: "AI advisor is currently disabled. Server is missing an API Key (checked OPENAI_API_KEY, GEMINI_API_KEY, API_KEY)." });
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8500);
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            signal: controller.signal,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.2, // Low temp for more analytical PMO responses
-                max_tokens: 500,
-            }),
-        }).finally(() => clearTimeout(timeoutId));
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            return fail(`OpenAI API Error: ${errorText}`, 502);
-        }
-
-        const data = await response.json();
-
-        // Increment quota logic
-        await sql`UPDATE users SET ai_queries_month = ai_queries_month + 1 WHERE id = ${userId}`;
-
-        return ok({ response: data.choices?.[0]?.message?.content || "No response generated." });
-
-    } catch (err: any) {
-        console.error('AI Route Error:', err);
-        if (err.name === 'AbortError') {
-            return fail('The AI service took too long to respond. Your organization query might be too large.', 504);
-        }
-        return fail('Internal server error', 500);
-    }
-};
+  const snapshot = await buildSnapshot(ctx.db, access, ctx.actor?.userId ?? null);
+  const system = buildSystemPrompt(snapshot, access.role);
+  let answer: string;
+  try {
+    const res = await safeFetch(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: optionalEnv('OPENAI_MODEL', 'gpt-4o-mini'),
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: body.question },
+          ],
+          temperature: 0.2,
+          max_tokens: 500,
+        }),
+      },
+      { label: 'AI service', timeoutMs: 7000 },
+    );
+    const { json } = await readJson(res);
+    if (!res.ok) throw new Error(`AI upstream ${res.status}`);
+    const content = (json as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;
+    answer = typeof content === 'string' && content.trim() ? content.trim() : 'No answer was generated.';
+  } catch (e) {
+    log('warn', { event: 'ai.upstream_failed', requestId: ctx.requestId, err: errorFields(e) });
+    await ctx.db
+      .query(`UPDATE organizations SET ai_queries_month = greatest(ai_queries_month - 1, 0) WHERE id = $1`, [
+        access.orgId,
+      ])
+      .catch(() => undefined);
+    throw upstreamError('The AI service is unavailable. Try again later.');
+  }
+  await audit(ctx.db, auditCtx(ctx), {
+    action: 'ai.query',
+    orgId: access.orgId,
+    workspaceId: access.workspaceId,
+    targetType: 'workspace',
+    targetId: access.workspaceId,
+    after: { questionLength: body.question.length, quotaUsed: used[0].n },
+  });
+  // `response` keeps the v1.1 client working; the 2.0 contract field is `answer`.
+  return { answer, response: answer };
+});

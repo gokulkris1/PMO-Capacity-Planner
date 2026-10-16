@@ -1,26 +1,10 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-
 /**
- * DEPRECATED — this endpoint accepted Jira credentials in the request body
- * (which the old UI kept in localStorage). It has been replaced by
- * /api/integrations/jira/usage, which uses workspace-scoped, encrypted
- * credentials managed via /api/integrations/config.
- *
- * It intentionally returns 410 Gone so nothing can silently keep using it.
+ * DEPRECATED /api/jira (PL-09#AC1): took Jira credentials in the request body. Replaced by workspace-scoped,
+ * encrypted credentials (/api/integrations/*) and the v2 sync. Kept as a 410 for this release only.
  */
+import { withApi } from './_lib/api';
+import { gone } from './_lib/errors';
 
-const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'OPTIONS, POST',
-    'Content-Type': 'application/json',
-};
-
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
-    return {
-        statusCode: 410,
-        headers: CORS,
-        body: JSON.stringify({ error: 'Moved to /api/integrations/jira/usage' }),
-    };
-};
+export const handler = withApi({ fn: 'jira', auth: 'none', schemaCheck: false, csrf: false }, async () => {
+  throw gone('Moved to /api/v2/workspaces/:wsId/sync/jira');
+});

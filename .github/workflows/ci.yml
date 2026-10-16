@@ -1,0 +1,79 @@
+name: CI
+
+# One pipeline with security gates (PL-08). Every step must pass; nothing uses `|| echo` or continue-on-error.
+# Production deploys through Netlify's Git integration on main; previews deploy from preview-netlify.yml after this
+# workflow succeeds.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0 # gitleaks scans the pushed commits
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Embedded migrations are up to date
+        run: node scripts/db/embed-migrations.mjs --check
+
+      - name: Pure modules (no React, DOM, Node or Netlify imports)
+        run: npm run check:pure
+
+      - name: Test (backend line coverage >= 60 %)
+        run: >-
+          npm test -- --coverage --coverageReporters=text-summary
+          --collectCoverageFrom='netlify/functions/**/*.ts'
+          --coverageThreshold='{"global":{"lines":60}}'
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # only required for organisation-owned repositories
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle size
+        run: node scripts/check-bundle-size.mjs
+
+      - name: No secrets in dist (HS-15)
+        run: node scripts/check-dist-secrets.mjs
+
+      - name: No debug or test functions
+        run: node scripts/check-function-names.mjs
+
+      - name: UI guardrails
+        run: npm run check:guardrails
