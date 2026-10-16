@@ -38,7 +38,7 @@ export const Slider: React.FC<SliderProps> = ({
                     background: 'var(--bg-card)',
                     borderRadius: '4px',
                     outline: 'none',
-                    writingMode: isVert ? 'bt-lr' : 'horizontal-tb',
+                    writingMode: (isVert ? 'bt-lr' : 'horizontal-tb') as React.CSSProperties['writingMode'],
                     WebkitAppearance: isVert ? 'slider-vertical' : 'none',
                     cursor: 'pointer',
                     accentColor: color

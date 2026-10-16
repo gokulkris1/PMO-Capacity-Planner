@@ -1,0 +1,17 @@
+{
+  "//": "PL-11#AC2: strict type-checking for the 2.0 core modules. Run by `npm run typecheck` and CI. Add a directory here when its code is new or cleaned up; never relax it.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "shared/**/*.ts",
+    "state/**/*.ts",
+    "state/**/*.tsx",
+    "utils/viewModels/**/*.ts",
+    "services/api/**/*.ts",
+    "netlify/functions/_lib/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

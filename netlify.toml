@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [dev]
-  command = "npm run dev"
+  command = "npm run dev:vite"
   targetPort = 3000
 
 # Route /api/* to the catch-all Netlify Function

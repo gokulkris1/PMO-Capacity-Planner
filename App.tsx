@@ -732,7 +732,7 @@ const AppShell: React.FC = () => {
                     Super
                   </button>
                 )}
-                {user.role === 'ADMIN' && (
+                {(user.role as string) === 'ADMIN' && (
                   <button
                     onClick={() => setShowAdmin(true)}
                     title="Workspace Admin"
