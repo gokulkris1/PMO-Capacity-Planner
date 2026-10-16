@@ -1,0 +1,189 @@
+/* Button, LinkButton, IconButton, ButtonGroup (DESIGN_SYSTEM §8.3) */
+.pcp-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-100);
+  flex-shrink: 0;
+  height: var(--control-height-md);
+  padding: 0 var(--space-150);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.pcp-button:hover {
+  text-decoration: none;
+}
+
+.pcp-button__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcp-button--full {
+  width: 100%;
+}
+
+/* Sizes */
+.pcp-button--sm {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-100);
+  font-size: var(--text-table-size);
+  line-height: var(--text-table-line);
+  gap: var(--space-050);
+}
+
+.pcp-button--lg {
+  height: var(--control-height-lg);
+  padding: 0 var(--space-200);
+  font-weight: 600;
+}
+
+.pcp-button--icon {
+  width: var(--control-height-md);
+  padding: 0;
+}
+.pcp-button--icon.pcp-button--sm {
+  width: var(--control-height-sm);
+}
+.pcp-button--icon.pcp-button--lg {
+  width: var(--control-height-lg);
+}
+
+/* Primary */
+.pcp-button--primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.pcp-button--primary:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}
+.pcp-button--primary:active {
+  background: var(--color-primary-pressed);
+}
+
+/* Secondary */
+.pcp-button--secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+.pcp-button--secondary:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-input);
+  color: var(--color-text);
+}
+.pcp-button--secondary:active {
+  background: var(--color-surface-sunken);
+}
+
+/* Subtle */
+.pcp-button--subtle {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.pcp-button--subtle:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.pcp-button--subtle:active,
+.pcp-button--subtle[aria-expanded='true'] {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}
+
+/* Danger */
+.pcp-button--danger {
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
+}
+.pcp-button--danger:hover {
+  background: var(--color-danger-hover);
+  color: var(--color-on-primary);
+}
+.pcp-button--danger:active {
+  background: var(--color-danger-pressed);
+}
+
+/* Link */
+.pcp-button--link {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--color-link);
+  border: 0;
+  font-weight: 500;
+}
+.pcp-button--link:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+/* Disabled */
+.pcp-button:disabled,
+.pcp-button[aria-disabled='true']:not(.pcp-button--loading) {
+  cursor: not-allowed;
+}
+.pcp-button--primary:disabled,
+.pcp-button--danger:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-disabled);
+}
+.pcp-button--secondary:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
+}
+.pcp-button--subtle:disabled,
+.pcp-button--link:disabled {
+  background: transparent;
+  color: var(--color-text-disabled);
+  text-decoration: none;
+}
+
+.pcp-button--loading {
+  cursor: progress;
+}
+
+/* Count badge on icon buttons (notifications). */
+.pcp-button__badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--space-050);
+  border-radius: var(--radius-full);
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
+  font-size: var(--text-overline-size);
+  line-height: 16px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.pcp-button-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.pcp-button-group--end {
+  justify-content: flex-end;
+}

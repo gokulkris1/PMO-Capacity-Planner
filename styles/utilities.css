@@ -1,0 +1,249 @@
+/* styles/utilities.css — small, token-based utility classes for page layout (DESIGN_SYSTEM §3, §4, §13).
+   Prefix: pcp-. Components have their own CSS files; these utilities are for page composition. */
+
+/* ---- Typography roles --------------------------------------------------------------------- */
+.pcp-display {
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  font-weight: var(--text-display-weight);
+  letter-spacing: -0.01em;
+}
+.pcp-h1 {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.pcp-h2 {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+}
+.pcp-h3 {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 600;
+}
+.pcp-body {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 400;
+}
+.pcp-body-strong {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 600;
+}
+.pcp-body-medium {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 500;
+}
+.pcp-table-text {
+  font-size: var(--text-table-size);
+  line-height: var(--text-table-line);
+}
+.pcp-caption {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 400;
+}
+.pcp-caption-strong {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+}
+.pcp-overline {
+  font-size: var(--text-overline-size);
+  line-height: var(--text-overline-line);
+  font-weight: 600;
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+}
+
+/* ---- Text colours ------------------------------------------------------------------------- */
+.pcp-text {
+  color: var(--color-text);
+}
+.pcp-text-secondary {
+  color: var(--color-text-secondary);
+}
+.pcp-text-tertiary {
+  color: var(--color-text-tertiary);
+}
+.pcp-text-danger {
+  color: var(--color-danger);
+}
+.pcp-text-success {
+  color: var(--color-success);
+}
+.pcp-text-warning {
+  color: var(--color-warning);
+}
+
+/* ---- Numbers ------------------------------------------------------------------------------ */
+.pcp-tnum {
+  font-variant-numeric: tabular-nums;
+}
+.pcp-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---- Accessibility ------------------------------------------------------------------------ */
+.pcp-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.pcp-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ---- Layout ------------------------------------------------------------------------------- */
+/* Page content wrapper below the PageHeader: gutter left/right, 24 px bottom. */
+.pcp-page {
+  padding: 0 var(--page-gutter) var(--space-400);
+  min-width: 0;
+}
+
+.pcp-page--narrow {
+  max-width: calc(720px + 2 * var(--page-gutter));
+}
+
+.pcp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  min-width: 0;
+}
+.pcp-stack--sm {
+  gap: var(--space-100);
+}
+.pcp-stack--md {
+  gap: var(--space-200);
+}
+.pcp-stack--lg {
+  gap: var(--space-400);
+}
+
+.pcp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.pcp-row--wrap {
+  flex-wrap: wrap;
+}
+.pcp-row--between {
+  justify-content: space-between;
+}
+.pcp-row--end {
+  justify-content: flex-end;
+}
+.pcp-row--top {
+  align-items: flex-start;
+}
+.pcp-row--md {
+  gap: var(--space-200);
+}
+.pcp-row--lg {
+  gap: var(--space-300);
+}
+
+.pcp-spacer {
+  flex: 1 1 auto;
+}
+
+/* 12-column grid, 24 px gap (16 below 1024). */
+.pcp-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+@media (min-width: 1024px) {
+  .pcp-grid {
+    gap: var(--space-300);
+  }
+}
+.pcp-col-12 {
+  grid-column: span 12;
+}
+.pcp-grid > [class*='pcp-col-lg-'] {
+  grid-column: span 12;
+}
+@media (min-width: 1024px) {
+  .pcp-grid > .pcp-col-lg-3 {
+    grid-column: span 3;
+  }
+  .pcp-grid > .pcp-col-lg-4 {
+    grid-column: span 4;
+  }
+  .pcp-grid > .pcp-col-lg-5 {
+    grid-column: span 5;
+  }
+  .pcp-grid > .pcp-col-lg-6 {
+    grid-column: span 6;
+  }
+  .pcp-grid > .pcp-col-lg-7 {
+    grid-column: span 7;
+  }
+  .pcp-grid > .pcp-col-lg-8 {
+    grid-column: span 8;
+  }
+  .pcp-grid > .pcp-col-lg-9 {
+    grid-column: span 9;
+  }
+}
+
+/* Definition list used in drawers and settings summaries. */
+.pcp-dl {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--space-100) var(--space-300);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}
+.pcp-dl dt {
+  color: var(--color-text-secondary);
+}
+.pcp-dl dd {
+  margin: 0;
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.pcp-divider {
+  height: 1px;
+  background: var(--color-border);
+  border: 0;
+  margin: 0;
+}
+
+/* Responsive helpers: hide editing controls on read-only small screens (DESIGN_SYSTEM §13). */
+@media (max-width: 1023px) {
+  .pcp-hide-below-lg {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  .pcp-hide-below-md {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  .pcp-show-below-md {
+    display: none !important;
+  }
+}

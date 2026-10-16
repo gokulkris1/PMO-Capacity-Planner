@@ -1,0 +1,137 @@
+@keyframes pcp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pcp-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pcp-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-200);
+}
+
+.pcp-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+  animation: pcp-fade-in var(--duration-base) var(--ease-standard);
+}
+
+.pcp-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 85vh;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-3);
+  animation: pcp-dialog-in var(--duration-base) var(--ease-standard);
+}
+
+.pcp-dialog:focus-visible {
+  outline: none;
+}
+
+.pcp-dialog--sm {
+  max-width: var(--dialog-sm);
+}
+.pcp-dialog--md {
+  max-width: var(--dialog-md);
+}
+.pcp-dialog--lg {
+  max-width: var(--dialog-lg);
+}
+
+.pcp-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-200);
+  padding: var(--space-300) var(--space-300) 0;
+}
+
+.pcp-dialog__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  min-width: 0;
+}
+
+.pcp-dialog__title {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pcp-dialog__subtitle {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-dialog__close {
+  margin: calc(-1 * var(--space-050)) calc(-1 * var(--space-100)) 0 0;
+}
+
+.pcp-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-200) var(--space-300) var(--space-300);
+  color: var(--color-text);
+}
+
+.pcp-dialog__text {
+  color: var(--color-text-secondary);
+}
+
+.pcp-dialog__text p + p {
+  margin-top: var(--space-100);
+}
+
+.pcp-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-100);
+  padding: 0 var(--space-300) var(--space-300);
+}
+
+.pcp-dialog__confirm-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  margin-top: var(--space-200);
+}
+
+.pcp-dialog__confirm-input {
+  height: var(--control-height-md);
+  padding: 0 var(--space-100);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.pcp-dialog__confirm-input:focus-visible {
+  border-color: var(--color-primary);
+}
