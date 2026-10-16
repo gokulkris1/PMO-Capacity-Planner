@@ -275,3 +275,35 @@
   line-height: var(--text-caption-line);
   color: var(--color-danger);
 }
+
+/* Password field: room for the show/hide toggle inside the control. */
+.pcp-password {
+  position: relative;
+  min-width: 0;
+}
+
+.pcp-password .pcp-control {
+  padding-right: calc(var(--space-100) + 28px);
+}
+
+.pcp-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-050);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  transform: translateY(-50%);
+}
+
+.pcp-password__toggle:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+}

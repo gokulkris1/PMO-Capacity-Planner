@@ -45,7 +45,7 @@ export function WorkspaceSwitcher() {
     ...workspaces.map<MenuItem>((w) => ({
       id: w.id,
       label: w.name,
-      description: `${ROLE_LABEL[w.role]}${w.implicit ? ' · view only' : ''}`,
+      description: `${ROLE_LABEL[w.role]}${w.implicit && w.role === 'VIEWER' ? ' · view only' : ''}`,
       selected: w.id === workspace.id,
       onSelect: () => {
         if (w.id === workspace.id) return;

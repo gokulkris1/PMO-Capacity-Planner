@@ -1,4 +1,4 @@
-import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { cx } from '../internal/utils';
 import './code-input.css';
 
@@ -13,7 +13,8 @@ export interface CodeInputProps {
   label: string;
   invalid?: boolean;
   disabled?: boolean;
-  autoFocus?: boolean;
+  /** Focus the first box when mounted (a code step the user just requested). */
+  focusOnMount?: boolean;
   'aria-describedby'?: string;
 }
 
@@ -26,18 +27,25 @@ export function CodeInput({
   label,
   invalid,
   disabled,
-  autoFocus,
+  focusOnMount,
   'aria-describedby': describedBy,
 }: CodeInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
-  const digits = Array.from({ length }, (_, i) => value[i] ?? '');
+  useEffect(() => {
+    if (focusOnMount) refs.current[0]?.focus();
+  }, [focusOnMount]);
+  // Empty boxes are kept as spaces so later digits keep their position; a complete code is /^\d{length}$/.
+  const digits = Array.from({ length }, (_, i) => (value[i] && value[i] !== ' ' ? value[i] : ''));
 
   const setAt = (i: number, d: string) => {
     const arr = [...digits];
     arr[i] = d;
-    const next = arr.join('').slice(0, length);
+    const next = arr
+      .map((x) => x || ' ')
+      .join('')
+      .replace(/\s+$/, '');
     onChange(next);
-    if (next.length === length && !next.includes('') && arr.every((x) => x !== '')) onComplete?.(next);
+    if (next.length === length && /^\d+$/.test(next)) onComplete?.(next);
   };
 
   const onKey = (i: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -78,8 +86,6 @@ export function CodeInput({
           maxLength={1}
           value={d}
           disabled={disabled}
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- first box of a code step the user just requested
-          autoFocus={autoFocus && i === 0}
           aria-label={`Digit ${i + 1} of ${length}`}
           aria-invalid={invalid || undefined}
           onChange={(e) => {

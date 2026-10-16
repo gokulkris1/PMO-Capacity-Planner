@@ -89,8 +89,8 @@ export function useFocusTrap(ref: { current: HTMLElement | null }, active: boole
     const previous = document.activeElement as HTMLElement | null;
     const initial =
       root.querySelector<HTMLElement>('[data-autofocus]') ?? focusableWithin(root)[0] ?? (root as HTMLElement);
-    // Defer so the element is laid out (animations start at opacity 0 but stay focusable).
-    const t = window.setTimeout(() => initial.focus({ preventScroll: true }), 0);
+    // Focus immediately so keystrokes typed right after opening (e.g. after ⌘K) are not lost.
+    initial.focus({ preventScroll: true });
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
@@ -113,7 +113,6 @@ export function useFocusTrap(ref: { current: HTMLElement | null }, active: boole
     };
     root.addEventListener('keydown', onKeyDown);
     return () => {
-      window.clearTimeout(t);
       root.removeEventListener('keydown', onKeyDown);
       if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
         previous.focus({ preventScroll: true });

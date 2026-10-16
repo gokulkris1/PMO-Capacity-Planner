@@ -65,7 +65,7 @@ export default function PeoplePage() {
 | `Checkbox` | `checked`, `onChange(bool)`, `label?`, `description?`, `indeterminate?`, `disabled?`, `aria-label?` |
 | `Switch` | `checked`, `onChange(bool)`, `label`, `description?`, `disabled?`, `hideLabel?` (role=switch) |
 | `RadioGroup` | `label`, `value`, `onChange`, `options: {value,label,description?,disabled?}[]`, `orientation` |
-| `CodeInput` | `value`, `onChange`, `onComplete?`, `length=6`, `label`, `invalid?`, `autoFocus?` (OTP boxes, paste supported) |
+| `CodeInput` | `value`, `onChange`, `onComplete?`, `length=6`, `label`, `invalid?`, `focusOnMount?` (OTP boxes, paste supported) |
 | `SearchField` | `value`, `onChange`, `placeholder` (= accessible name), `width`, `size` |
 
 ### Navigation and layout

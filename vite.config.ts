@@ -34,7 +34,10 @@ export default defineConfig({
   plugins: [react()],
   define: {
     // SH-10: version shown in Help › What's new. No secrets are ever defined here (HS-15).
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.VITE_APP_VERSION ?? pkg.version),
+    // package.json stays 0.0.0 until I sets 2.0.0 (SH-10#AC3); this codebase is Release 2.0.
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+      process.env.VITE_APP_VERSION ?? (pkg.version === '0.0.0' ? '2.0.0' : pkg.version),
+    ),
   },
   resolve: {
     alias: { '@': root },

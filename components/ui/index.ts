@@ -25,6 +25,8 @@ export {
   DateField,
   DateField as DateInput,
   Textarea,
+  PasswordField,
+  type PasswordFieldProps,
   type TextFieldProps,
   type DateFieldProps,
   type TextareaProps,

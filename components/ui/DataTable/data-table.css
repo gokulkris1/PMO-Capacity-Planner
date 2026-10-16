@@ -330,3 +330,10 @@ tbody .pcp-table__sticky {
 .pcp-table-card--compact .pcp-cell-main__sub {
   display: none;
 }
+
+/* Inside a flush Card: no outer frame, the card provides it. */
+.pcp-table-card--plain {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}

@@ -6,7 +6,7 @@ import { Suspense, type ReactNode } from 'react';
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { useSession } from './state';
 import { AppProviders } from './components/shell/AppProviders';
-import { HASH_ROUTER, APP_MODE, IS_DEV } from './components/shell/env';
+import { HASH_ROUTER, IS_DEV } from './components/shell/env';
 import {
   OrgRedirect,
   RequireFeature,
@@ -148,13 +148,9 @@ function workspaceRoutes() {
         <Route
           path="billing"
           element={
-            APP_MODE === 'public' ? (
-              <RequirePermission anyOf={['org.billing']} notFound>
-                <S.billing />
-              </RequirePermission>
-            ) : (
-              <NotFoundPage />
-            )
+            <RequirePermission anyOf={['org.billing']} notFound>
+              <S.billing />
+            </RequirePermission>
           }
         />
         <Route path="*" element={<NotFoundPage />} />

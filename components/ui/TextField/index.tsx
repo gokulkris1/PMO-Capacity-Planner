@@ -1,6 +1,6 @@
-import type { InputHTMLAttributes, Ref, TextareaHTMLAttributes } from 'react';
+import { useState, type InputHTMLAttributes, type Ref, type TextareaHTMLAttributes } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { CalendarDays, X } from 'lucide-react';
+import { CalendarDays, Eye, EyeOff, X } from 'lucide-react';
 import { Icon } from '../Icon';
 import { useFieldControl } from '../FormField';
 import { cx } from '../internal/utils';
@@ -97,4 +97,26 @@ export function Textarea({
 }: TextareaProps) {
   const field = useFieldControl({ id, invalid, 'aria-describedby': ariaDescribedBy, required });
   return <textarea ref={ref} className={cx('pcp-textarea', className)} {...field} {...rest} />;
+}
+
+export type PasswordFieldProps = Omit<TextFieldProps, 'type' | 'onClear'>;
+
+/** Password input with a Show/Hide toggle (Eye / EyeOff). */
+export function PasswordField({ className, disabled, ...rest }: PasswordFieldProps) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className={cx('pcp-password', className)}>
+      <TextField type={visible ? 'text' : 'password'} disabled={disabled} {...rest} />
+      <button
+        type="button"
+        className="pcp-password__toggle"
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        disabled={disabled}
+        onClick={() => setVisible((v) => !v)}
+      >
+        <Icon icon={visible ? EyeOff : Eye} size={16} />
+      </button>
+    </div>
+  );
 }
