@@ -1,7 +1,8 @@
+if (!process.env.NEON_DATABASE_URL) { console.error('Set NEON_DATABASE_URL (never hard-code credentials)'); process.exit(1); }
 import { neon } from '@neondatabase/serverless';
 
 // Use same unpooled URL
-const UNPOOLED = 'postgresql://neondb_owner:npg_yngIoS2H9Kmz@ep-soft-mode-ai5mxefw.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const UNPOOLED = process.env.NEON_DATABASE_URL;
 const sql = neon(UNPOOLED);
 
 async function check() {

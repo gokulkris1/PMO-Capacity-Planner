@@ -1,6 +1,7 @@
+if (!process.env.NEON_DATABASE_URL) { console.error('Set NEON_DATABASE_URL (never hard-code credentials)'); process.exit(1); }
 import { neon } from '@neondatabase/serverless';
 
-const DB_URL = 'postgresql://neondb_owner:npg_yngIoS2H9Kmz@ep-soft-mode-ai5mxefw-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DB_URL = process.env.NEON_DATABASE_URL;
 const sql = neon(DB_URL);
 
 async function diagnose() {

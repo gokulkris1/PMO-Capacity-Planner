@@ -220,9 +220,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
             const { email } = body;
             if (!email) return fail('Email required');
             const records = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase().trim()}`;
-            let otpSecret;
-            if (records.length > 0) otpSecret = await sendAuthOtp(sql, email, 'reset');
-            return ok({ sent: true, otp: otpSecret });
+            if (records.length > 0) await sendAuthOtp(sql, email, 'reset');
+            // Never return the reset code to the caller: that would let anyone reset any account.
+            // Same response whether or not the email exists, to avoid account enumeration.
+            return ok({ sent: true });
         }
 
         if (subpath === '/reset/confirm' && event.httpMethod === 'POST') {

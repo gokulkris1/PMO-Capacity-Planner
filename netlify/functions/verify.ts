@@ -64,8 +64,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
         }
 
         if (!RESEND_API_KEY) {
-            console.log(`[DEV] OTP for ${cleanEmail}: ${otp}`);
-            return ok(event, { sent: true, dev: true, otp });
+            // Only echo the code in explicit local development. In any deployed environment a
+            // missing email provider must not turn verification into a no-op.
+            if (process.env.ALLOW_DEV_OTP === 'true' && process.env.CONTEXT !== 'production') {
+                console.log(`[DEV] OTP for ${cleanEmail}: ${otp}`);
+                return ok(event, { sent: true, dev: true, otp });
+            }
+            return fail(event, 'Email delivery is not configured. Contact your administrator.', 503);
         }
 
         try {

@@ -1,3 +1,4 @@
+if (!process.env.NEON_DATABASE_URL) { console.error('Set NEON_DATABASE_URL (never hard-code credentials)'); process.exit(1); }
 import pg from 'pg';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -8,7 +9,7 @@ const { Client } = pg;
 
 // pg uses TCP — fully supports DDL, transactions, etc.
 const client = new Client({
-    connectionString: 'postgresql://neondb_owner:npg_yngIoS2H9Kmz@ep-soft-mode-ai5mxefw.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require',
+    connectionString: process.env.NEON_DATABASE_URL,
 });
 
 async function run() {
