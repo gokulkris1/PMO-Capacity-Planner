@@ -60,12 +60,16 @@ async function check(ctx: Ctx) {
       [email],
     );
     if (rows[0]) {
-      await audit(q, { ...auditCtx(ctx), actorUserId: rows[0].id }, {
-        action: 'auth.email_verified',
-        orgId: rows[0].org_id,
-        targetType: 'user',
-        targetId: rows[0].id,
-      });
+      await audit(
+        q,
+        { ...auditCtx(ctx), actorUserId: rows[0].id },
+        {
+          action: 'auth.email_verified',
+          orgId: rows[0].org_id,
+          targetType: 'user',
+          targetId: rows[0].id,
+        },
+      );
     }
   });
   return { verified: true };

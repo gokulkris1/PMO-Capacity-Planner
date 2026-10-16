@@ -1,6 +1,6 @@
 /**
  * /api/qbr/* — legacy QBR sprint-planning module, now tenant-isolated (HS-04, SEC-04).
- * Every route needs `?wsId=` and workspace access: reads data.read, writes qbr.write, scenario commit/delete and
+ * Every route needs `?wsId=`, the org feature `qbrSprintModule` (SH-05) and workspace access: reads data.read, writes qbr.write, scenario commit/delete and
  * seeding qbr.commit. The org is derived from the workspace; a client `orgId` is ignored. Id-addressed rows are
  * looked up inside the workspace (404 otherwise) and multi-statement writes run in one transaction.
  */
@@ -8,7 +8,7 @@ import type { Ctx } from './_lib/api';
 import { auditCtx, reply, requireActor, withApi } from './_lib/api';
 import { audit } from './_lib/audit';
 import type { WorkspaceAccess } from './_lib/authz';
-import { requireWorkspace, UUID_RE } from './_lib/authz';
+import { requireFeature, requireWorkspace, UUID_RE } from './_lib/authz';
 import type { Queryable } from './_lib/db';
 import { one, withTx } from './_lib/db';
 import { isProduction } from './_lib/env';
@@ -66,7 +66,13 @@ async function reads(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
       chapters,
       coe,
       quarters,
-      stats: { members: counts[0].members, projects: counts[0].projects, tribes: tribes.length, chapters: chapters.length, coe: coe.length },
+      stats: {
+        members: counts[0].members,
+        projects: counts[0].projects,
+        tribes: tribes.length,
+        chapters: chapters.length,
+        coe: coe.length,
+      },
     };
   }
   if (route === 'quarter' && parts.length === 2) {
@@ -137,7 +143,8 @@ async function reads(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
   }
   if (route === 'scenario' && parts.length === 2) {
     const id = idOf(parts[1]);
-    if (!(await one(db, `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [id, ws]))) throw notFound('Scenario not found');
+    if (!(await one(db, `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [id, ws])))
+      throw notFound('Scenario not found');
     return {
       bookings: await db.query(
         `SELECT b.*, p.name AS project_name, p.color AS project_color, m.name AS member_name FROM qbr_bookings b
@@ -168,11 +175,26 @@ async function upsertBooking(ctx: Ctx, access: WorkspaceAccess) {
     uuidOr(projectId, 'projectId');
     uuidOr(sprintId, 'sprintId');
     await belongs(q, `SELECT 1 AS x FROM qbr_members WHERE id = $1 AND workspace_id = $2`, [memberId, ws], 'memberId');
-    await belongs(q, `SELECT 1 AS x FROM qbr_projects WHERE id = $1 AND workspace_id = $2`, [projectId, ws], 'projectId');
-    await belongs(q, `SELECT 1 AS x FROM qbr_sprints s JOIN qbr_quarters qu ON qu.id = s.quarter_id WHERE s.id = $1 AND qu.workspace_id = $2`, [sprintId, ws], 'sprintId');
+    await belongs(
+      q,
+      `SELECT 1 AS x FROM qbr_projects WHERE id = $1 AND workspace_id = $2`,
+      [projectId, ws],
+      'projectId',
+    );
+    await belongs(
+      q,
+      `SELECT 1 AS x FROM qbr_sprints s JOIN qbr_quarters qu ON qu.id = s.quarter_id WHERE s.id = $1 AND qu.workspace_id = $2`,
+      [sprintId, ws],
+      'sprintId',
+    );
     if (scenarioId) {
       uuidOr(scenarioId, 'scenarioId');
-      await belongs(q, `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [scenarioId, ws], 'scenarioId');
+      await belongs(
+        q,
+        `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`,
+        [scenarioId, ws],
+        'scenarioId',
+      );
     }
     const key = [memberId, projectId, sprintId, scenarioId];
     if (pct <= 0) {
@@ -194,7 +216,13 @@ async function upsertBooking(ctx: Ctx, access: WorkspaceAccess) {
         [access.orgId, ws, memberId, projectId, sprintId, Math.round(pct), scenarioId, b.notes ?? null],
       );
     }
-    await audit(q, auditCtx(ctx), { action: 'qbr.booking', orgId: access.orgId, workspaceId: ws, targetType: 'qbr_booking', targetId: String(rows[0].id) });
+    await audit(q, auditCtx(ctx), {
+      action: 'qbr.booking',
+      orgId: access.orgId,
+      workspaceId: ws,
+      targetType: 'qbr_booking',
+      targetId: String(rows[0].id),
+    });
     return { success: true, booking: rows[0] };
   });
 }
@@ -209,7 +237,12 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
     const quarterId = String(body.quarterId ?? '');
     if (!name || !UUID_RE.test(quarterId)) throw badRequest('name and quarterId required');
     return withTx(async (q) => {
-      await belongs(q, `SELECT 1 AS x FROM qbr_quarters WHERE id = $1 AND workspace_id = $2`, [quarterId, ws], 'quarterId');
+      await belongs(
+        q,
+        `SELECT 1 AS x FROM qbr_quarters WHERE id = $1 AND workspace_id = $2`,
+        [quarterId, ws],
+        'quarterId',
+      );
       const [scenario] = await q.query(
         `INSERT INTO qbr_scenarios (org_id, workspace_id, name, description, quarter_id, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
         [access.orgId, ws, name, body.description ?? null, quarterId, actor.userId],
@@ -220,7 +253,13 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
          WHERE workspace_id = $2 AND scenario_id IS NULL AND sprint_id IN (SELECT id FROM qbr_sprints WHERE quarter_id = $3)`,
         [scenario.id, ws, quarterId],
       );
-      await audit(q, auditCtx(ctx), { action: 'qbr.scenario_create', orgId: access.orgId, workspaceId: ws, targetType: 'qbr_scenario', targetId: String(scenario.id) });
+      await audit(q, auditCtx(ctx), {
+        action: 'qbr.scenario_create',
+        orgId: access.orgId,
+        workspaceId: ws,
+        targetType: 'qbr_scenario',
+        targetId: String(scenario.id),
+      });
       return reply(201, { success: true, scenario });
     });
   }
@@ -234,9 +273,18 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
         `DELETE FROM qbr_bookings WHERE workspace_id = $1 AND scenario_id IS NULL AND sprint_id IN (SELECT id FROM qbr_sprints WHERE quarter_id = $2)`,
         [ws, sc.quarter_id],
       );
-      await q.query(`UPDATE qbr_bookings SET scenario_id = NULL WHERE scenario_id = $1 AND workspace_id = $2`, [id, ws]);
+      await q.query(`UPDATE qbr_bookings SET scenario_id = NULL WHERE scenario_id = $1 AND workspace_id = $2`, [
+        id,
+        ws,
+      ]);
       await q.query(`UPDATE qbr_scenarios SET is_committed = true WHERE id = $1`, [id]);
-      await audit(q, auditCtx(ctx), { action: 'qbr.scenario_commit', orgId: access.orgId, workspaceId: ws, targetType: 'qbr_scenario', targetId: id });
+      await audit(q, auditCtx(ctx), {
+        action: 'qbr.scenario_commit',
+        orgId: access.orgId,
+        workspaceId: ws,
+        targetType: 'qbr_scenario',
+        targetId: id,
+      });
       return { success: true };
     });
   }
@@ -261,7 +309,10 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
       for (const m of Array.isArray(body.members) ? (body.members as Array<Record<string, unknown>>) : []) {
         const memberId = await optional(m.memberId, 'qbr_members', 'members');
         const role = ['LEAD', 'MEMBER', 'ADVISOR'].includes(String(m.role)) ? String(m.role) : 'MEMBER';
-        await q.query(`INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [squad.id, memberId, role]);
+        await q.query(
+          `INSERT INTO qbr_squad_members (squad_id, member_id, squad_role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [squad.id, memberId, role],
+        );
       }
       return reply(201, { success: true, squad });
     });
@@ -269,10 +320,17 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
   if (ctx.method === 'POST' && parts[0] === 'seed' && parts.length === 1) {
     // HS-04#AC6: never in production, except for platform admins.
     if (isProduction() && !actor.isPlatformAdmin) throw forbidden('Demo data cannot be loaded in production.');
-    if (!access.permissions.has('qbr.commit') && !actor.isPlatformAdmin) throw forbidden('You need the PMO Admin role to do this.');
+    if (!access.permissions.has('qbr.commit') && !actor.isPlatformAdmin)
+      throw forbidden('You need the PMO Admin role to do this.');
     return withTx(async (q) => {
       const stats = await seedQbr(q, access.orgId, ws);
-      await audit(q, auditCtx(ctx), { action: 'qbr.seed', orgId: access.orgId, workspaceId: ws, targetType: 'workspace', targetId: ws });
+      await audit(q, auditCtx(ctx), {
+        action: 'qbr.seed',
+        orgId: access.orgId,
+        workspaceId: ws,
+        targetType: 'workspace',
+        targetId: ws,
+      });
       return { success: true, message: 'QBR demo data seeded successfully', stats };
     });
   }
@@ -280,10 +338,17 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
     if (!access.permissions.has('qbr.commit')) throw forbidden('You need the PMO Admin role to do this.');
     const id = idOf(parts[1]);
     return withTx(async (q) => {
-      if (!(await one(q, `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [id, ws]))) throw notFound('Scenario not found');
+      if (!(await one(q, `SELECT 1 AS x FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [id, ws])))
+        throw notFound('Scenario not found');
       await q.query(`DELETE FROM qbr_bookings WHERE scenario_id = $1 AND workspace_id = $2`, [id, ws]);
       await q.query(`DELETE FROM qbr_scenarios WHERE id = $1 AND workspace_id = $2`, [id, ws]);
-      await audit(q, auditCtx(ctx), { action: 'qbr.scenario_delete', orgId: access.orgId, workspaceId: ws, targetType: 'qbr_scenario', targetId: id });
+      await audit(q, auditCtx(ctx), {
+        action: 'qbr.scenario_delete',
+        orgId: access.orgId,
+        workspaceId: ws,
+        targetType: 'qbr_scenario',
+        targetId: id,
+      });
       return { success: true };
     });
   }
@@ -293,8 +358,14 @@ async function writes(ctx: Ctx, access: WorkspaceAccess, parts: string[]) {
 export const handler = withApi({ fn: 'qbr' }, async (ctx) => {
   const wsId = wsIdOf(ctx);
   const parts = ctx.subpath.split('/').filter(Boolean);
-  if (ctx.method === 'GET') return reads(ctx, await requireWorkspace(ctx, wsId, 'data.read'), parts);
+  // SH-05#AC3: the sprint module is hidden unless the org turns on features.qbrSprintModule.
+  if (ctx.method === 'GET') {
+    const access = await requireWorkspace(ctx, wsId, 'data.read');
+    requireFeature(access.org, 'qbrSprintModule');
+    return reads(ctx, access, parts);
+  }
   const seeding = parts[0] === 'seed';
   const access = await requireWorkspace(ctx, wsId, seeding ? [] : 'qbr.write');
+  requireFeature(access.org, 'qbrSprintModule');
   return writes(ctx, access, parts);
 });

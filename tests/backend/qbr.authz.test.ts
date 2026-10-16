@@ -30,13 +30,15 @@ let sprint: string;
 let quarter: string;
 let bMember: string;
 let bQuarter: string;
+let offOrgWs: string;
 
 const q = (p: string, ws = wsA) => `/api/qbr${p}${p.includes('?') ? '&' : '?'}wsId=${ws}`;
 
 beforeAll(async () => {
   db = await setupDb();
-  orgA = await createOrg(db, 'QBR A');
-  const orgB = await createOrg(db, 'QBR B');
+  orgA = await createOrg(db, 'QBR A', 'ENTERPRISE', { features: { qbrSprintModule: true } });
+  const orgB = await createOrg(db, 'QBR B', 'ENTERPRISE', { features: { qbrSprintModule: true } });
+  offOrgWs = await createWorkspace(db, await createOrg(db, 'QBR off'));
   wsA = await createWorkspace(db, orgA);
   wsB = await createWorkspace(db, orgB);
   admin = await createUser(db, { orgId: orgA, orgRole: 'MEMBER' });
@@ -67,6 +69,17 @@ afterAll(() => teardownDb(db));
 beforeEach(() => testEnv());
 
 describe('read access (HS-04#AC1, AC3)', () => {
+  it('answers 403 feature_disabled while the org has the sprint module off (SH-05#AC3)', async () => {
+    const offAdmin = await createUser(db, {
+      orgId: String((await db.query(`SELECT org_id FROM workspaces WHERE id = $1`, [offOrgWs]))[0].org_id),
+      orgRole: 'ORG_ADMIN',
+    });
+    const r = await call(qbr, 'GET', q('/overview', offOrgWs), { token: offAdmin.token });
+    expect([r.status, r.json.code]).toEqual([403, 'feature_disabled']);
+    const w = await call(qbr, 'POST', q('/seed', offOrgWs), { token: offAdmin.token, body: {} });
+    expect([w.status, w.json.code]).toEqual([403, 'feature_disabled']);
+  });
+
   it('returns 403 to non-members and other tenants, and 200 to members and the org admin', async () => {
     for (const p of ['/overview', '/members', '/projects', '/okrs', '/squads', '/scenarios']) {
       expect([p, (await call(qbr, 'GET', q(p), { token: stranger.token })).status]).toEqual([p, 403]);

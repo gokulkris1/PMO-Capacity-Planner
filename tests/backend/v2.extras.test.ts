@@ -42,7 +42,7 @@ async function signIn(u: TestUser) {
 
 beforeAll(async () => {
   db = await setupDb();
-  org = await createOrg(db, 'Extras');
+  org = await createOrg(db, 'Extras', 'ENTERPRISE', { features: { qbrSprintModule: true } });
   const other = await createOrg(db, 'Elsewhere');
   ws = await createWorkspace(db, org, 'Main');
   otherWs = await createWorkspace(db, org, 'Second');

@@ -68,7 +68,11 @@ async function login(ctx: Ctx) {
   }
   await withTx(async (q) => {
     await q.query('UPDATE users SET last_sign_in_at = now() WHERE id = $1', [user.id]);
-    await audit(q, { ...auditCtx(ctx), actorUserId: user.id }, { action: 'auth.login', orgId: user.org_id, targetType: 'user', targetId: user.id });
+    await audit(
+      q,
+      { ...auditCtx(ctx), actorUserId: user.id },
+      { action: 'auth.login', orgId: user.org_id, targetType: 'user', targetId: user.id },
+    );
   });
   const token = issueSession(ctx, user);
   return { token, user: await sessionUserPayload(ctx.db, user) };
@@ -103,7 +107,11 @@ async function register(ctx: Ctx) {
       [email, hash, body.name || email.split('@')[0]],
     );
     if (rows[0]) {
-      await audit(q, { ...auditCtx(ctx), actorUserId: rows[0].id }, { action: 'auth.register', targetType: 'user', targetId: rows[0].id });
+      await audit(
+        q,
+        { ...auditCtx(ctx), actorUserId: rows[0].id },
+        { action: 'auth.register', targetType: 'user', targetId: rows[0].id },
+      );
     }
   });
   try {
@@ -190,12 +198,16 @@ async function resetConfirm(ctx: Ctx) {
       `UPDATE users SET password_hash = $2, password_changed_at = now(), token_version = token_version + 1 WHERE id = $1`,
       [user.id, hash],
     );
-    await audit(q, { ...auditCtx(ctx), actorUserId: user.id }, {
-      action: 'auth.password_reset',
-      orgId: user.org_id,
-      targetType: 'user',
-      targetId: user.id,
-    });
+    await audit(
+      q,
+      { ...auditCtx(ctx), actorUserId: user.id },
+      {
+        action: 'auth.password_reset',
+        orgId: user.org_id,
+        targetType: 'user',
+        targetId: user.id,
+      },
+    );
   });
   return { success: true };
 }
@@ -206,7 +218,8 @@ async function twoFactor(ctx: Ctx, legacyToggle: boolean) {
   if (!user) throw unauthorized();
   const b = (ctx.body ?? {}) as { enabled?: unknown; password?: unknown };
   const enabled = legacyToggle ? !user.two_factor_enabled : b.enabled === true;
-  if (!legacyToggle && typeof b.enabled !== 'boolean') throw badRequest('enabled must be true or false', { enabled: 'Required' });
+  if (!legacyToggle && typeof b.enabled !== 'boolean')
+    throw badRequest('enabled must be true or false', { enabled: 'Required' });
   if (!enabled && user.two_factor_enabled) {
     // HS-14: switching 2FA off needs the password.
     if (typeof b.password !== 'string' || !b.password) {
@@ -244,7 +257,12 @@ async function changePassword(ctx: Ctx) {
        RETURNING id, email, name, role, plan, org_id, is_platform_admin, token_version, email_verified_at, two_factor_enabled`,
       [actor.userId, hash],
     );
-    await audit(q, auditCtx(ctx), { action: 'auth.password_change', orgId: user.org_id, targetType: 'user', targetId: actor.userId });
+    await audit(q, auditCtx(ctx), {
+      action: 'auth.password_change',
+      orgId: user.org_id,
+      targetType: 'user',
+      targetId: actor.userId,
+    });
     return rows[0];
   });
   // Other sessions end (token_version bumped); this one continues with a fresh token.
@@ -319,13 +337,13 @@ async function adminDeleteUser(ctx: Ctx, userId: string) {
   return { success: true };
 }
 
-
 // Sign-in style routes are not session-authenticated, so CSRF is enforced per route (see assertCsrf below).
 export const handler = withApi({ fn: 'auth', auth: 'optional', csrf: false }, async (ctx) => {
   const p = ctx.subpath;
   const m = ctx.method;
   if (['/2fa', '/2fa/toggle', '/password'].includes(p) || p.startsWith('/admin/')) assertCsrf(ctx);
-  if (p === '/logout' && (ctx.query.all === 'true' || (ctx.body as { allDevices?: unknown })?.allDevices)) assertCsrf(ctx);
+  if (p === '/logout' && (ctx.query.all === 'true' || (ctx.body as { allDevices?: unknown })?.allDevices))
+    assertCsrf(ctx);
   if (p === '/logout-all') assertCsrf(ctx);
   if (p === '/' && m === 'GET' && ctx.query.refresh === 'true') return refresh(ctx);
   if (p === '/login' && m === 'POST') return login(ctx);

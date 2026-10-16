@@ -33,7 +33,11 @@ async function listOrgs(ctx: Ctx) {
     `SELECT w.id, w.name, w.org_id, (SELECT count(*)::int FROM workspace_members wm WHERE wm.workspace_id = w.id) AS member_count
      FROM workspaces w ORDER BY w.name`,
   );
-  await audit(ctx.db, auditCtx(ctx, 'platform_admin'), { action: 'support.access', targetType: 'platform', targetId: 'orgs' });
+  await audit(ctx.db, auditCtx(ctx, 'platform_admin'), {
+    action: 'support.access',
+    targetType: 'platform',
+    targetId: 'orgs',
+  });
   return {
     orgs: orgs.map((o) => ({
       ...o,
@@ -46,7 +50,8 @@ async function listOrgs(ctx: Ctx) {
 async function updateOrg(ctx: Ctx, orgId: string) {
   const body = (ctx.body ?? {}) as { plan?: unknown; name?: unknown };
   const plan = typeof body.plan === 'string' ? body.plan.toUpperCase() : null;
-  if (plan && !['BASIC', 'PRO', 'MAX', 'ENTERPRISE'].includes(plan)) throw badRequest('Invalid plan', { plan: 'Invalid plan' });
+  if (plan && !['BASIC', 'PRO', 'MAX', 'ENTERPRISE'].includes(plan))
+    throw badRequest('Invalid plan', { plan: 'Invalid plan' });
   const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null;
   await withTx(async (q) => {
     const before = await one(q, `SELECT name, plan FROM organizations WHERE id = $1`, [orgId]);
@@ -57,7 +62,10 @@ async function updateOrg(ctx: Ctx, orgId: string) {
     );
     if (plan) {
       // Rollback safety: v1.1 reads the plan from users.plan (BASIC/PRO/MAX only).
-      await bestEffort(q, `UPDATE users SET plan = $2 WHERE org_id = $1`, [orgId, plan === 'ENTERPRISE' ? 'MAX' : plan]);
+      await bestEffort(q, `UPDATE users SET plan = $2 WHERE org_id = $1`, [
+        orgId,
+        plan === 'ENTERPRISE' ? 'MAX' : plan,
+      ]);
     }
     await audit(q, auditCtx(ctx, 'platform_admin'), {
       action: plan ? 'org.plan_change' : 'org.update',
@@ -98,11 +106,22 @@ async function deleteOrg(ctx: Ctx, orgId: string) {
     }
     await q.query(`DELETE FROM workspaces WHERE org_id = $1`, [orgId]);
     await q.query(`UPDATE users SET org_id = NULL, token_version = token_version + 1 WHERE org_id = $1`, [orgId]);
-    await bestEffort(q, `UPDATE users SET role = 'USER' WHERE id IN (SELECT user_id FROM org_memberships WHERE org_id = $1) AND role <> 'SUPERUSER'`, [orgId]);
+    await bestEffort(
+      q,
+      `UPDATE users SET role = 'USER' WHERE id IN (SELECT user_id FROM org_memberships WHERE org_id = $1) AND role <> 'SUPERUSER'`,
+      [orgId],
+    );
     await q.query(`DELETE FROM org_memberships WHERE org_id = $1`, [orgId]);
-    for (const t of ['crafts', 'tribes', 'chapters', 'org_teams', 'invitations']) await q.query(`DELETE FROM ${t} WHERE org_id = $1`, [orgId]);
+    for (const t of ['crafts', 'tribes', 'chapters', 'org_teams', 'invitations'])
+      await q.query(`DELETE FROM ${t} WHERE org_id = $1`, [orgId]);
     await q.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
-    await audit(q, auditCtx(ctx, 'platform_admin'), { action: 'org.delete', orgId, targetType: 'org', targetId: orgId, before });
+    await audit(q, auditCtx(ctx, 'platform_admin'), {
+      action: 'org.delete',
+      orgId,
+      targetType: 'org',
+      targetId: orgId,
+      before,
+    });
   });
   return { success: true };
 }
@@ -125,7 +144,13 @@ export const handler = withApi({ fn: 'org_manage' }, async (ctx) => {
         `DELETE FROM workspace_members WHERE user_id::text = $1 AND workspace_id::text = $2 AND workspace_id IN (SELECT id FROM workspaces WHERE org_id = $3)`,
         [parts[2], parts[4], orgId],
       );
-      await audit(q, auditCtx(ctx, 'platform_admin'), { action: 'member.remove', orgId, workspaceId: parts[4], targetType: 'user', targetId: parts[2] });
+      await audit(q, auditCtx(ctx, 'platform_admin'), {
+        action: 'member.remove',
+        orgId,
+        workspaceId: parts[4],
+        targetType: 'user',
+        targetId: parts[2],
+      });
     });
     return { success: true };
   }

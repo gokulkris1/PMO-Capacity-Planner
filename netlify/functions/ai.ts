@@ -75,7 +75,9 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   } catch (e) {
     log('warn', { event: 'ai.upstream_failed', requestId: ctx.requestId, err: errorFields(e) });
     await ctx.db
-      .query(`UPDATE organizations SET ai_queries_month = greatest(ai_queries_month - 1, 0) WHERE id = $1`, [access.orgId])
+      .query(`UPDATE organizations SET ai_queries_month = greatest(ai_queries_month - 1, 0) WHERE id = $1`, [
+        access.orgId,
+      ])
       .catch(() => undefined);
     throw upstreamError('The AI service is unavailable. Try again later.');
   }

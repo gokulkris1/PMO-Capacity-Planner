@@ -51,7 +51,11 @@ async function getWorkspace(ctx: Ctx) {
       `SELECT *, start_date::text AS sd, end_date::text AS ed FROM allocations WHERE workspace_id = $1 AND state <> 'declined' ORDER BY id`,
       [wsId],
     ),
-    one(ctx.db, `SELECT w.name, o.name AS org_name, o.logo_url, o.primary_color FROM workspaces w JOIN organizations o ON o.id = w.org_id WHERE w.id = $1`, [wsId]),
+    one(
+      ctx.db,
+      `SELECT w.name, o.name AS org_name, o.logo_url, o.primary_color FROM workspaces w JOIN organizations o ON o.id = w.org_id WHERE w.id = $1`,
+      [wsId],
+    ),
   ]);
   const canWrite = access.permissions.has('allocations.write');
   const members = access.permissions.has('workspace.members.manage')

@@ -14,7 +14,14 @@ import type { WorkspaceAccess } from './_lib/authz';
 import { requireWorkspace, UUID_RE } from './_lib/authz';
 import { withTx } from './_lib/db';
 import { badRequest, notFound, upstreamError } from './_lib/errors';
-import { configResponse, jiraCreds, loadStored, planviewCreds, saveConfig, upsertProvider } from './_lib/integrationsStore';
+import {
+  configResponse,
+  jiraCreds,
+  loadStored,
+  planviewCreds,
+  saveConfig,
+  upsertProvider,
+} from './_lib/integrationsStore';
 import { TimeoutError, UpstreamError } from './_lib/net';
 import { aggregateUsage } from './_lib/jira/aggregate';
 import { boardSprints, jiraFetch, jiraFields, searchPage } from './_lib/jira/client';
@@ -35,7 +42,12 @@ async function config(ctx: Ctx, access: WorkspaceAccess) {
     const stored = await loadStored(q, access.workspaceId);
     const r = await saveConfig(q, access.workspaceId, stored, ctx.body);
     const body = (ctx.body ?? {}) as Record<string, Record<string, unknown> | undefined>;
-    const secretChanged = !!(body.jira?.apiToken || body.planview?.secret || r.secretCleared.jira || r.secretCleared.planview);
+    const secretChanged = !!(
+      body.jira?.apiToken ||
+      body.planview?.secret ||
+      r.secretCleared.jira ||
+      r.secretCleared.planview
+    );
     await audit(q, auditCtx(ctx), {
       action: secretChanged ? 'integration.secret_update' : 'integration.config_update',
       orgId: access.orgId,
@@ -47,7 +59,11 @@ async function config(ctx: Ctx, access: WorkspaceAccess) {
     return r;
   });
   const out = configResponse(await loadStored(ctx.db, access.workspaceId));
-  return { ...out, secretCleared: result.secretCleared.jira || result.secretCleared.planview, secretsCleared: result.secretCleared };
+  return {
+    ...out,
+    secretCleared: result.secretCleared.jira || result.secretCleared.planview,
+    secretsCleared: result.secretCleared,
+  };
 }
 
 async function jiraTest(ctx: Ctx, access: WorkspaceAccess) {
@@ -87,7 +103,8 @@ async function jiraUsage(ctx: Ctx, access: WorkspaceAccess) {
   if (to !== undefined && !ISO.test(to)) throw badRequest('to must be YYYY-MM-DD', { to: 'Use YYYY-MM-DD' });
   const boardId = Number(body.boardId);
   if (Number.isFinite(boardId) && boardId > 0 && !sprintIds.length) {
-    if (creds.config.boardIds.length && !creds.config.boardIds.includes(boardId)) throw badRequest('Board is not configured', { boardId: 'Not configured' });
+    if (creds.config.boardIds.length && !creds.config.boardIds.includes(boardId))
+      throw badRequest('Board is not configured', { boardId: 'Not configured' });
     const sprints = await boardSprints(creds, boardId, 'active,future,closed', 3);
     sprintIds = sprints
       .filter((s) => {
@@ -98,7 +115,8 @@ async function jiraUsage(ctx: Ctx, access: WorkspaceAccess) {
       .map((s) => s.id);
     if (!sprintIds.length) throw badRequest(`Board ${boardId} has no sprints in the requested range`);
   }
-  if (!keys.length) throw badRequest('No configured Jira projects to report on', { projectKeys: 'Configure project keys first' });
+  if (!keys.length)
+    throw badRequest('No configured Jira projects to report on', { projectKeys: 'Configure project keys first' });
   const clauses = [`project in (${keys.map(jqlString).join(',')})`];
   if (sprintIds.length) clauses.push(`sprint in (${sprintIds.join(',')})`);
   if (from) clauses.push(`updated >= ${jqlString(from)}`);
@@ -119,7 +137,13 @@ async function jiraUsage(ctx: Ctx, access: WorkspaceAccess) {
   for (let page = 0; page < 10; page++) {
     const remaining = deadline - Date.now();
     if (remaining < 1500) break;
-    const res = await searchPage(creds, `${clauses.join(' AND ')} ORDER BY updated DESC`, fields, token, remaining - 500);
+    const res = await searchPage(
+      creds,
+      `${clauses.join(' AND ')} ORDER BY updated DESC`,
+      fields,
+      token,
+      remaining - 500,
+    );
     issues.push(...res.issues);
     token = res.nextPageToken;
     if (!token) break;
@@ -163,11 +187,19 @@ async function route(ctx: Ctx) {
   if (p === '/config' && (m === 'GET' || m === 'POST')) return config(ctx, access);
   if (p === '/jira/test' && m === 'POST') return jiraTest(ctx, access);
   if (p === '/jira/projects' && m === 'GET') {
-    const data = (await jiraFetch(jiraCreds(await loadStored(ctx.db, wsId)), '/rest/api/3/project/search?maxResults=100')) as {
+    const data = (await jiraFetch(
+      jiraCreds(await loadStored(ctx.db, wsId)),
+      '/rest/api/3/project/search?maxResults=100',
+    )) as {
       values?: Array<Record<string, unknown>>;
     };
     return {
-      projects: (data?.values ?? []).map((x) => ({ id: String(x.id), key: x.key, name: x.name, projectTypeKey: x.projectTypeKey ?? null })),
+      projects: (data?.values ?? []).map((x) => ({
+        id: String(x.id),
+        key: x.key,
+        name: x.name,
+        projectTypeKey: x.projectTypeKey ?? null,
+      })),
     };
   }
   if (p === '/jira/boards' && m === 'GET') {
@@ -181,7 +213,8 @@ async function route(ctx: Ctx) {
   }
   if (p === '/jira/sprints' && m === 'GET') {
     const boardId = Number(ctx.query.boardId);
-    if (!Number.isFinite(boardId) || boardId <= 0) throw badRequest('boardId query parameter is required', { boardId: 'Required' });
+    if (!Number.isFinite(boardId) || boardId <= 0)
+      throw badRequest('boardId query parameter is required', { boardId: 'Required' });
     const state = (ctx.query.state || 'active,future,closed')
       .split(',')
       .map((s) => s.trim())
@@ -210,7 +243,11 @@ export const handler = withApi({ fn: 'integrations' }, async (ctx) => {
     return await route(ctx);
   } catch (e) {
     if (e instanceof UpstreamError) {
-      throw upstreamError(e.message.startsWith('Unexpected redirect') ? e.message : `${e.provider} ${e.status}: ${e.message}`.slice(0, 200));
+      throw upstreamError(
+        e.message.startsWith('Unexpected redirect')
+          ? e.message
+          : `${e.provider} ${e.status}: ${e.message}`.slice(0, 200),
+      );
     }
     if (e instanceof TimeoutError) throw upstreamError(e.message);
     throw e;

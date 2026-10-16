@@ -9,7 +9,18 @@ import { decryptSecret, encryptSecret } from '../../netlify/functions/_lib/crypt
 import { setDnsLookup, isPrivateAddress } from '../../netlify/functions/_lib/net';
 import { genericAssignments, genericProjects, adaptiveAssignments } from '../../netlify/functions/_lib/planview/client';
 import type { PgliteDb } from './helpers/pglite';
-import { addMember, call, createOrg, createUser, createWorkspace, setupDb, teardownDb, testEnv, JWT_SECRET, type TestUser } from './helpers/harness';
+import {
+  addMember,
+  call,
+  createOrg,
+  createUser,
+  createWorkspace,
+  setupDb,
+  teardownDb,
+  testEnv,
+  JWT_SECRET,
+  type TestUser,
+} from './helpers/harness';
 import { installFetch, jsonResponse } from './helpers/fetchMock';
 
 let db: PgliteDb;
@@ -46,7 +57,15 @@ beforeEach(async () => {
 async function saveJira(extra: Record<string, unknown> = {}) {
   return call(integrations, 'POST', path('/config'), {
     token: admin.token,
-    body: { jira: { domain: 'acme.atlassian.net', email: 'pm@acme.com', apiToken: 'jira-token', projectKeys: ['ABC'], ...extra } },
+    body: {
+      jira: {
+        domain: 'acme.atlassian.net',
+        email: 'pm@acme.com',
+        apiToken: 'jira-token',
+        projectKeys: ['ABC'],
+        ...extra,
+      },
+    },
   });
 }
 
@@ -74,7 +93,10 @@ describe('permissions (HS-08#AC5-6)', () => {
     const r = await saveJira();
     expect(r.status).toBe(200);
     expect(JSON.stringify(r.json)).not.toContain('jira-token');
-    expect((r.json.jira as { hasSecret: boolean; configured: boolean })).toMatchObject({ hasSecret: true, configured: true });
+    expect(r.json.jira as { hasSecret: boolean; configured: boolean }).toMatchObject({
+      hasSecret: true,
+      configured: true,
+    });
     const row = await db.query(`SELECT secret_enc FROM workspace_integrations WHERE provider = 'jira'`);
     expect(String(row[0].secret_enc)).toMatch(/^v2:/);
     expect(decryptSecret(String(row[0].secret_enc))).toBe('jira-token');
@@ -86,38 +108,67 @@ describe('permissions (HS-08#AC5-6)', () => {
 describe('secret binding and host rules (HS-08#AC1-4)', () => {
   it('clears the stored token when the domain or email changes without a new token', async () => {
     await saveJira();
-    const moved = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { jira: { domain: 'evil.atlassian.net' } } });
+    const moved = await call(integrations, 'POST', path('/config'), {
+      token: admin.token,
+      body: { jira: { domain: 'evil.atlassian.net' } },
+    });
     expect(moved.json.secretCleared).toBe(true);
     expect((moved.json.jira as { hasSecret: boolean }).hasSecret).toBe(false);
     await saveJira();
-    const keysOnly = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { jira: { projectKeys: ['ABC', 'XYZ'] } } });
+    const keysOnly = await call(integrations, 'POST', path('/config'), {
+      token: admin.token,
+      body: { jira: { projectKeys: ['ABC', 'XYZ'] } },
+    });
     expect(keysOnly.json.secretCleared).toBe(false);
     expect((keysOnly.json.jira as { hasSecret: boolean }).hasSecret).toBe(true);
   });
 
   it('accepts only Atlassian Cloud hosts for Jira', async () => {
     for (const domain of ['localhost', '10.0.0.1', 'evil.example.com', 'acme.atlassian.net:8443']) {
-      const r = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { jira: { domain, email: 'a@b.c' } } });
-      expect([domain, r.status, r.json.fields]).toEqual([domain, 400, { domain: 'Enter your Jira Cloud site, e.g. acme.atlassian.net' }]);
+      const r = await call(integrations, 'POST', path('/config'), {
+        token: admin.token,
+        body: { jira: { domain, email: 'a@b.c' } },
+      });
+      expect([domain, r.status, r.json.fields]).toEqual([
+        domain,
+        400,
+        { domain: 'Enter your Jira Cloud site, e.g. acme.atlassian.net' },
+      ]);
     }
   });
 
   it('requires a public HTTPS Planview URL (no IPs, ports, http, private DNS answers)', async () => {
     const bad = ['http://pv.example.com', 'https://10.1.2.3', 'https://pv.example.com:8443', 'https://[::1]'];
     for (const baseUrl of bad) {
-      const r = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { planview: { baseUrl, secret: 's' } } });
+      const r = await call(integrations, 'POST', path('/config'), {
+        token: admin.token,
+        body: { planview: { baseUrl, secret: 's' } },
+      });
       expect([baseUrl, r.status, r.json.error]).toEqual([baseUrl, 400, 'Planview URL must be a public HTTPS address']);
     }
     setDnsLookup(async () => ['169.254.169.254']);
-    const metadata = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { planview: { baseUrl: 'https://pv.example.com', secret: 's' } } });
+    const metadata = await call(integrations, 'POST', path('/config'), {
+      token: admin.token,
+      body: { planview: { baseUrl: 'https://pv.example.com', secret: 's' } },
+    });
     expect(metadata.status).toBe(400);
     setDnsLookup(async () => ['93.184.216.34']);
     const ok = await call(integrations, 'POST', path('/config'), {
       token: admin.token,
-      body: { planview: { baseUrl: 'https://pv.example.com/api/', flavour: 'generic', secret: 's', generic: { projectsPath: '/projects' } } },
+      body: {
+        planview: {
+          baseUrl: 'https://pv.example.com/api/',
+          flavour: 'generic',
+          secret: 's',
+          generic: { projectsPath: '/projects' },
+        },
+      },
     });
     expect(ok.status).toBe(200);
-    const moved = await call(integrations, 'POST', path('/config'), { token: admin.token, body: { planview: { baseUrl: 'https://other.example.com' } } });
+    const moved = await call(integrations, 'POST', path('/config'), {
+      token: admin.token,
+      body: { planview: { baseUrl: 'https://other.example.com' } },
+    });
     expect(moved.json.secretCleared).toBe(true);
     expect(isPrivateAddress('192.168.1.1')).toBe(true);
     expect(isPrivateAddress('::ffff:127.0.0.1')).toBe(true);
@@ -126,7 +177,13 @@ describe('secret binding and host rules (HS-08#AC1-4)', () => {
 
   it('does not follow redirects from the remote host', async () => {
     await saveJira();
-    fetchMock.mockResolvedValue({ ok: false, status: 302, type: 'basic', headers: { get: () => 'https://evil' }, text: async () => '' });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: { get: () => 'https://evil' },
+      text: async () => '',
+    });
     const r = await call(integrations, 'POST', path('/jira/test'), { token: admin.token, body: {} });
     expect(r.status).toBe(502);
     expect(r.json.error).toBe('Unexpected redirect from acme.atlassian.net');
@@ -141,7 +198,10 @@ describe('Jira usage and test', () => {
       if (url.endsWith('/rest/api/3/field')) return jsonResponse([{ id: 'customfield_9', name: 'Sprint' }]);
       return jsonResponse({ issues: [], isLast: true });
     });
-    const r = await call(integrations, 'POST', path('/jira/usage'), { token: planner.token, body: { projectKeys: ['ABC', 'SECRET'] } });
+    const r = await call(integrations, 'POST', path('/jira/usage'), {
+      token: planner.token,
+      body: { projectKeys: ['ABC', 'SECRET'] },
+    });
     expect(r.status).toBe(200);
     const search = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/search/jql'))!;
     expect(search[0]).toBe('https://acme.atlassian.net/rest/api/3/search/jql');
@@ -181,9 +241,17 @@ describe('encryption key (HS-09)', () => {
 
 describe('Planview adapters', () => {
   it('maps generic records through dotted field paths', () => {
-    const projects = genericProjects({ externalId: 'meta.code', name: 'title' }, [{ meta: { code: 'P-1' }, title: 'Alpha', StartDate: '2026-10-01' }]);
-    expect(projects).toEqual([{ externalId: 'P-1', name: 'Alpha', status: null, startDate: '2026-10-01', endDate: null, manager: null }]);
-    const a = genericAssignments({ percent: 'alloc.pct' }, [{ id: 'A1', Resource: 'Noma', email: 'n@x', alloc: { pct: 40 } }], 'P-1');
+    const projects = genericProjects({ externalId: 'meta.code', name: 'title' }, [
+      { meta: { code: 'P-1' }, title: 'Alpha', StartDate: '2026-10-01' },
+    ]);
+    expect(projects).toEqual([
+      { externalId: 'P-1', name: 'Alpha', status: null, startDate: '2026-10-01', endDate: null, manager: null },
+    ]);
+    const a = genericAssignments(
+      { percent: 'alloc.pct' },
+      [{ id: 'A1', Resource: 'Noma', email: 'n@x', alloc: { pct: 40 } }],
+      'P-1',
+    );
     expect(a[0]).toMatchObject({ externalId: 'A1', projectExternalId: 'P-1', resourceName: 'Noma', percent: 40 });
   });
 

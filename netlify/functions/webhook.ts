@@ -18,7 +18,12 @@ import type { Plan } from '../../shared/contracts/dto';
 
 const WEBHOOK_AUDIT = { requestId: null, ip: null, userAgent: null, actorUserId: null, actorType: 'webhook' as const };
 
-async function orgByStripe(q: Queryable, customer: unknown, subscription: unknown, metaOrg: unknown): Promise<string | null> {
+async function orgByStripe(
+  q: Queryable,
+  customer: unknown,
+  subscription: unknown,
+  metaOrg: unknown,
+): Promise<string | null> {
   if (typeof metaOrg === 'string' && /^[0-9a-f-]{36}$/i.test(metaOrg)) {
     const r = await one<{ id: string }>(q, `SELECT id FROM organizations WHERE id = $1`, [metaOrg]);
     if (r) return r.id;
@@ -41,14 +46,19 @@ async function apply(q: Queryable, event: Stripe.Event): Promise<{ orgId: string
     case 'checkout.session.completed': {
       orgId = await orgByStripe(q, obj.customer, obj.subscription, meta.orgId);
       plan = meta.plan === 'PRO' || meta.plan === 'MAX' ? meta.plan : null;
-      ids = { customerId: typeof obj.customer === 'string' ? obj.customer : null, subscriptionId: typeof obj.subscription === 'string' ? obj.subscription : null };
+      ids = {
+        customerId: typeof obj.customer === 'string' ? obj.customer : null,
+        subscriptionId: typeof obj.subscription === 'string' ? obj.subscription : null,
+      };
       break;
     }
     case 'customer.subscription.updated': {
       orgId = await orgByStripe(q, obj.customer, obj.id, meta.orgId);
       const status = String(obj.status ?? '');
-      const items = ((obj.items as { data?: Array<{ price?: { id?: string } }> })?.data ?? []);
-      plan = ['canceled', 'unpaid', 'incomplete_expired'].includes(status) ? 'BASIC' : planForPrice(items[0]?.price?.id);
+      const items = (obj.items as { data?: Array<{ price?: { id?: string } }> })?.data ?? [];
+      plan = ['canceled', 'unpaid', 'incomplete_expired'].includes(status)
+        ? 'BASIC'
+        : planForPrice(items[0]?.price?.id);
       ids = { subscriptionId: typeof obj.id === 'string' ? obj.id : null };
       break;
     }
@@ -86,7 +96,11 @@ async function handle(ctx: Ctx) {
   assertPublicBilling();
   if (ctx.method !== 'POST') throw notFound('Not found');
   const secret = optionalEnv('STRIPE_WEBHOOK_SECRET');
-  if (!secret) throw serviceUnavailable('Billing is not available right now.', 'Stripe not configured: STRIPE_WEBHOOK_SECRET missing');
+  if (!secret)
+    throw serviceUnavailable(
+      'Billing is not available right now.',
+      'Stripe not configured: STRIPE_WEBHOOK_SECRET missing',
+    );
   const stripe = stripeClient();
   const sig = ctx.headers['stripe-signature'];
   if (!sig || !ctx.rawBody) throw badRequest('Missing signature or body');
@@ -97,7 +111,10 @@ async function handle(ctx: Ctx) {
     throw badRequest('Webhook signature verification failed');
   }
   const result = await withTx(async (q) => {
-    const fresh = await q.query(`INSERT INTO stripe_events (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING RETURNING id`, [event.id, event.type]);
+    const fresh = await q.query(
+      `INSERT INTO stripe_events (id, type) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING RETURNING id`,
+      [event.id, event.type],
+    );
     if (!fresh.length) return { duplicate: true as const };
     return { duplicate: false as const, changed: await apply(q, event) };
   });
@@ -112,4 +129,7 @@ async function handle(ctx: Ctx) {
   return { received: true, duplicate: result.duplicate };
 }
 
-export const handler = withApi({ fn: 'webhook', auth: 'none', csrf: false, rawBody: true, requireJwtSecret: false }, handle);
+export const handler = withApi(
+  { fn: 'webhook', auth: 'none', csrf: false, rawBody: true, requireJwtSecret: false },
+  handle,
+);

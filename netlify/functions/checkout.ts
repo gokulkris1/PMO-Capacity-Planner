@@ -15,7 +15,11 @@ import { errorFields, log } from './_lib/log';
 export const handler = withApi({ fn: 'checkout' }, async (ctx) => {
   assertPublicBilling();
   if (ctx.method !== 'POST') throw notFound('Not found');
-  const body = parseWith(z.object({ plan: z.enum(['PRO', 'MAX']), orgSlug: z.string().optional() }), ctx.body, 'Invalid plan selected');
+  const body = parseWith(
+    z.object({ plan: z.enum(['PRO', 'MAX']), orgSlug: z.string().optional() }),
+    ctx.body,
+    'Invalid plan selected',
+  );
   const actor = requireActor(ctx);
   const membership = await one<{ org_id: string; slug: string }>(
     ctx.db,
@@ -41,7 +45,13 @@ export const handler = withApi({ fn: 'checkout' }, async (ctx) => {
       metadata: { orgId: membership.org_id, plan: body.plan, userId: actor.userId },
       subscription_data: { metadata: { orgId: membership.org_id, plan: body.plan } },
     });
-    await audit(ctx.db, auditCtx(ctx), { action: 'billing.checkout_started', orgId: membership.org_id, targetType: 'org', targetId: membership.org_id, after: { plan: body.plan } });
+    await audit(ctx.db, auditCtx(ctx), {
+      action: 'billing.checkout_started',
+      orgId: membership.org_id,
+      targetType: 'org',
+      targetId: membership.org_id,
+      after: { plan: body.plan },
+    });
     return { url: session.url };
   } catch (e) {
     log('error', { event: 'stripe.checkout_failed', requestId: ctx.requestId, err: errorFields(e) });

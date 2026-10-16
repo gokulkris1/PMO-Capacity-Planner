@@ -90,7 +90,9 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
   it('answers 401 with the same message for an unknown email and a wrong password, and audits the failure', async () => {
     const u = await createUser(db, { email: 'known@x.test' });
     const a = await call(auth, 'POST', '/api/auth/login', { body: { email: 'nobody@x.test', password: 'whatever12' } });
-    const b = await call(auth, 'POST', '/api/auth/login', { body: { email: 'known@x.test', password: 'wrong-password' } });
+    const b = await call(auth, 'POST', '/api/auth/login', {
+      body: { email: 'known@x.test', password: 'wrong-password' },
+    });
     expect([a.status, b.status]).toEqual([401, 401]);
     expect(a.json.error).toBe('Invalid email or password');
     expect(b.json.error).toBe('Invalid email or password');
@@ -131,10 +133,14 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
     const code = codeFrom('brute@x.test');
     const wrong = code === '000000' ? '111111' : '000000';
     for (let i = 0; i < 5; i++) {
-      const r = await call(auth, 'POST', '/api/auth/login', { body: { email: 'brute@x.test', password: PASSWORD, otp: wrong } });
+      const r = await call(auth, 'POST', '/api/auth/login', {
+        body: { email: 'brute@x.test', password: PASSWORD, otp: wrong },
+      });
       expect(r.status).toBe(400);
     }
-    const last = await call(auth, 'POST', '/api/auth/login', { body: { email: 'brute@x.test', password: PASSWORD, otp: code } });
+    const last = await call(auth, 'POST', '/api/auth/login', {
+      body: { email: 'brute@x.test', password: PASSWORD, otp: code },
+    });
     expect(last.status).toBe(400);
     expect(last.json.error).toBe('This code has expired. Request a new one.');
   });
@@ -156,7 +162,10 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
     for (let i = 0; i < 30; i++) {
       await call(auth, 'POST', '/api/auth/login', { body: { email: `ip${i}@x.test`, password: 'nope-nope' }, headers });
     }
-    const r = await call(auth, 'POST', '/api/auth/login', { body: { email: 'other@x.test', password: 'nope-nope' }, headers });
+    const r = await call(auth, 'POST', '/api/auth/login', {
+      body: { email: 'other@x.test', password: 'nope-nope' },
+      headers,
+    });
     expect(r.status).toBe(429);
   });
 });
@@ -215,7 +224,11 @@ describe('sessions (AC-02, AC-03)', () => {
     expect(noHeader.json.error).toBe('CSRF check failed');
     const wrong = await call(v2, 'POST', path, { cookies, body: { name: 'T1' }, headers: { 'x-csrf-token': 'x' } });
     expect(wrong.status).toBe(403);
-    const ok = await call(v2, 'POST', path, { cookies, body: { name: 'T1' }, headers: { 'x-csrf-token': cookies.pcp_csrf } });
+    const ok = await call(v2, 'POST', path, {
+      cookies,
+      body: { name: 'T1' },
+      headers: { 'x-csrf-token': cookies.pcp_csrf },
+    });
     expect(ok.status).toBe(201);
     const get = await call(v2, 'GET', path, { cookies });
     expect(get.status).toBe(200);
@@ -320,11 +333,17 @@ describe('password reset, change and policy (HS-01, HS-13, HS-14)', () => {
     const u = await createUser(db, { twoFactor: true });
     const none = await call(auth, 'POST', '/api/auth/2fa', { token: u.token, body: { enabled: false } });
     expect(none.status).toBe(400);
-    const wrong = await call(auth, 'POST', '/api/auth/2fa', { token: u.token, body: { enabled: false, password: 'nope' } });
+    const wrong = await call(auth, 'POST', '/api/auth/2fa', {
+      token: u.token,
+      body: { enabled: false, password: 'nope' },
+    });
     expect(wrong.status).toBe(401);
     const legacyToggle = await call(auth, 'POST', '/api/auth/2fa/toggle', { token: u.token });
     expect(legacyToggle.status).toBe(400);
-    const ok = await call(auth, 'POST', '/api/auth/2fa', { token: u.token, body: { enabled: false, password: PASSWORD } });
+    const ok = await call(auth, 'POST', '/api/auth/2fa', {
+      token: u.token,
+      body: { enabled: false, password: PASSWORD },
+    });
     expect(ok.json).toEqual({ twoFactorEnabled: false });
     const ev = await db.query(`SELECT action FROM audit_events WHERE target_id = $1`, [u.id]);
     expect(ev.map((e) => e.action)).toContain('auth.2fa_change');
@@ -350,18 +369,26 @@ describe('password reset, change and policy (HS-01, HS-13, HS-14)', () => {
 describe('registration and verification (AC-07, HS-13)', () => {
   it('is closed in internal mode unless ALLOW_PUBLIC_SIGNUP=true (AC-07#AC4)', async () => {
     process.env.APP_MODE = 'internal';
-    const r = await call(auth, 'POST', '/api/auth/register', { body: { email: 'n@x.test', password: 'long enough pw' } });
+    const r = await call(auth, 'POST', '/api/auth/register', {
+      body: { email: 'n@x.test', password: 'long enough pw' },
+    });
     expect(r.status).toBe(403);
     expect(r.json.error).toBe('Sign-up is by invitation only.');
     process.env.ALLOW_PUBLIC_SIGNUP = 'true';
-    const ok = await call(auth, 'POST', '/api/auth/register', { body: { email: 'n@x.test', password: 'long enough pw' } });
+    const ok = await call(auth, 'POST', '/api/auth/register', {
+      body: { email: 'n@x.test', password: 'long enough pw' },
+    });
     expect(ok.status).toBe(201);
   });
 
   it('answers identically for new and existing emails and emails the owner (HS-13#AC3)', async () => {
     await createUser(db, { email: 'taken@x.test' });
-    const a = await call(auth, 'POST', '/api/auth/register', { body: { email: 'fresh@x.test', password: 'long enough pw' } });
-    const b = await call(auth, 'POST', '/api/auth/register', { body: { email: 'taken@x.test', password: 'long enough pw' } });
+    const a = await call(auth, 'POST', '/api/auth/register', {
+      body: { email: 'fresh@x.test', password: 'long enough pw' },
+    });
+    const b = await call(auth, 'POST', '/api/auth/register', {
+      body: { email: 'taken@x.test', password: 'long enough pw' },
+    });
     expect([a.status, b.status]).toEqual([201, 201]);
     expect(a.json).toEqual({ emailVerificationRequired: true });
     expect(b.json).toEqual({ emailVerificationRequired: true });
@@ -373,7 +400,9 @@ describe('registration and verification (AC-07, HS-13)', () => {
 
   it('a new user can sign in unverified, cannot create an org, verifies and then can (AC-07#AC3)', async () => {
     await call(auth, 'POST', '/api/auth/register', { body: { email: 'newbie@x.test', password: 'long enough pw' } });
-    const login = await call(auth, 'POST', '/api/auth/login', { body: { email: 'newbie@x.test', password: 'long enough pw' } });
+    const login = await call(auth, 'POST', '/api/auth/login', {
+      body: { email: 'newbie@x.test', password: 'long enough pw' },
+    });
     expect(login.status).toBe(200);
     expect((login.json.user as { emailVerified: boolean }).emailVerified).toBe(false);
     const token = login.json.token as string;

@@ -142,7 +142,7 @@ export function tokenFrom(input: AuthInput): { token: string; method: 'cookie' |
 
 export const SESSION_ENDED = 'Your session has ended. Sign in again.';
 
-export class OrbitJwtAuth implements AuthAdapter {
+export class SessionJwtAuth implements AuthAdapter {
   async authenticate(input: AuthInput, q: Queryable): Promise<Actor | null> {
     const found = tokenFrom(input);
     if (!found) return null;
@@ -173,7 +173,7 @@ export function actorFromUser(user: UserRow, method: 'cookie' | 'bearer'): Actor
   };
 }
 
-let adapter: AuthAdapter = new OrbitJwtAuth();
+let adapter: AuthAdapter = new SessionJwtAuth();
 export function setAuthAdapter(a: AuthAdapter): void {
   adapter = a;
 }

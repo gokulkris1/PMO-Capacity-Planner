@@ -11,7 +11,10 @@ const url = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || '';
 assertDestructiveAllowed(url);
 
 async function wipeDatabase(): Promise<void> {
-  const client = new pg.Client({ connectionString: url, ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: true } });
+  const client = new pg.Client({
+    connectionString: url,
+    ssl: url.includes('localhost') ? undefined : { rejectUnauthorized: true },
+  });
   await client.connect();
   try {
     await client.query(
