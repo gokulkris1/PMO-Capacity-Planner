@@ -1,8 +1,8 @@
 {
-  "recordedFrom": "HTTP (Node fetch + cookie jar) against a local harness serving the 4.3 routes; re-record against the preview API with record.ts once A ships /api/v2 (handoff-C.md 5)",
-  "recordedAt": "2026-10-16T22:30:41.941Z",
+  "recordedFrom": "scripts/local-api.ts (the 2.0 function handlers) on the v1.1 production replay after auto-migration (LOCAL_API_DB=v11, CONTEXT=production); user owen.owner (Planner)",
+  "recordedAt": "2026-10-17T01:00:08.348Z",
   "credentials": {
-    "email": "tom.hayes@company.ie",
+    "email": "owen.owner@acme.example",
     "password": "<redacted>"
   },
   "interactions": [
@@ -11,21 +11,21 @@
         "method": "POST",
         "path": "/api/auth/login",
         "body": {
-          "email": "tom.hayes@company.ie",
-          "password": "demo-password-wrong"
+          "email": "owen.owner@acme.example",
+          "password": "Owen-Owner-2025-wrong"
         },
         "csrf": false
       },
       "response": {
         "status": 401,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_30b8d0d5"
+          "content-type": "application/json",
+          "x-request-id": "270b6a78-197d-4e18-b337-5718a5ef48b3"
         },
         "body": {
-          "error": "Email or password is incorrect.",
+          "error": "Invalid email or password",
           "code": "unauthorized",
-          "requestId": "req_30b8d0d5"
+          "requestId": "270b6a78-197d-4e18-b337-5718a5ef48b3"
         }
       }
     },
@@ -34,25 +34,30 @@
         "method": "POST",
         "path": "/api/auth/login",
         "body": {
-          "email": "tom.hayes@company.ie",
-          "password": "demo-password"
+          "email": "owen.owner@acme.example",
+          "password": "Owen-Owner-2025"
         },
         "csrf": false
       },
       "response": {
         "status": 200,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_663bfe8e"
+          "content-type": "application/json",
+          "x-request-id": "4fd913a3-d802-4fd0-81b3-71786a47ac36"
         },
         "body": {
+          "token": "<redacted-v1.1-compat-token>",
           "user": {
-            "id": "u-tom",
-            "email": "tom.hayes@company.ie",
-            "name": "Tom Hayes",
+            "id": "50000000-0000-4000-8000-000000000009",
+            "email": "owen.owner@acme.example",
+            "name": "Owen Owner",
             "isPlatformAdmin": false,
             "emailVerified": true,
-            "twoFactorEnabled": false
+            "twoFactorEnabled": false,
+            "role": "WORKSPACE_OWNER",
+            "plan": "MAX",
+            "orgId": "0a000000-0000-4000-8000-0000000000a1",
+            "orgSlug": "acme-bank"
           }
         }
       }
@@ -67,25 +72,25 @@
       "response": {
         "status": 200,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_4e4ad423"
+          "content-type": "application/json",
+          "x-request-id": "3bb3acbf-fbf3-4581-bd3e-89c270a53afe"
         },
         "body": {
           "user": {
-            "id": "u-tom",
-            "email": "tom.hayes@company.ie",
-            "name": "Tom Hayes",
+            "id": "50000000-0000-4000-8000-000000000009",
+            "email": "owen.owner@acme.example",
+            "name": "Owen Owner",
             "isPlatformAdmin": false,
             "emailVerified": true,
             "twoFactorEnabled": false
           },
           "org": {
-            "id": "demo-org",
-            "name": "Demo Organisation",
-            "slug": "demo",
+            "id": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Acme Bank",
+            "slug": "acme-bank",
             "logoUrl": null,
             "role": "MEMBER",
-            "plan": "ENTERPRISE",
+            "plan": "MAX",
             "features": {
               "qbrSprintModule": false,
               "aiAssistant": false,
@@ -107,8 +112,8 @@
           },
           "workspaces": [
             {
-              "id": "demo",
-              "name": "IE Portfolio & Change Office",
+              "id": "a1000000-0000-4000-8000-0000000000a1",
+              "name": "Default Workspace",
               "role": "PLANNER",
               "implicit": false,
               "permissions": [
@@ -132,49 +137,74 @@
                 "export",
                 "ai.use"
               ],
-              "linkedPersonId": "r1"
+              "linkedPersonId": null
+            },
+            {
+              "id": "a2000000-0000-4000-8000-0000000000a2",
+              "name": "Transformation",
+              "role": "PLANNER",
+              "implicit": false,
+              "permissions": [
+                "org.view",
+                "data.read",
+                "people.write",
+                "people.write.own",
+                "craftProfile.approve",
+                "projects.write",
+                "demand.write",
+                "allocations.write",
+                "allocations.propose",
+                "allocations.respond.own",
+                "offers.write",
+                "offers.write.own",
+                "scenario.write",
+                "qbr.write",
+                "integrations.view",
+                "integrations.run",
+                "import.csv",
+                "export",
+                "ai.use"
+              ],
+              "linkedPersonId": null
             }
           ],
           "entitlements": {
-            "plan": "ENTERPRISE",
+            "plan": "MAX",
             "maxPeople": null,
             "maxProjects": null,
             "maxWorkspaces": null,
-            "aiQueriesPerMonth": null,
+            "aiQueriesPerMonth": 1000,
             "scenarios": true,
             "csvImport": true,
             "csvExport": true,
             "pdfExport": true,
             "integrations": true,
-            "billingVisible": false
+            "billingVisible": true
           },
-          "appMode": "internal"
+          "appMode": "public"
         }
       }
     },
     {
       "request": {
         "method": "GET",
-        "path": "/api/v2/workspaces/demo/snapshot",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/snapshot",
         "body": null,
         "csrf": false
       },
       "response": {
         "status": 200,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_23ad5cdd"
+          "content-type": "application/json",
+          "x-request-id": "a2dccd5f-e23f-4fd4-8a90-97b5756ee54a"
         },
         "body": {
           "org": {
-            "version": 1,
-            "updatedAt": "2026-10-01T09:00:00.000Z",
-            "updatedBy": null,
-            "id": "demo-org",
-            "name": "Demo Organisation",
-            "slug": "demo",
+            "id": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Acme Bank",
+            "slug": "acme-bank",
             "logoUrl": null,
-            "plan": "ENTERPRISE",
+            "plan": "MAX",
             "features": {
               "qbrSprintModule": false,
               "aiAssistant": false,
@@ -193,751 +223,301 @@
               "sprintLengthDays": 14,
               "planviewOwnership": "locked"
             },
-            "defaultWorkspaceVisibility": "org"
+            "defaultWorkspaceVisibility": "org",
+            "version": 1,
+            "updatedAt": "2026-10-17T00:59:27.425Z",
+            "updatedBy": null
           },
           "workspace": {
-            "id": "demo",
-            "orgId": "demo-org",
-            "name": "IE Portfolio & Change Office",
+            "id": "a1000000-0000-4000-8000-0000000000a1",
+            "orgId": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Default Workspace",
             "dataVersion": 1,
-            "createdAt": "2026-10-01T09:00:00.000Z"
+            "createdAt": "2025-01-10T00:00:00.000Z"
           },
           "people": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r1",
-              "name": "Tom Hayes",
-              "email": "tom.hayes@company.ie",
-              "role": "Chapter Lead \u2013 Business Delivery",
+              "id": "r-gokul",
+              "name": "Gokul Gurijala",
+              "email": null,
+              "role": "Project Manager",
               "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
+              "department": "PMO",
+              "location": null,
               "totalCapacity": 100,
               "dailyRate": null,
               "teamId": "t1",
-              "chapterId": "chapter-programme-mgmt",
-              "homeTribeId": "tribe-payments",
-              "linkedUserId": "u-tom",
-              "primaryCraft": "programme-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "risk-governance",
-                  "proficiency": 3,
-                  "maxPct": 30
-                },
-                {
-                  "craftId": "digital-planning",
-                  "proficiency": 2,
-                  "maxPct": 20
-                }
-              ],
-              "tribeAffinity": ["tribe-payments", "tribe-lending"],
-              "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
-              "targetUtil": 100
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r2",
-              "name": "Claire Ryan",
-              "email": "claire.ryan@company.ie",
-              "role": "Programme Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
-              "dailyRate": null,
-              "teamId": "t1",
-              "chapterId": "chapter-programme-mgmt",
-              "homeTribeId": "tribe-digital",
+              "chapterId": null,
+              "homeTribeId": null,
               "linkedUserId": null,
-              "primaryCraft": "programme-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "project-mgmt",
-                  "proficiency": 3,
-                  "maxPct": 50
-                },
-                {
-                  "craftId": "change-mgmt",
-                  "proficiency": 2,
-                  "maxPct": 30
-                }
-              ],
-              "tribeAffinity": ["tribe-digital"],
-              "skills": ["MSP", "Change Comms"],
-              "targetUtil": 100
+              "primaryCraft": null,
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r3",
-              "name": "Agnese Markusevska",
-              "email": "agnese.m@company.ie",
-              "role": "Programme Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
-              "dailyRate": null,
-              "teamId": "t1",
-              "chapterId": "chapter-programme-mgmt",
-              "homeTribeId": "tribe-payments",
-              "linkedUserId": null,
-              "primaryCraft": "programme-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "vendor-mgmt",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "risk-governance",
-                  "proficiency": 2,
-                  "maxPct": 20
-                }
-              ],
-              "tribeAffinity": ["tribe-payments"],
-              "skills": ["Vendor SOWs", "PCI"],
-              "targetUtil": 100
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r4",
+              "id": "r-kerrie",
               "name": "Kerrie Dalton",
-              "email": "kerrie.dalton@company.ie",
+              "email": null,
               "role": "Programme Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
+              "type": "Contractor",
+              "department": "PMO",
+              "location": null,
+              "totalCapacity": 80,
               "dailyRate": null,
-              "teamId": "t1",
-              "chapterId": "chapter-programme-mgmt",
-              "homeTribeId": "tribe-lending",
+              "teamId": "t4",
+              "chapterId": null,
+              "homeTribeId": null,
               "linkedUserId": null,
-              "primaryCraft": "programme-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "pmo-analytics",
-                  "proficiency": 2,
-                  "maxPct": 30
-                }
-              ],
-              "tribeAffinity": ["tribe-lending", "tribe-operations"],
-              "skills": ["Power BI", "Benefits"],
-              "targetUtil": 100
+              "primaryCraft": null,
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": ["Budgeting"],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r5",
-              "name": "Emer Ward",
-              "email": "emer.ward@company.ie",
-              "role": "Digital Planning Lead",
+              "id": "r-maria",
+              "name": "Maria Kelly",
+              "email": null,
+              "role": "Product Manager",
               "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
+              "department": "Digital",
+              "location": null,
               "totalCapacity": 100,
               "dailyRate": null,
               "teamId": "t2",
-              "chapterId": "chapter-digital-planning",
-              "homeTribeId": "tribe-digital",
-              "linkedUserId": null,
-              "primaryCraft": "digital-planning",
-              "secondaryCrafts": [
-                {
-                  "craftId": "business-analysis",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "pmo-analytics",
-                  "proficiency": 3,
-                  "maxPct": 40
-                }
-              ],
-              "tribeAffinity": ["tribe-digital", "tribe-payments"],
-              "skills": ["Roadmapping", "OKRs"],
-              "targetUtil": 100
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r6",
-              "name": "Maria Kelly",
-              "email": "maria.kelly@company.ie",
-              "role": "Telephony Product Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
-              "dailyRate": null,
-              "teamId": "t3",
-              "chapterId": "chapter-product-mgmt",
-              "homeTribeId": "tribe-operations",
+              "chapterId": null,
+              "homeTribeId": null,
               "linkedUserId": null,
               "primaryCraft": "product-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "business-analysis",
-                  "proficiency": 2,
-                  "maxPct": 30
-                },
-                {
-                  "craftId": "vendor-mgmt",
-                  "proficiency": 2,
-                  "maxPct": 20
-                }
-              ],
-              "tribeAffinity": ["tribe-operations"],
-              "skills": ["Telephony", "Genesys"],
-              "targetUtil": 100
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r7",
+              "id": "r-1700000000001",
               "name": "Mary Vithalani",
-              "email": "mary.vithalani@company.ie",
+              "email": null,
               "role": "Automation Product Manager",
               "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
+              "department": "",
+              "location": null,
               "totalCapacity": 100,
               "dailyRate": null,
-              "teamId": "t3",
-              "chapterId": "chapter-product-mgmt",
-              "homeTribeId": "tribe-operations",
+              "teamId": null,
+              "chapterId": null,
+              "homeTribeId": null,
               "linkedUserId": null,
-              "primaryCraft": "product-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "business-analysis",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "tooling-admin",
-                  "proficiency": 2,
-                  "maxPct": 20
-                }
-              ],
-              "tribeAffinity": ["tribe-operations", "tribe-lending"],
-              "skills": ["RPA", "Process Mining"],
-              "targetUtil": 100
+              "primaryCraft": "business-analysis",
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r8",
+              "id": "r-noma",
               "name": "Noma Odigie",
-              "email": "noma.odigie@company.ie",
+              "email": "noma.odigie@acme.example",
               "role": "Scrum Master",
               "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
+              "department": "PMO",
+              "location": null,
               "totalCapacity": 100,
               "dailyRate": null,
-              "teamId": "t4",
-              "chapterId": "chapter-scrum-master",
-              "homeTribeId": "tribe-digital",
-              "linkedUserId": "u-noma",
+              "teamId": "t1",
+              "chapterId": null,
+              "homeTribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "linkedUserId": "50000000-0000-4000-8000-000000000005",
               "primaryCraft": "scrum-master",
               "secondaryCrafts": [
                 {
-                  "craftId": "release-coord",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "tooling-admin",
-                  "proficiency": 3,
-                  "maxPct": 30
-                }
-              ],
-              "tribeAffinity": ["tribe-digital", "tribe-payments"],
-              "skills": ["Scrum", "Kanban", "Jira Admin"],
-              "targetUtil": 100
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r9",
-              "name": "Gokul Gurijala",
-              "email": "gokul.gurijala@company.ie",
-              "role": "Project Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
-              "dailyRate": null,
-              "teamId": "t5",
-              "chapterId": "chapter-project-mgmt",
-              "homeTribeId": "tribe-payments",
-              "linkedUserId": "demo-user",
-              "primaryCraft": "project-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "scrum-master",
-                  "proficiency": 3,
-                  "maxPct": 50
-                },
-                {
-                  "craftId": "pmo-analytics",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "tooling-admin",
-                  "proficiency": 3,
-                  "maxPct": 30
-                }
-              ],
-              "tribeAffinity": ["tribe-payments", "tribe-digital"],
-              "skills": ["SAFe", "Jira", "Planview"],
-              "targetUtil": 100
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "r10",
-              "name": "Linda O'Dwyer",
-              "email": "linda.odwyer@company.ie",
-              "role": "Project Manager",
-              "type": "Permanent",
-              "department": "IE Portfolio & Change Office",
-              "location": "Dublin",
-              "totalCapacity": 100,
-              "dailyRate": null,
-              "teamId": "t5",
-              "chapterId": "chapter-project-mgmt",
-              "homeTribeId": "tribe-operations",
-              "linkedUserId": null,
-              "primaryCraft": "project-mgmt",
-              "secondaryCrafts": [
-                {
-                  "craftId": "change-mgmt",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
                   "craftId": "business-analysis",
-                  "proficiency": 1,
-                  "maxPct": 20
+                  "proficiency": 2,
+                  "maxPct": 30
                 }
               ],
-              "tribeAffinity": ["tribe-operations"],
-              "skills": ["Prince2", "Training Design"],
-              "targetUtil": 100
+              "tribeAffinity": ["16de2007-ba17-4010-ba88-7261b9e0013e", "c95d7978-71d9-45fa-a036-8b6c7bdfdfba"],
+              "skills": ["Agile", "Jira"],
+              "targetUtil": 90,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-tom",
+              "name": "Tom Hayes",
+              "email": "tom.hayes@acme.example",
+              "role": "",
+              "type": "Permanent",
+              "department": "",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": null,
+              "homeTribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "linkedUserId": "50000000-0000-4000-8000-000000000001",
+              "primaryCraft": "project-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "delivery-lead",
+                  "proficiency": 3,
+                  "maxPct": 40
+                }
+              ],
+              "tribeAffinity": ["16de2007-ba17-4010-ba88-7261b9e0013e"],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             }
           ],
           "projects": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p1",
-              "name": "Apollo Revamp",
-              "status": "Active",
-              "priority": "High",
-              "description": "Major UI overhaul of the main customer portal.",
-              "startDate": "2026-07-06",
-              "endDate": "2027-01-29",
-              "budget": 250000,
-              "tribeId": "tribe-digital",
-              "stage": "In Flight",
-              "initiatedOn": "2026-05-11",
+              "id": "p-ledger",
+              "name": "Ledger",
+              "status": "Planning",
+              "priority": "Medium",
+              "description": "",
+              "startDate": null,
+              "endDate": null,
+              "budget": null,
+              "tribeId": "c95d7978-71d9-45fa-a036-8b6c7bdfdfba",
+              "stage": "Pipeline",
+              "initiatedOn": null,
               "ownerUserId": null,
-              "jiraKey": "APOLLO",
-              "planviewId": null,
-              "source": "manual"
+              "jiraKey": null,
+              "planviewId": "PV-9",
+              "source": "planview",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p2",
-              "name": "Skyline API",
+              "id": "p-legacy",
+              "name": "Legacy Migration",
               "status": "Active",
               "priority": "Medium",
-              "description": "Internal API modernization project.",
-              "startDate": "2026-09-01",
-              "endDate": "2027-03-31",
-              "budget": 180000,
-              "tribeId": "tribe-payments",
-              "stage": "In Flight",
-              "initiatedOn": "2026-06-22",
+              "description": "",
+              "startDate": "2025-01-01",
+              "endDate": "2027-12-31",
+              "budget": 250000,
+              "tribeId": null,
+              "stage": null,
+              "initiatedOn": null,
               "ownerUserId": null,
-              "jiraKey": "SKY",
+              "jiraKey": null,
               "planviewId": null,
-              "source": "manual"
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p3",
-              "name": "Nebula Analytics",
+              "id": "p-nebula",
+              "name": "Nebula",
               "status": "Planning",
-              "priority": "Critical",
-              "description": "Next-gen data visualization tool development.",
-              "startDate": "2027-01-11",
-              "endDate": "2027-09-30",
-              "budget": 420000,
-              "tribeId": "tribe-lending",
+              "priority": "Medium",
+              "description": "",
+              "startDate": "2027-01-01",
+              "endDate": "2027-12-31",
+              "budget": null,
+              "tribeId": "ce9e4e4a-228d-4da6-b642-ff4a3bbd38dc",
               "stage": "Initiated",
-              "initiatedOn": "2026-09-15",
+              "initiatedOn": null,
               "ownerUserId": null,
               "jiraKey": null,
               "planviewId": null,
-              "source": "manual"
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p4",
-              "name": "Legacy Patching",
-              "status": "On Hold",
+              "id": "p-1700000000002",
+              "name": "Operations Uplift",
+              "status": "Active",
               "priority": "Low",
-              "description": "Ongoing maintenance for v1.0 platforms.",
-              "startDate": "2026-10-01",
-              "endDate": "2027-06-30",
-              "budget": 50000,
-              "tribeId": "tribe-operations",
-              "stage": "Closing",
-              "initiatedOn": "2025-10-01",
+              "description": "",
+              "startDate": null,
+              "endDate": null,
+              "budget": null,
+              "tribeId": null,
+              "stage": null,
+              "initiatedOn": null,
               "ownerUserId": null,
               "jiraKey": null,
-              "planviewId": "PV-0004",
-              "source": "planview"
+              "planviewId": null,
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p5",
-              "name": "Phoenix Mobile",
+              "id": "p-phoenix",
+              "name": "Phoenix",
               "status": "Active",
               "priority": "High",
-              "description": "New React Native mobile app for field teams.",
-              "startDate": "2026-08-03",
-              "endDate": "2027-05-28",
-              "budget": 300000,
-              "tribeId": "tribe-digital",
+              "description": "Payments rebuild",
+              "startDate": "2026-10-01",
+              "endDate": "2027-06-30",
+              "budget": null,
+              "tribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
               "stage": "In Flight",
               "initiatedOn": "2026-06-01",
               "ownerUserId": null,
               "jiraKey": "PHX",
               "planviewId": null,
-              "source": "manual"
-            },
-            {
+              "source": "manual",
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p6",
-              "name": "Orion Security",
-              "status": "Planning",
-              "priority": "Critical",
-              "description": "Security hardening and compliance audit.",
-              "startDate": "2026-11-02",
-              "endDate": "2027-04-30",
-              "budget": 120000,
-              "tribeId": "tribe-payments",
-              "stage": "Mobilising",
-              "initiatedOn": "2026-09-28",
-              "ownerUserId": null,
-              "jiraKey": null,
-              "planviewId": null,
-              "source": "manual"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "p7",
-              "name": "Telephony Cloud Migration",
-              "status": "Planning",
-              "priority": "High",
-              "description": "Move contact-centre telephony to cloud (Genesys).",
-              "startDate": "2027-04-05",
-              "endDate": "2027-12-17",
-              "budget": 380000,
-              "tribeId": "tribe-operations",
-              "stage": "Pipeline",
-              "initiatedOn": "2026-09-30",
-              "ownerUserId": null,
-              "jiraKey": null,
-              "planviewId": null,
-              "source": "manual"
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             }
           ],
           "allocations": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a1",
-              "resourceId": "r1",
-              "projectId": "p1",
-              "percentage": 20,
+              "id": "alloc-mobile-7",
+              "resourceId": "r-1700000000001",
+              "projectId": "p-1700000000002",
+              "percentage": 70,
               "startDate": null,
               "endDate": null,
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a2",
-              "resourceId": "r1",
-              "projectId": "p2",
-              "percentage": 25,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a3",
-              "resourceId": "r1",
-              "projectId": "p6",
-              "percentage": 20,
-              "startDate": "2026-11-02",
-              "endDate": "2027-04-30",
-              "craftId": "risk-governance",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a4",
-              "resourceId": "r2",
-              "projectId": "p1",
-              "percentage": 60,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "project-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a5",
-              "resourceId": "r2",
-              "projectId": "p5",
-              "percentage": 40,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a6",
-              "resourceId": "r3",
-              "projectId": "p2",
-              "percentage": 50,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a7",
-              "resourceId": "r3",
-              "projectId": "p2",
-              "percentage": 30,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "vendor-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a8",
-              "resourceId": "r3",
-              "projectId": "p6",
-              "percentage": 20,
-              "startDate": "2026-11-02",
-              "endDate": "2027-04-30",
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a9",
-              "resourceId": "r4",
-              "projectId": "p4",
-              "percentage": 30,
-              "startDate": "2026-10-01",
-              "endDate": "2027-03-31",
-              "craftId": "project-mgmt",
+              "craftId": null,
               "source": "planview",
               "state": "confirmed",
               "notes": null,
-              "externalRef": "PVA-9",
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a10",
-              "resourceId": "r4",
-              "projectId": "p3",
-              "percentage": 60,
-              "startDate": "2027-01-11",
-              "endDate": "2027-09-30",
-              "craftId": "programme-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
               "externalRef": null,
               "demandLineId": null,
               "proposedAt": null,
               "proposedBy": null,
-              "respondedAt": null
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a11",
-              "resourceId": "r5",
-              "projectId": "p1",
-              "percentage": 30,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "digital-planning",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a12",
-              "resourceId": "r5",
-              "projectId": "p5",
-              "percentage": 30,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "digital-planning",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a13",
-              "resourceId": "r5",
-              "projectId": "p3",
-              "percentage": 40,
-              "startDate": "2027-01-11",
+              "id": "a-1712000000005",
+              "resourceId": "r-gokul",
+              "projectId": "p-nebula",
+              "percentage": 100,
+              "startDate": "2027-01-01",
               "endDate": "2027-06-30",
-              "craftId": "business-analysis",
+              "craftId": "project-mgmt",
               "source": "manual",
               "state": "confirmed",
               "notes": null,
@@ -945,19 +525,79 @@
               "demandLineId": null,
               "proposedAt": null,
               "proposedBy": null,
-              "respondedAt": null
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
+              "id": "a-1712000000004",
+              "resourceId": "r-kerrie",
+              "projectId": "p-ledger",
+              "percentage": 30,
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a14",
-              "resourceId": "r6",
-              "projectId": "p2",
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000003",
+              "resourceId": "r-maria",
+              "projectId": "p-phoenix",
+              "percentage": 120,
+              "startDate": "2026-10-01",
+              "endDate": "2027-03-31",
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000002",
+              "resourceId": "r-noma",
+              "projectId": "p-ledger",
+              "percentage": 40,
+              "startDate": null,
+              "endDate": null,
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000001",
+              "resourceId": "r-noma",
+              "projectId": "p-phoenix",
               "percentage": 60,
-              "startDate": "2026-09-01",
+              "startDate": "2026-10-01",
               "endDate": "2026-12-31",
-              "craftId": "business-analysis",
+              "craftId": null,
               "source": "manual",
               "state": "confirmed",
               "notes": null,
@@ -965,159 +605,39 @@
               "demandLineId": null,
               "proposedAt": null,
               "proposedBy": null,
-              "respondedAt": null
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a15",
-              "resourceId": "r6",
-              "projectId": "p5",
-              "percentage": 50,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "product-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a16",
-              "resourceId": "r7",
-              "projectId": "p3",
-              "percentage": 40,
-              "startDate": "2027-01-11",
-              "endDate": "2027-09-30",
-              "craftId": "business-analysis",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a17",
-              "resourceId": "r7",
-              "projectId": "p6",
-              "percentage": 30,
-              "startDate": "2026-11-02",
-              "endDate": "2027-04-30",
-              "craftId": "business-analysis",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a18",
-              "resourceId": "r8",
-              "projectId": "p1",
-              "percentage": 40,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "scrum-master",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a19",
-              "resourceId": "r8",
-              "projectId": "p2",
-              "percentage": 40,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "scrum-master",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a20",
-              "resourceId": "r8",
-              "projectId": "p5",
-              "percentage": 35,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "scrum-master",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a21",
-              "resourceId": "r9",
-              "projectId": "p6",
-              "percentage": 50,
-              "startDate": "2026-11-02",
-              "endDate": "2027-04-30",
-              "craftId": "project-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a22",
-              "resourceId": "r9",
-              "projectId": "p1",
+              "id": "a-1712000000006",
+              "resourceId": "r-noma",
+              "projectId": "p-nebula",
               "percentage": 25,
+              "startDate": "2027-04-01",
+              "endDate": "2027-06-30",
+              "craftId": "business-analysis",
+              "source": "marketplace",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "1",
+              "resourceId": "r-tom",
+              "projectId": "p-legacy",
+              "percentage": 50,
               "startDate": null,
               "endDate": null,
-              "craftId": "pmo-analytics",
+              "craftId": null,
               "source": "manual",
               "state": "confirmed",
               "notes": null,
@@ -1125,1158 +645,330 @@
               "demandLineId": null,
               "proposedAt": null,
               "proposedBy": null,
-              "respondedAt": null
-            },
-            {
+              "respondedAt": null,
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a23",
-              "resourceId": "r10",
-              "projectId": "p4",
-              "percentage": 30,
-              "startDate": "2026-10-01",
-              "endDate": "2027-06-30",
-              "craftId": "project-mgmt",
-              "source": "planview",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": "PVA-23",
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "a24",
-              "resourceId": "r10",
-              "projectId": "p1",
-              "percentage": 30,
-              "startDate": "2026-10-01",
-              "endDate": "2027-01-29",
-              "craftId": "change-mgmt",
-              "source": "manual",
-              "state": "confirmed",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": null,
-              "proposedAt": null,
-              "proposedBy": null,
-              "respondedAt": null
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": {
-                "id": "u-tom",
-                "name": "Tom Hayes"
-              },
-              "id": "a-proposal-1",
-              "resourceId": "r9",
-              "projectId": "p3",
-              "percentage": 20,
-              "startDate": "2027-01-11",
-              "endDate": "2027-03-31",
-              "craftId": "pmo-analytics",
-              "source": "marketplace",
-              "state": "tentative",
-              "notes": null,
-              "externalRef": null,
-              "demandLineId": "d-p3-2027-Q1-pmo-analytics",
-              "proposedAt": "2026-10-12T10:15:00.000Z",
-              "proposedBy": {
-                "id": "u-tom",
-                "name": "Tom Hayes"
-              },
-              "respondedAt": null
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
             }
           ],
           "demand": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p1-2026-Q4-project-mgmt",
-              "projectId": "p1",
-              "quarterKey": "2026-Q4",
-              "craftId": "project-mgmt",
-              "fte": 1,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p1-2026-Q4-scrum-master",
-              "projectId": "p1",
-              "quarterKey": "2026-Q4",
-              "craftId": "scrum-master",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p1-2026-Q4-change-mgmt",
-              "projectId": "p1",
-              "quarterKey": "2026-Q4",
-              "craftId": "change-mgmt",
-              "fte": 0.3,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p1-2027-Q1-project-mgmt",
-              "projectId": "p1",
-              "quarterKey": "2027-Q1",
-              "craftId": "project-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p1-2027-Q1-change-mgmt",
-              "projectId": "p1",
-              "quarterKey": "2027-Q1",
-              "craftId": "change-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p2-2026-Q4-programme-mgmt",
-              "projectId": "p2",
-              "quarterKey": "2026-Q4",
-              "craftId": "programme-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p2-2026-Q4-scrum-master",
-              "projectId": "p2",
-              "quarterKey": "2026-Q4",
-              "craftId": "scrum-master",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p2-2026-Q4-vendor-mgmt",
-              "projectId": "p2",
-              "quarterKey": "2026-Q4",
-              "craftId": "vendor-mgmt",
-              "fte": 0.3,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p2-2027-Q1-programme-mgmt",
-              "projectId": "p2",
-              "quarterKey": "2027-Q1",
-              "craftId": "programme-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p2-2027-Q1-scrum-master",
-              "projectId": "p2",
-              "quarterKey": "2027-Q1",
-              "craftId": "scrum-master",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q1-programme-mgmt",
-              "projectId": "p3",
-              "quarterKey": "2027-Q1",
-              "craftId": "programme-mgmt",
-              "fte": 0.6,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q1-business-analysis",
-              "projectId": "p3",
+              "id": "b214dd52-0817-4fea-8107-aa501478080e",
+              "projectId": "p-ledger",
               "quarterKey": "2027-Q1",
               "craftId": "business-analysis",
               "fte": 1,
               "status": "Forecast",
               "ownerUserId": null,
               "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q1-pmo-analytics",
-              "projectId": "p3",
-              "quarterKey": "2027-Q1",
-              "craftId": "pmo-analytics",
-              "fte": 0.4,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q2-programme-mgmt",
-              "projectId": "p3",
-              "quarterKey": "2027-Q2",
-              "craftId": "programme-mgmt",
-              "fte": 0.6,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q2-project-mgmt",
-              "projectId": "p3",
-              "quarterKey": "2027-Q2",
-              "craftId": "project-mgmt",
-              "fte": 1,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q2-business-analysis",
-              "projectId": "p3",
+              "id": "e64e1d52-8f3a-4ba7-8541-a1eec01c2d76",
+              "projectId": "p-nebula",
               "quarterKey": "2027-Q2",
               "craftId": "business-analysis",
-              "fte": 1,
+              "fte": 0.5,
               "status": "Forecast",
               "ownerUserId": null,
               "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q2-pmo-analytics",
-              "projectId": "p3",
+              "id": "e973166b-5dcd-49a2-bfaa-2c7defeb1d76",
+              "projectId": "p-nebula",
               "quarterKey": "2027-Q2",
-              "craftId": "pmo-analytics",
-              "fte": 0.4,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q3-project-mgmt",
-              "projectId": "p3",
-              "quarterKey": "2027-Q3",
-              "craftId": "project-mgmt",
+              "craftId": "delivery-lead",
               "fte": 1,
               "status": "Forecast",
               "ownerUserId": null,
               "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q3-change-mgmt",
-              "projectId": "p3",
-              "quarterKey": "2027-Q3",
-              "craftId": "change-mgmt",
-              "fte": 0.5,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p3-2027-Q3-pmo-analytics",
-              "projectId": "p3",
-              "quarterKey": "2027-Q3",
-              "craftId": "pmo-analytics",
-              "fte": 0.4,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p4-2026-Q4-project-mgmt",
-              "projectId": "p4",
-              "quarterKey": "2026-Q4",
-              "craftId": "project-mgmt",
-              "fte": 0.3,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p4-2027-Q1-project-mgmt",
-              "projectId": "p4",
-              "quarterKey": "2027-Q1",
-              "craftId": "project-mgmt",
-              "fte": 0.3,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2026-Q4-programme-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2026-Q4",
-              "craftId": "programme-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2026-Q4-product-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2026-Q4",
-              "craftId": "product-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2026-Q4-scrum-master",
-              "projectId": "p5",
+              "id": "2b78841d-2d21-4c1e-9376-43f12306bab6",
+              "projectId": "p-phoenix",
               "quarterKey": "2026-Q4",
               "craftId": "scrum-master",
-              "fte": 0.5,
+              "fte": 1.5,
               "status": "Confirmed",
               "ownerUserId": null,
               "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q1-programme-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2027-Q1",
-              "craftId": "programme-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q1-product-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2027-Q1",
-              "craftId": "product-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q1-scrum-master",
-              "projectId": "p5",
-              "quarterKey": "2027-Q1",
-              "craftId": "scrum-master",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q1-release-coord",
-              "projectId": "p5",
-              "quarterKey": "2027-Q1",
-              "craftId": "release-coord",
-              "fte": 0.3,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q2-project-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2027-Q2",
-              "craftId": "project-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q2-release-coord",
-              "projectId": "p5",
-              "quarterKey": "2027-Q2",
-              "craftId": "release-coord",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p5-2027-Q2-change-mgmt",
-              "projectId": "p5",
-              "quarterKey": "2027-Q2",
-              "craftId": "change-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2026-Q4-project-mgmt",
-              "projectId": "p6",
-              "quarterKey": "2026-Q4",
-              "craftId": "project-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2026-Q4-risk-governance",
-              "projectId": "p6",
-              "quarterKey": "2026-Q4",
-              "craftId": "risk-governance",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2027-Q1-project-mgmt",
-              "projectId": "p6",
+              "id": "b47c8c18-3572-45c6-822e-23c5f4a32b29",
+              "projectId": "p-phoenix",
               "quarterKey": "2027-Q1",
               "craftId": "project-mgmt",
-              "fte": 1,
+              "fte": 2,
               "status": "Confirmed",
               "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
+              "note": "ramp up",
+              "createdAt": "2026-10-17T00:59:27.503Z",
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2027-Q1-risk-governance",
-              "projectId": "p6",
-              "quarterKey": "2027-Q1",
-              "craftId": "risk-governance",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2027-Q1-vendor-mgmt",
-              "projectId": "p6",
-              "quarterKey": "2027-Q1",
-              "craftId": "vendor-mgmt",
-              "fte": 0.3,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2027-Q2-project-mgmt",
-              "projectId": "p6",
-              "quarterKey": "2027-Q2",
-              "craftId": "project-mgmt",
-              "fte": 0.5,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p6-2027-Q2-risk-governance",
-              "projectId": "p6",
-              "quarterKey": "2027-Q2",
-              "craftId": "risk-governance",
-              "fte": 0.3,
-              "status": "Confirmed",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q2-product-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q2",
-              "craftId": "product-mgmt",
-              "fte": 0.6,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q2-project-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q2",
-              "craftId": "project-mgmt",
-              "fte": 0.5,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q2-vendor-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q2",
-              "craftId": "vendor-mgmt",
-              "fte": 0.4,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q3-product-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q3",
-              "craftId": "product-mgmt",
-              "fte": 0.6,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q3-project-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q3",
-              "craftId": "project-mgmt",
-              "fte": 1,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q3-scrum-master",
-              "projectId": "p7",
-              "quarterKey": "2027-Q3",
-              "craftId": "scrum-master",
-              "fte": 0.5,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q3-change-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q3",
-              "craftId": "change-mgmt",
-              "fte": 0.5,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "d-p7-2027-Q3-vendor-mgmt",
-              "projectId": "p7",
-              "quarterKey": "2027-Q3",
-              "craftId": "vendor-mgmt",
-              "fte": 0.4,
-              "status": "Forecast",
-              "ownerUserId": null,
-              "note": null,
-              "createdAt": "2026-10-01T09:00:00.000Z"
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
             }
           ],
           "tribes": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "tribe-digital",
+              "id": "ce9e4e4a-228d-4da6-b642-ff4a3bbd38dc",
               "name": "Digital",
-              "leadName": "Aoife Byrne",
-              "archived": false
+              "leadName": null,
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
+              "id": "9a05e8e1-0ecd-4428-993e-1566287b5303",
+              "name": "Digital Experience",
+              "leadName": null,
+              "archived": false,
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "tribe-payments",
-              "name": "Payments",
-              "leadName": "Declan Moore",
-              "archived": false
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "tribe-lending",
+              "id": "c95d7978-71d9-45fa-a036-8b6c7bdfdfba",
               "name": "Lending",
               "leadName": null,
-              "archived": false
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "tribe-operations",
-              "name": "Operations",
+              "id": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "name": "Payments",
               "leadName": null,
-              "archived": false
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             }
           ],
-          "chapters": [
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "chapter-programme-mgmt",
-              "name": "Programme Management",
-              "craftId": "programme-mgmt",
-              "leadPersonId": "r1",
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "chapter-digital-planning",
-              "name": "Digital Planning",
-              "craftId": "digital-planning",
-              "leadPersonId": "r5",
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "chapter-product-mgmt",
-              "name": "Product Management",
-              "craftId": "product-mgmt",
-              "leadPersonId": null,
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "chapter-scrum-master",
-              "name": "Scrum Master / Agile Delivery",
-              "craftId": "scrum-master",
-              "leadPersonId": null,
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "chapter-project-mgmt",
-              "name": "Project Management",
-              "craftId": "project-mgmt",
-              "leadPersonId": null,
-              "archived": false
-            }
-          ],
+          "chapters": [],
           "teams": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "t1",
-              "name": "Programme Management",
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "t2",
-              "name": "Digital Planning",
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "t3",
-              "name": "Product Management",
-              "archived": false
-            },
-            {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "t4",
               "name": "Delivery",
-              "archived": false
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
+              "id": "t2",
+              "name": "Digital Planning",
+              "archived": false,
               "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
-              "id": "t5",
-              "name": "Project Management",
-              "archived": false
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "t1",
+              "name": "Programme Management",
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             }
           ],
           "crafts": [
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "programme-mgmt",
               "name": "Programme Management",
-              "short": "PGM",
+              "short": "PgM",
               "description": "Multi-project programmes, benefits and governance",
-              "family": "Delivery",
+              "family": null,
               "archived": false,
-              "sortOrder": 0
+              "sortOrder": 1,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "project-mgmt",
               "name": "Project Management",
               "short": "PM",
               "description": "Plan, run and close a single project",
-              "family": "Delivery",
+              "family": null,
               "archived": false,
-              "sortOrder": 1
+              "sortOrder": 2,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "scrum-master",
               "name": "Scrum Master / Agile Delivery",
               "short": "SM",
               "description": "Sprint facilitation, flow, impediments",
-              "family": "Delivery",
+              "family": null,
               "archived": false,
-              "sortOrder": 2
+              "sortOrder": 3,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "product-mgmt",
               "name": "Product Management",
-              "short": "PDM",
+              "short": "PdM",
               "description": "Backlog ownership, discovery, roadmaps",
-              "family": "Product",
+              "family": null,
               "archived": false,
-              "sortOrder": 3
+              "sortOrder": 4,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "business-analysis",
               "name": "Business Analysis",
               "short": "BA",
               "description": "Requirements, process mapping, acceptance",
-              "family": "Product",
+              "family": null,
               "archived": false,
-              "sortOrder": 4
+              "sortOrder": 5,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "digital-planning",
               "name": "Digital Planning",
               "short": "DP",
               "description": "Portfolio sequencing, roadmap and demand planning",
-              "family": "Planning",
+              "family": null,
               "archived": false,
-              "sortOrder": 5
+              "sortOrder": 6,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "change-mgmt",
               "name": "Change & Adoption",
               "short": "CM",
               "description": "Stakeholder readiness, comms, training",
-              "family": "Change",
+              "family": null,
               "archived": false,
-              "sortOrder": 6
+              "sortOrder": 7,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "pmo-analytics",
               "name": "PMO Analytics & Reporting",
               "short": "AN",
               "description": "Dashboards, status reporting, capacity data",
-              "family": "Planning",
+              "family": null,
               "archived": false,
-              "sortOrder": 7
+              "sortOrder": 8,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "risk-governance",
               "name": "Risk, Governance & Compliance",
               "short": "RG",
               "description": "RAID, audit, regulatory gates",
-              "family": "Governance",
+              "family": null,
               "archived": false,
-              "sortOrder": 8
+              "sortOrder": 9,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "vendor-mgmt",
               "name": "Vendor & Commercial Management",
               "short": "VM",
               "description": "Contracts, SOWs, supplier delivery",
-              "family": "Governance",
+              "family": null,
               "archived": false,
-              "sortOrder": 9
+              "sortOrder": 10,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "release-coord",
               "name": "Release & Delivery Coordination",
               "short": "RC",
               "description": "Release trains, cutover, dependency tracking",
-              "family": "Delivery",
+              "family": null,
               "archived": false,
-              "sortOrder": 10
+              "sortOrder": 11,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
             {
-              "version": 1,
-              "updatedAt": "2026-10-01T09:00:00.000Z",
-              "updatedBy": null,
               "id": "tooling-admin",
               "name": "Jira / Tooling Administration",
               "short": "JA",
               "description": "Jira, Planview and workflow configuration",
-              "family": "Tooling",
+              "family": null,
               "archived": false,
-              "sortOrder": 11
-            }
-          ],
-          "offers": [
-            {
-              "personId": "r4",
-              "quarterKey": "2026-Q4",
-              "pct": 50,
-              "craftIds": ["programme-mgmt", "pmo-analytics"],
-              "note": "Free until Nebula starts in January",
-              "createdBy": {
-                "id": "u-tom",
-                "name": "Tom Hayes"
-              },
-              "createdAt": "2026-10-08T08:30:00.000Z"
-            }
-          ],
-          "craftRequests": [
-            {
-              "id": "cr-1",
-              "personId": "r8",
-              "current": [
-                {
-                  "craftId": "release-coord",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "tooling-admin",
-                  "proficiency": 3,
-                  "maxPct": 30
-                }
-              ],
-              "proposed": [
-                {
-                  "craftId": "release-coord",
-                  "proficiency": 3,
-                  "maxPct": 40
-                },
-                {
-                  "craftId": "tooling-admin",
-                  "proficiency": 3,
-                  "maxPct": 30
-                },
-                {
-                  "craftId": "change-mgmt",
-                  "proficiency": 1,
-                  "maxPct": 20
-                }
-              ],
-              "status": "pending",
-              "submittedBy": {
-                "id": "u-noma",
-                "name": "Noma Odigie"
-              },
-              "submittedAt": "2026-10-14T15:20:00.000Z",
-              "decidedBy": null,
-              "decidedAt": null,
-              "reason": null
-            }
-          ],
-          "delivery": {
-            "health": {
-              "provider": "jira",
-              "configured": true,
-              "state": "ok",
-              "lastSuccessAt": "2026-10-16T11:32:38.039Z",
-              "lastJob": {
-                "id": "job-3",
-                "provider": "jira",
-                "trigger": "schedule",
-                "status": "succeeded",
-                "pagesDone": 6,
-                "issuesSeen": 214,
-                "error": null,
-                "rateLimitedUntil": null,
-                "startedAt": "2026-10-16T11:30:38.039Z",
-                "finishedAt": "2026-10-16T11:32:38.039Z",
-                "requestedBy": null
-              },
-              "recentJobs": [
-                {
-                  "id": "job-3",
-                  "provider": "jira",
-                  "trigger": "schedule",
-                  "status": "succeeded",
-                  "pagesDone": 6,
-                  "issuesSeen": 214,
-                  "error": null,
-                  "rateLimitedUntil": null,
-                  "startedAt": "2026-10-16T11:30:38.039Z",
-                  "finishedAt": "2026-10-16T11:32:38.039Z",
-                  "requestedBy": null
-                },
-                {
-                  "id": "job-2",
-                  "provider": "jira",
-                  "trigger": "schedule",
-                  "status": "succeeded",
-                  "pagesDone": 6,
-                  "issuesSeen": 214,
-                  "error": null,
-                  "rateLimitedUntil": null,
-                  "startedAt": "2026-10-15T11:30:38.039Z",
-                  "finishedAt": "2026-10-15T11:32:38.039Z",
-                  "requestedBy": null
-                },
-                {
-                  "id": "job-1",
-                  "provider": "jira",
-                  "trigger": "schedule",
-                  "status": "succeeded",
-                  "pagesDone": 6,
-                  "issuesSeen": 214,
-                  "error": null,
-                  "rateLimitedUntil": null,
-                  "startedAt": "2026-10-14T11:30:38.039Z",
-                  "finishedAt": "2026-10-14T11:32:38.039Z",
-                  "requestedBy": null
-                }
-              ]
+              "sortOrder": 12,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
             },
-            "byProjectQbr1": [
-              {
-                "projectId": "p1",
-                "plannedFte": 2.05,
-                "impliedFte": 2.8
-              },
-              {
-                "projectId": "p2",
-                "plannedFte": 2.05,
-                "impliedFte": 1.83
-              },
-              {
-                "projectId": "p5",
-                "plannedFte": 1.55,
-                "impliedFte": 2.25
-              }
-            ]
-          },
-          "serverTime": "2026-10-16T22:30:41.892Z"
+            {
+              "id": "delivery-lead",
+              "name": "delivery-lead",
+              "short": "X7AC",
+              "description": null,
+              "family": null,
+              "archived": false,
+              "sortOrder": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "x",
+              "name": "x",
+              "short": "X9DD",
+              "description": null,
+              "family": null,
+              "archived": false,
+              "sortOrder": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            }
+          ],
+          "offers": [],
+          "craftRequests": [],
+          "delivery": null,
+          "serverTime": "2026-10-17T01:00:08.147Z"
         }
       }
     },
     {
       "request": {
         "method": "PATCH",
-        "path": "/api/v2/workspaces/demo/people/r1",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people/r-gokul",
         "body": {
           "version": 1,
           "patch": {
@@ -2288,52 +980,41 @@
       "response": {
         "status": 200,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_e8ca6a0f"
+          "content-type": "application/json",
+          "x-request-id": "11541393-adcc-485a-ae3f-1552df9e9356"
         },
         "body": {
-          "version": 2,
-          "updatedAt": "2026-10-16T22:30:41.906Z",
-          "updatedBy": {
-            "id": "u-tom",
-            "name": "Tom Hayes"
-          },
-          "id": "r1",
-          "name": "Tom Hayes",
-          "email": "tom.hayes@company.ie",
-          "role": "Chapter Lead \u2013 Business Delivery",
+          "id": "r-gokul",
+          "name": "Gokul Gurijala",
+          "email": null,
+          "role": "Project Manager",
           "type": "Permanent",
-          "department": "IE Portfolio & Change Office",
-          "location": "Dublin",
+          "department": "PMO",
+          "location": null,
           "totalCapacity": 100,
           "dailyRate": null,
           "teamId": "t1",
-          "chapterId": "chapter-programme-mgmt",
-          "homeTribeId": "tribe-payments",
-          "linkedUserId": "u-tom",
-          "primaryCraft": "programme-mgmt",
-          "secondaryCrafts": [
-            {
-              "craftId": "risk-governance",
-              "proficiency": 3,
-              "maxPct": 30
-            },
-            {
-              "craftId": "digital-planning",
-              "proficiency": 2,
-              "maxPct": 20
-            }
-          ],
-          "tribeAffinity": ["tribe-payments", "tribe-lending"],
-          "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
-          "targetUtil": 95
+          "chapterId": null,
+          "homeTribeId": null,
+          "linkedUserId": null,
+          "primaryCraft": null,
+          "secondaryCrafts": [],
+          "tribeAffinity": [],
+          "skills": [],
+          "targetUtil": 95,
+          "version": 2,
+          "updatedAt": "2026-10-17T01:00:08.161Z",
+          "updatedBy": {
+            "id": "50000000-0000-4000-8000-000000000009",
+            "name": "Owen Owner"
+          }
         }
       }
     },
     {
       "request": {
         "method": "PATCH",
-        "path": "/api/v2/workspaces/demo/people/r1",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people/r-gokul",
         "body": {
           "version": 1,
           "patch": {
@@ -2345,88 +1026,2585 @@
       "response": {
         "status": 409,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_1dc10cb5"
+          "content-type": "application/json",
+          "x-request-id": "c4bec7f5-5b7f-4353-8536-711048ce6a3d"
         },
         "body": {
-          "error": "This record changed since you loaded it.",
+          "error": "This record changed",
           "code": "conflict",
-          "requestId": "req_1dc10cb5",
+          "requestId": "c4bec7f5-5b7f-4353-8536-711048ce6a3d",
           "current": {
-            "version": 2,
-            "updatedAt": "2026-10-16T22:30:41.906Z",
-            "updatedBy": {
-              "id": "u-tom",
-              "name": "Tom Hayes"
-            },
-            "id": "r1",
-            "name": "Tom Hayes",
-            "email": "tom.hayes@company.ie",
-            "role": "Chapter Lead \u2013 Business Delivery",
+            "id": "r-gokul",
+            "name": "Gokul Gurijala",
+            "email": null,
+            "role": "Project Manager",
             "type": "Permanent",
-            "department": "IE Portfolio & Change Office",
-            "location": "Dublin",
+            "department": "PMO",
+            "location": null,
             "totalCapacity": 100,
             "dailyRate": null,
             "teamId": "t1",
-            "chapterId": "chapter-programme-mgmt",
-            "homeTribeId": "tribe-payments",
-            "linkedUserId": "u-tom",
-            "primaryCraft": "programme-mgmt",
-            "secondaryCrafts": [
-              {
-                "craftId": "risk-governance",
-                "proficiency": 3,
-                "maxPct": 30
-              },
-              {
-                "craftId": "digital-planning",
-                "proficiency": 2,
-                "maxPct": 20
-              }
-            ],
-            "tribeAffinity": ["tribe-payments", "tribe-lending"],
-            "skills": ["Stakeholder Mgmt", "Benefits Tracking"],
-            "targetUtil": 95
+            "chapterId": null,
+            "homeTribeId": null,
+            "linkedUserId": null,
+            "primaryCraft": null,
+            "secondaryCrafts": [],
+            "tribeAffinity": [],
+            "skills": [],
+            "targetUtil": 95,
+            "version": 2,
+            "updatedAt": "2026-10-17T01:00:08.161Z",
+            "updatedBy": {
+              "id": "50000000-0000-4000-8000-000000000009",
+              "name": "Owen Owner"
+            }
           },
           "changedBy": {
-            "id": "u-tom",
-            "name": "Tom Hayes"
+            "id": "50000000-0000-4000-8000-000000000009",
+            "name": "Owen Owner"
           },
-          "changedAt": "2026-10-16T22:30:41.906Z"
+          "changedAt": "2026-10-17T01:00:08.161Z"
         }
       }
     },
     {
       "request": {
         "method": "POST",
-        "path": "/api/v2/workspaces/demo/allocations/batch",
-        "body": null,
-        "csrf": true,
-        "bodyOmitted": true
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/allocations/batch",
+        "body": {
+          "ops": [
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            }
+          ],
+          "label": "too big"
+        },
+        "csrf": true
       },
       "response": {
         "status": 413,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_ad608562"
+          "content-type": "application/json",
+          "x-request-id": "d388647e-3962-4244-b3d3-3c974ff3ac2f"
         },
         "body": {
-          "error": "A batch can hold at most 500 operations.",
+          "error": "A batch can hold at most 500 changes.",
           "code": "payload_too_large",
-          "requestId": "req_ad608562"
+          "requestId": "d388647e-3962-4244-b3d3-3c974ff3ac2f"
         }
       }
     },
     {
       "request": {
         "method": "POST",
-        "path": "/api/v2/workspaces/demo/allocations/batch",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/allocations/batch",
         "body": {
           "ops": [
             {
               "op": "update",
-              "id": "a1",
+              "id": "a-1712000000005",
               "version": 1,
               "patch": {
                 "percentage": 33
@@ -2440,25 +3618,19 @@
       "response": {
         "status": 200,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_3e828401"
+          "content-type": "application/json",
+          "x-request-id": "929b36d0-2c92-4e5a-bf81-25fedb66dd9a"
         },
         "body": {
           "upserted": [
             {
-              "version": 2,
-              "updatedAt": "2026-10-16T22:30:41.917Z",
-              "updatedBy": {
-                "id": "u-tom",
-                "name": "Tom Hayes"
-              },
-              "id": "a1",
-              "resourceId": "r1",
-              "projectId": "p1",
+              "id": "a-1712000000005",
+              "resourceId": "r-gokul",
+              "projectId": "p-nebula",
               "percentage": 33,
-              "startDate": null,
-              "endDate": null,
-              "craftId": "programme-mgmt",
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "craftId": "project-mgmt",
               "source": "manual",
               "state": "confirmed",
               "notes": null,
@@ -2466,7 +3638,13 @@
               "demandLineId": null,
               "proposedAt": null,
               "proposedBy": null,
-              "respondedAt": null
+              "respondedAt": null,
+              "version": 2,
+              "updatedAt": "2026-10-17T01:00:08.203Z",
+              "updatedBy": {
+                "id": "50000000-0000-4000-8000-000000000009",
+                "name": "Owen Owner"
+              }
             }
           ],
           "deleted": [],
@@ -2477,9 +3655,9 @@
     {
       "request": {
         "method": "POST",
-        "path": "/api/v2/workspaces/demo/demand",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/demand",
         "body": {
-          "projectId": "p1",
+          "projectId": "p-nebula",
           "quarterKey": "2027-Q5",
           "craftId": "project-mgmt",
           "fte": 99,
@@ -2492,16 +3670,16 @@
       "response": {
         "status": 400,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_0e746eac"
+          "content-type": "application/json",
+          "x-request-id": "9592851a-55eb-4154-b2ad-0fdaee491ce2"
         },
         "body": {
-          "error": "Some details need correcting.",
+          "error": "Check the highlighted fields.",
           "code": "bad_request",
-          "requestId": "req_0e746eac",
+          "requestId": "9592851a-55eb-4154-b2ad-0fdaee491ce2",
           "fields": {
-            "quarterKey": "Use a quarter like 2027-Q1",
-            "fte": "Enter 0\u201350 FTE"
+            "quarterKey": "Use YYYY-Qn",
+            "fte": "Use 0\u201350 FTE"
           }
         }
       }
@@ -2509,7 +3687,7 @@
     {
       "request": {
         "method": "POST",
-        "path": "/api/v2/workspaces/demo/people",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people",
         "body": {
           "name": ""
         },
@@ -2518,13 +3696,13 @@
       "response": {
         "status": 400,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_e4aa2491"
+          "content-type": "application/json",
+          "x-request-id": "0de654c9-421d-4040-bffd-7b6a65a3e1b1"
         },
         "body": {
-          "error": "Some details need correcting.",
+          "error": "Check the highlighted fields.",
           "code": "bad_request",
-          "requestId": "req_e4aa2491",
+          "requestId": "0de654c9-421d-4040-bffd-7b6a65a3e1b1",
           "fields": {
             "name": "Enter a name"
           }
@@ -2541,13 +3719,13 @@
       "response": {
         "status": 404,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_df2388f8"
+          "content-type": "application/json",
+          "x-request-id": "52338e6a-e463-46a4-a992-dd38a489c13d"
         },
         "body": {
-          "error": "Workspace not found.",
+          "error": "Workspace not found",
           "code": "not_found",
-          "requestId": "req_df2388f8"
+          "requestId": "52338e6a-e463-46a4-a992-dd38a489c13d"
         }
       }
     },
@@ -2561,13 +3739,13 @@
       "response": {
         "status": 410,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_5859c08b"
+          "content-type": "application/json",
+          "x-request-id": "785162f3-873e-444a-b188-864d2bbd700a"
         },
         "body": {
-          "error": "This endpoint was retired in Release 2.0.",
+          "error": "PMO Capacity Planner was updated. Reload the page.",
           "code": "gone",
-          "requestId": "req_5859c08b"
+          "requestId": "785162f3-873e-444a-b188-864d2bbd700a"
         }
       }
     },
@@ -2576,7 +3754,7 @@
         "method": "POST",
         "path": "/api/ai",
         "body": {
-          "wsId": "demo",
+          "wsId": "a1000000-0000-4000-8000-0000000000a1",
           "question": "How are we doing?"
         },
         "csrf": true
@@ -2584,13 +3762,13 @@
       "response": {
         "status": 403,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_14c746c5"
+          "content-type": "application/json",
+          "x-request-id": "42b7b92d-06ad-4787-809e-a067a88d4c43"
         },
         "body": {
-          "error": "The AI assistant is turned off for your organisation.",
+          "error": "This feature is turned off for your organisation.",
           "code": "feature_disabled",
-          "requestId": "req_14c746c5"
+          "requestId": "42b7b92d-06ad-4787-809e-a067a88d4c43"
         }
       }
     },
@@ -2605,7 +3783,7 @@
         "status": 204,
         "headers": {
           "content-type": "",
-          "x-request-id": "req_563ac664"
+          "x-request-id": "9a68033f-8422-47e6-a46b-1984e88549ae"
         },
         "body": null
       }
@@ -2620,13 +3798,13 @@
       "response": {
         "status": 401,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_0bb8b1dc"
+          "content-type": "application/json",
+          "x-request-id": "e4960dfc-e7c9-4cd2-9201-d9a94035582f"
         },
         "body": {
-          "error": "Please sign in.",
+          "error": "Sign in to continue.",
           "code": "unauthorized",
-          "requestId": "req_0bb8b1dc"
+          "requestId": "e4960dfc-e7c9-4cd2-9201-d9a94035582f"
         }
       }
     },
@@ -2640,13 +3818,13 @@
       "response": {
         "status": 401,
         "headers": {
-          "content-type": "application/json; charset=utf-8",
-          "x-request-id": "req_bbbd549a"
+          "content-type": "application/json",
+          "x-request-id": "bbcb6d58-77cb-41bc-b584-8c9581cb1add"
         },
         "body": {
-          "error": "Please sign in again.",
+          "error": "Your session has ended. Sign in again.",
           "code": "unauthorized",
-          "requestId": "req_bbbd549a"
+          "requestId": "bbcb6d58-77cb-41bc-b584-8c9581cb1add"
         }
       }
     }

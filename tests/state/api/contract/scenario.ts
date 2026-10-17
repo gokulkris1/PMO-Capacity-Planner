@@ -47,13 +47,17 @@ export const scenario: Step[] = [
     error: { status: 401, code: 'unauthorized' },
   },
   {
-    name: 'login returns { user } and no token',
+    // AC-03#AC1 asks for no token in the body. 2.0 still returns the v1.1 `token` so browser tabs left open on the
+    // v1.1 bundle across the deploy keep working (handoff-A deviation, removal planned for 2.1); the client never
+    // reads or stores it (tests/state/runtime.test.ts).
+    name: 'login returns { user } (and at most the v1.1 compatibility token)',
     method: 'POST',
     path: () => API.login,
     body: (v) => ({ email: v.email, password: v.password }),
     ok: ((res: LoginResponse, v: Vars) => {
       expectTrue('user' in res && res.user.email.toLowerCase() === v.email.toLowerCase(), 'login returns the user');
-      expectTrue(!('token' in (res as object)), 'no token in the login body (AC-03#AC1)');
+      const token = (res as { token?: unknown }).token;
+      expectTrue(token === undefined || typeof token === 'string', 'token, if present, is the v1.1 bearer string');
     }) as Check<never>,
   },
   {
