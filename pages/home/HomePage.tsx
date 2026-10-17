@@ -264,7 +264,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <div className="home-gap" />
           <Card
             title="Available"
-            subtitle={`${basisLabel} · below ${thresholds.benchBelow}% of target; offer them on the Marketplace`}
+            subtitle={`${basisLabel} · below ${thresholds.benchBelow}% of target`}
             flush
             actions={
               <LinkButton variant="subtle" size="sm" to={`${wsPath('plan/marketplace')}?tab=under`}>

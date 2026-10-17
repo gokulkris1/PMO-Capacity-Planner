@@ -67,15 +67,18 @@
   line-height: 16px;
 }
 .al-name--sub {
-  gap: var(--space-100);
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: var(--space-025) var(--space-100);
+  padding: var(--space-050) 0;
 }
+/* Chips never shrink or overlap: when the name, craft, state and source do not fit on one line they wrap (QA-006). */
 .al-name--sub > * {
   flex: 0 0 auto;
 }
 .al-name--sub > .al-name__label {
   flex: 0 1 auto;
-  min-width: 4ch;
+  min-width: 0;
+  max-width: 100%;
   color: var(--color-text);
 }
 .al-toggle {

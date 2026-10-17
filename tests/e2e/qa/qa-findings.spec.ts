@@ -83,13 +83,17 @@ test.describe('QA findings (demo workspace)', () => {
         const kids = [...el.children].map((c) => c.getBoundingClientRect());
         return {
           cell: { left: cell.left, right: cell.right },
-          kids: kids.map((k) => ({ left: k.left, right: k.right })),
+          kids: kids.map((k) => ({ left: k.left, right: k.right, top: k.top, bottom: k.bottom })),
         };
       });
-      // Every chip sits after the previous one and inside the name cell: nothing overlaps, nothing spills over.
+      // No two chips overlap and none spills out of the name cell (they wrap instead).
       boxes.kids.forEach((k, j) => {
-        if (j > 0) expect(k.left).toBeGreaterThanOrEqual(boxes.kids[j - 1].right - 0.5);
         expect(k.right).toBeLessThanOrEqual(boxes.cell.right + 0.5);
+        for (const o of boxes.kids.slice(0, j)) {
+          const overlap =
+            k.left < o.right - 0.5 && o.left < k.right - 0.5 && k.top < o.bottom - 0.5 && o.top < k.bottom - 0.5;
+          expect(overlap).toBe(false);
+        }
       });
     }
   });
