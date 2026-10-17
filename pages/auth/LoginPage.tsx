@@ -31,12 +31,13 @@ export default function LoginPage() {
   /** QA-039: set while the API answers 503 during a deploy; the sign-in is retried on its own. */
   const [updating, setUpdating] = useState<string | null>(null);
   const left = useRef(false);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set on every mount: React's development double-mount runs the cleanup once before the real mount.
+    left.current = false;
+    return () => {
       left.current = true;
-    },
-    [],
-  );
+    };
+  }, []);
   const waitOpts: LoginOptions = {
     onWaiting: ({ retryInMs }) =>
       setUpdating(`Signing you in as soon as it is ready. Retrying in ${Math.max(1, Math.round(retryInMs / 1000))} s…`),
