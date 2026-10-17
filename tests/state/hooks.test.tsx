@@ -451,6 +451,27 @@ describe('people, projects, demand, marketplace, structure, admin', () => {
     });
   });
 
+  it('structure.create resolves with the server id, so people can be assigned to a new chapter (QA-013)', async () => {
+    const { result } = await ready({ role: 'ORG_ADMIN' });
+    let chapter: { id: string } = { id: '' };
+    await act(async () => {
+      chapter = await result.current.m.structure.create('chapters', {
+        name: 'Service Design',
+        craftId: 'pmo-analytics',
+        leadPersonId: null,
+      });
+    });
+    expect(chapter.id).not.toMatch(/^pending-/);
+    expect(snap(result).chapters.find((c) => c.id === chapter.id)).toMatchObject({ name: 'Service Design' });
+    const ids = snap(result)
+      .people.slice(0, 2)
+      .map((p) => p.id);
+    await act(async () => {
+      await result.current.m.people.bulk({ ids, patch: { chapterId: chapter.id } });
+    });
+    for (const id of ids) expect(snap(result).people.find((p) => p.id === id)?.chapterId).toBe(chapter.id);
+  });
+
   it('structure: new craft is selectable at once; archive; org planning changes labels (ORG-04#AC2, ST-03#AC3)', async () => {
     const { result } = await ready({ role: 'ORG_ADMIN' });
     await act(() => result.current.m.structure.save('crafts', { name: 'Service Design', short: 'SD' }));

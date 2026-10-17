@@ -97,6 +97,8 @@ export interface Mutations {
   structure: {
     save(kind: StructureKind, entity: { id?: D.ID; version?: number } & Record<string, unknown>): Promise<void>;
     archive(kind: StructureKind, id: D.ID, archived: boolean): Promise<void>;
+    /** Additive: creates a team, chapter or tribe and resolves with the saved entity (its server id). */
+    create(kind: StructureKind, entity: Record<string, unknown>): Promise<{ id: D.ID; version: number; name: string }>;
   };
   admin: {
     invite(r: InvitationRequest): Promise<InvitationResponse>;
@@ -922,62 +924,65 @@ export function buildMutations(rt: DataRuntime): Mutations {
     entity: { id?: D.ID; version?: number } & Record<string, unknown>,
     label: string,
     undoable = true,
-  ): Promise<void> {
+  ): Promise<(Entity & D.Versioned) | undefined> {
     const list = (s: D.WorkspaceSnapshot) => s[kind] as unknown as Array<Entity & D.Versioned>;
     const existing = entity.id ? visible() && list(visible()!).find((e) => e.id === entity.id) : undefined;
     const clean = strip(entity) as Record<string, unknown>;
     const tempId = entity.id ?? `pending-${newUuid()}`;
-    return rt
-      .mutate<Entity & D.Versioned>(
-        {
-          label,
-          entity: { kind: kind.slice(0, -1), name: String(existing?.name ?? clean.name ?? 'This record') },
-          optimistic: (s) => ({
-            ...s,
-            [kind]: existing
-              ? list(s).map((e) => (e.id === entity.id ? { ...e, ...clean } : e))
-              : [...list(s), { ...clean, id: tempId, archived: false, version: 1, ...stamp() }],
-          }),
-          send: ({ server, api }) => {
-            const o = orgId();
-            const cur = entity.id ? list(server).find((e) => e.id === entity.id) : undefined;
-            if (cur)
-              return api.structure.update(o, kind, cur.id, {
-                version: entity.version ?? cur.version,
-                patch: clean as never,
-              }) as unknown as Promise<Entity & D.Versioned>;
-            return api.structure.create(o, kind, {
-              ...clean,
-              ...(entity.id ? { id: entity.id } : {}),
-            } as never) as unknown as Promise<Entity & D.Versioned>;
-          },
-          commit: (s, r) => ({ ...s, [kind]: upsert(list(s), r) }),
-          onConflict: (s, cur) =>
-            cur && typeof cur === 'object' && 'id' in cur
-              ? { ...s, [kind]: upsert(list(s), cur as Entity & D.Versioned) }
-              : s,
-          inverse: (before, _a, r) => {
-            const prev = list(before).find((e) => e.id === r.id);
-            if (prev) {
-              const back = pick(prev, Object.keys(clean));
-              return () => saveStructure(kind, { ...back, id: r.id }, `Undo: ${label}`, false);
-            }
-            return async () => {
-              const o = orgId();
-              await rt.api.structure.remove(o, kind, r.id, r.version);
-              await rt.loadSnapshot();
-            };
-          },
+    return rt.mutate<Entity & D.Versioned>(
+      {
+        label,
+        entity: { kind: kind.slice(0, -1), name: String(existing?.name ?? clean.name ?? 'This record') },
+        optimistic: (s) => ({
+          ...s,
+          [kind]: existing
+            ? list(s).map((e) => (e.id === entity.id ? { ...e, ...clean } : e))
+            : [...list(s), { ...clean, id: tempId, archived: false, version: 1, ...stamp() }],
+        }),
+        send: ({ server, api }) => {
+          const o = orgId();
+          const cur = entity.id ? list(server).find((e) => e.id === entity.id) : undefined;
+          if (cur)
+            return api.structure.update(o, kind, cur.id, {
+              version: entity.version ?? cur.version,
+              patch: clean as never,
+            }) as unknown as Promise<Entity & D.Versioned>;
+          return api.structure.create(o, kind, {
+            ...clean,
+            ...(entity.id ? { id: entity.id } : {}),
+          } as never) as unknown as Promise<Entity & D.Versioned>;
         },
-        { undoable },
-      )
-      .then(noop);
+        commit: (s, r) => ({ ...s, [kind]: upsert(list(s), r) }),
+        onConflict: (s, cur) =>
+          cur && typeof cur === 'object' && 'id' in cur
+            ? { ...s, [kind]: upsert(list(s), cur as Entity & D.Versioned) }
+            : s,
+        inverse: (before, _a, r) => {
+          const prev = list(before).find((e) => e.id === r.id);
+          if (prev) {
+            const back = pick(prev, Object.keys(clean));
+            return () => saveStructure(kind, { ...back, id: r.id }, `Undo: ${label}`, false).then(noop);
+          }
+          return async () => {
+            const o = orgId();
+            await rt.api.structure.remove(o, kind, r.id, r.version);
+            await rt.loadSnapshot();
+          };
+        },
+      },
+      { undoable },
+    );
   }
 
   const structure: Mutations['structure'] = {
-    save: (kind, entity) => saveStructure(kind, entity, `Save ${kind.slice(0, -1)}`),
+    save: (kind, entity) => saveStructure(kind, entity, `Save ${kind.slice(0, -1)}`).then(noop),
     archive: (kind, id, archived) =>
-      saveStructure(kind, { id, archived }, `${archived ? 'Archive' : 'Restore'} ${kind.slice(0, -1)}`),
+      saveStructure(kind, { id, archived }, `${archived ? 'Archive' : 'Restore'} ${kind.slice(0, -1)}`).then(noop),
+    async create(kind, entity) {
+      const r = await saveStructure(kind, entity, `Add ${kind.slice(0, -1)}`);
+      if (!r) throw new ApiRequestError(0, 'server_error', 'Something went wrong.');
+      return { id: r.id, version: r.version, name: String((r as { name?: unknown }).name ?? '') };
+    },
   };
 
   /* ── admin ──────────────────────────────────────────────────────────────────── */

@@ -172,3 +172,26 @@ test('a browser holding a v1.1 token stays signed in and the token is removed (A
     null,
   ]);
 });
+
+test('QA-013 "Create chapters from crafts" creates the chapters and assigns people by their above-the-table craft', async ({
+  page,
+}) => {
+  expect((await page.request.post('/api/auth/login', { data: PAT })).status()).toBe(200);
+  await page.goto(`${base}/settings/structure`);
+  await page.getByRole('tab', { name: /^Chapters/ }).click();
+  await page.getByRole('button', { name: 'Create chapters from crafts' }).click();
+  const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'));
+  await expect(dialog.getByText(/People are assigned by their primary craft \(\d+ people\)/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Create chapters' }).click();
+  await expect(page.getByText(/\d+ chapters? created, \d+ (people|person) assigned/).first()).toBeVisible();
+  const snap = (await (await page.request.get(`/api/v2/workspaces/${WS}/snapshot`)).json()) as {
+    people: Array<{ name: string; primaryCraft: string | null; chapterId: string | null }>;
+    chapters: Array<{ id: string; craftId: string | null }>;
+  };
+  const withCraft = snap.people.filter((p) => p.primaryCraft);
+  expect(withCraft.length).toBeGreaterThan(0);
+  for (const p of withCraft) {
+    const chapter = snap.chapters.find((c) => c.id === p.chapterId);
+    expect([p.name, chapter?.craftId]).toEqual([p.name, p.primaryCraft]);
+  }
+});

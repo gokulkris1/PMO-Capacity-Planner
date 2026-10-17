@@ -131,15 +131,27 @@ export default function StructureSettings() {
       toast.info('Every above-the-table craft already has a chapter.');
       return;
     }
+    // QA-013: people without a chapter join the chapter of their above-the-table craft, as the dialog says.
+    const toAssign = (craftId: string) =>
+      snapshot.people.filter((p) => p.primaryCraft === craftId && !p.chapterId).map((p) => p.id);
+    const assigned = todo.reduce((n, c) => n + toAssign(c).length, 0);
     const ok = await confirm({
       title: `Create ${todo.length} chapter${todo.length === 1 ? '' : 's'}?`,
       body: (
         <>
-          <p>One chapter per above-the-table craft in use. People are assigned by their primary craft:</p>
+          <p>
+            One chapter per above-the-table craft in use. People are assigned by their primary craft (
+            {assigned === 1 ? '1 person' : `${assigned} people`}):
+          </p>
           <ul className="pcp-auth__list">
-            {todo.map((c) => (
-              <li key={c}>{craftName.get(c) ?? c}</li>
-            ))}
+            {todo.map((c) => {
+              const n = toAssign(c).length;
+              return (
+                <li key={c}>
+                  {craftName.get(c) ?? c} · {n === 1 ? '1 person' : `${n} people`}
+                </li>
+              );
+            })}
           </ul>
         </>
       ),
@@ -147,10 +159,25 @@ export default function StructureSettings() {
       tone: 'primary',
     });
     if (!ok) return;
+    let created = 0;
+    let people = 0;
     try {
-      for (const craftId of todo)
-        await m.structure.save('chapters', { name: craftName.get(craftId) ?? craftId, craftId, leadPersonId: null });
-      toast.success(`${todo.length} chapters created`);
+      for (const craftId of todo) {
+        const chapter = await m.structure.create('chapters', {
+          name: craftName.get(craftId) ?? craftId,
+          craftId,
+          leadPersonId: null,
+        });
+        created++;
+        const ids = toAssign(craftId);
+        if (ids.length) {
+          await m.people.bulk({ ids, patch: { chapterId: chapter.id } });
+          people += ids.length;
+        }
+      }
+      toast.success(
+        `${created} chapter${created === 1 ? '' : 's'} created, ${people === 1 ? '1 person' : `${people} people`} assigned`,
+      );
     } catch (e) {
       toast.error(errorText(e));
     }
