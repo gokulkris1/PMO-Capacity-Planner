@@ -1,0 +1,137 @@
+.pcp-system-wrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-800) var(--page-gutter);
+}
+
+.pcp-system {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  text-align: center;
+}
+
+.pcp-system__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-200);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.pcp-system--danger .pcp-system__icon {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.pcp-system--warning .pcp-system__icon {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.pcp-system__eyebrow {
+  margin-bottom: var(--space-050);
+  font-size: var(--text-overline-size);
+  line-height: var(--text-overline-line);
+  font-weight: 600;
+  letter-spacing: var(--text-overline-tracking);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.pcp-system__title {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-line);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.pcp-system__body {
+  margin-top: var(--space-100);
+  color: var(--color-text-secondary);
+}
+
+.pcp-system__actions {
+  display: flex;
+  gap: var(--space-100);
+  margin-top: var(--space-300);
+}
+
+.pcp-system__ref {
+  padding: 0 var(--space-050);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-size: var(--text-table-size);
+}
+
+.pcp-system-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--color-bg);
+}
+
+.pcp-system-page__brand {
+  padding: var(--space-300) var(--page-gutter);
+}
+
+.pcp-system-page__main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-300) var(--page-gutter) var(--space-800);
+}
+
+.pcp-system-page__main:focus {
+  outline: none;
+}
+
+/* Demo banner strip above page content (ST-10#AC2). */
+.pcp-demo-banner {
+  padding: var(--space-200) var(--page-gutter) 0;
+}
+
+/* QA-011: the maintenance notice says it is retrying on its own. */
+.pcp-system__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+  margin-top: var(--space-150);
+  font-size: var(--text-table-size);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-system__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pcp-system-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pcp-system-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcp-system__pulse {
+    animation: none;
+  }
+}

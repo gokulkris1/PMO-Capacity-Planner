@@ -1,0 +1,194 @@
+/* People (PPL-01…06) page styles — tokens only. */
+.pp-banner {
+  margin-bottom: var(--space-200);
+}
+.pp-tabs {
+  margin-bottom: var(--space-200);
+}
+/* One row at 1280 px with every filter shown (QA-036): the band filter never shrinks below its full label
+   ("Band (QBR1): all"); search and the other filters give way first. */
+.pp-search {
+  flex: 1 1 136px;
+  max-width: 240px;
+  min-width: 120px;
+}
+.pp-filter {
+  flex: 0 1 116px;
+  min-width: 100px;
+}
+.pp-filter--sm {
+  flex-basis: 124px;
+}
+.pp-filter--band {
+  flex: 0 0 auto;
+  min-width: 148px;
+}
+.pp-table {
+  table-layout: fixed;
+  /* Person keeps at least 220 px next to the fixed columns (712 px with Chapter and Team folded in): narrower than
+     that the table scrolls inside its card with the check box and person columns sticky (QA-006). */
+  min-width: 932px;
+}
+.pp-table .pcp-tbl-check,
+.pp-table .pp-col-person {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.pp-table .pcp-tbl-check ~ .pp-col-person {
+  left: 40px;
+}
+.pp-table .pp-col-person {
+  border-right: 1px solid var(--color-border);
+}
+.pp-table thead .pcp-tbl-check,
+.pp-table thead .pp-col-person {
+  z-index: var(--z-sticky-corner);
+}
+.pp-table .pcp-tbl-check {
+  width: 40px;
+}
+.pp-table .pp-col-person {
+  width: auto;
+}
+.pp-person {
+  display: block;
+  width: 100%;
+}
+.pp-col-chapter {
+  width: 128px;
+}
+.pp-col-team {
+  width: 116px;
+}
+.pp-trunc {
+  display: block;
+}
+.pp-col-above {
+  width: 72px;
+}
+.pp-col-below {
+  width: 160px;
+}
+.pp-col-target {
+  width: 72px;
+}
+.pp-table .pp-col-q {
+  width: 80px;
+  padding-left: var(--space-050);
+  padding-right: var(--space-100);
+}
+.pp-table .pcp-tbl-menu {
+  width: 48px;
+}
+.pp-table thead th.pp-col-q {
+  text-align: right;
+}
+.pp-qhead {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 14px;
+}
+.pp-qhead__sub {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.pp-table th.is-basis {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+.pp-sub-org {
+  display: none;
+}
+.pp-grouptoggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+  font-weight: 600;
+}
+/* Below 1440 px Chapter and Team fold into the name cell so QBR1–QBR4 stay visible (PPL-01#AC2). */
+@media (min-width: 1440px) {
+  .pp-table {
+    min-width: 1176px;
+  }
+}
+@media (max-width: 1439px) {
+  .pp-table .pp-col-wide {
+    display: none;
+  }
+  .pp-sub-org {
+    display: inline;
+  }
+}
+
+/* person drawer */
+.pd-craft-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.4fr) 96px 32px;
+  gap: var(--space-100);
+  align-items: center;
+}
+.pd-craft-row__err {
+  grid-column: 1 / -1;
+}
+.pd-load-row__q {
+  display: flex;
+  flex-direction: column;
+  width: 72px;
+  flex: 0 0 auto;
+}
+.pd-load-row__bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pd-load-row .pcp-band-value {
+  width: 88px;
+  flex: 0 0 auto;
+}
+.pd-actions {
+  justify-content: flex-end;
+  gap: var(--space-050);
+}
+
+/* import */
+.ip-file {
+  position: relative;
+  cursor: pointer;
+}
+.ip-file:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.ip-preview {
+  max-height: 320px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* craft requests */
+.cr-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-100);
+}
+.cr-diff__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+}
+.cr-diff__item--removed .pcp-craft-chip {
+  text-decoration: line-through;
+}
+.cr-diff__sign {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  width: 10px;
+  text-align: center;
+}
+.cr-actions {
+  justify-content: flex-end;
+}
+.cr-decided > li {
+  padding: var(--space-100) var(--space-300);
+}

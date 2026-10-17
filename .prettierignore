@@ -1,0 +1,22 @@
+# Prettier ignore (PL-11#AC3). Created by WP-0; owned by package I afterwards.
+# Generated output and vendored files
+node_modules/
+dist/
+.claude/
+coverage/
+playwright-report/
+test-results/
+.netlify/
+package-lock.json
+
+# Documentation and BA-owned markdown are not reformatted
+docs/
+*.md
+
+# shared/** is kept byte-identical to BACKLOG.md §4.3 (frozen contracts; diff with the
+# command in docs/release/handoff-WP0.md). I may format it when a contract change is approved.
+shared/
+
+# No Prettier parser for these
+netlify.toml
+.env.example

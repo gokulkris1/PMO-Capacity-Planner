@@ -1,0 +1,156 @@
+/* Projects (PPL-07) — tokens only. */
+.pj-pipeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-100);
+}
+.pj-pipeline > li {
+  display: flex;
+}
+.pj-stage {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-025);
+  width: 100%;
+  padding: var(--space-150) var(--space-200);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pj-stage:hover {
+  border-color: var(--color-border-input);
+}
+.pj-stage.is-active {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+.pj-stage__label {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.pj-stage__count {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+}
+@media (max-width: 1023px) {
+  .pj-pipeline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pj-search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+.pj-filter {
+  flex: 0 1 170px;
+  min-width: 130px;
+}
+.pj-table {
+  table-layout: fixed;
+  /* Project keeps at least 220 px next to the fixed columns (908 px, or 760 px below 1440 px where Jira and Owner fold
+     into the name cell): narrower than that the table scrolls with the name column sticky (QA-006). */
+  min-width: 1128px;
+}
+.pj-name__jira {
+  display: none;
+}
+@media (max-width: 1439px) {
+  .pj-table {
+    min-width: 980px;
+  }
+  .pj-table .pj-col-jira,
+  .pj-table .pj-col-owner {
+    display: none;
+  }
+  .pj-name__jira {
+    display: inline;
+  }
+}
+.pj-table .pj-col-name {
+  width: auto;
+}
+.pj-col-jira {
+  width: 72px;
+}
+.pj-col-tribe {
+  width: 96px;
+}
+.pj-col-stage {
+  width: 112px;
+}
+.pj-col-status {
+  width: 88px;
+}
+.pj-col-dates {
+  width: 200px;
+}
+.pj-table .pj-col-num {
+  width: 88px;
+}
+.pj-col-owner {
+  width: 76px;
+}
+.pj-qhead {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 14px;
+}
+.pj-qhead__sub {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.pj-name__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+.pj-name {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.pj-dates {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pj-gap {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.pj-gap-pill {
+  display: inline-block;
+  padding: 0 var(--space-075);
+  border-radius: var(--radius-xs);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.pj-cell {
+  justify-content: flex-end;
+  gap: var(--space-050);
+}
+.pj-signal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-400);
+}
+.pj-signal__value {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+}

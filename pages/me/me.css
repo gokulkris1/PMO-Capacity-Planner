@@ -1,0 +1,71 @@
+/* My plan (PPL-05) — tokens only. */
+.me-crafts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-075);
+}
+.me-craftlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-075);
+}
+.me-craftlist > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-100);
+}
+.me-load,
+.me-offers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+}
+.me-load > li,
+.me-offers > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  min-height: 28px;
+}
+.me-load > li .pcp-load {
+  flex: 1 1 auto;
+}
+.me-load__q {
+  flex: 0 0 40px;
+  font-weight: 600;
+  font-size: var(--text-table-size);
+}
+.me-proposals > li {
+  padding: var(--space-150) var(--space-300);
+}
+.me-proposals__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.me-proposals__pct {
+  min-width: 40px;
+  text-align: right;
+}
+
+/* UAT-10: "Tribe · dates · proposed by X 5 days ago" wraps only between its parts. */
+.me-proposals__meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-050);
+}
+.me-proposals__meta > span:not(:last-child)::after {
+  content: '·';
+  margin-left: var(--space-050);
+}
+.me-proposals__when {
+  white-space: nowrap;
+}

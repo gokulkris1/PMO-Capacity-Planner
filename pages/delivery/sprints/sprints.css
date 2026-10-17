@@ -1,0 +1,104 @@
+/* Sprint planning (SH-05) — tokens only. */
+.sp-bar {
+  gap: var(--space-150);
+}
+.sp-bar .pcp-field {
+  min-width: 200px;
+}
+.sp-grid__name {
+  min-width: 220px;
+}
+.sp-grid__cell {
+  padding: var(--space-050) var(--space-075);
+  vertical-align: top;
+}
+.sp-grid tbody td,
+.sp-grid tbody th {
+  height: auto;
+  padding-top: var(--space-075);
+  padding-bottom: var(--space-075);
+}
+.sp-cell-btn {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.sp-cell-btn:hover .sp-cell--empty {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.sp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-025);
+  min-width: 84px;
+}
+.sp-cell--empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-tertiary);
+}
+.sp-cell__line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+  margin-left: auto;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+}
+.sp-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-300);
+}
+.sp-desc {
+  margin: 0;
+}
+.sp-figures {
+  display: flex;
+  gap: var(--space-300);
+  margin: 0;
+}
+.sp-figures dt {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+}
+.sp-figures dd {
+  margin: 0;
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sp-okr-children {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-200);
+  border-left: 2px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+}
+.sp-members > li {
+  padding-left: var(--space-200);
+  padding-right: var(--space-200);
+}
+.sp-members__util {
+  display: inline-block;
+  width: 72px;
+}

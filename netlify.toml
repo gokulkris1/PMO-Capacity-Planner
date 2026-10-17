@@ -3,9 +3,25 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[build.environment]
+  # Node 22: global WebSocket for the Neon transaction pool, matches CI (PL-08).
+  NODE_VERSION = "22"
+  # Functions runtime too: the Neon Pool needs the global WebSocket that Node 22 provides.
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
+
 [dev]
-  command = "npm run dev"
+  command = "npm run dev:vite"
   targetPort = 3000
+
+[functions]
+  node_bundler = "esbuild"
+
+# Scheduled functions run on published deploys only (A-11). Times are UTC.
+[functions."jira-sync-scheduler"]
+  schedule = "0 5 * * *"
+
+[functions."jira-sync-worker"]
+  schedule = "*/10 * * * *"
 
 # Route /api/* to the catch-all Netlify Function
 [[redirects]]
@@ -19,3 +35,25 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Security headers (HS-12). The CSP is ENFORCED from 2.0 (HS-12#AC2): it shipped Report-Only first, and every e2e run
+# serves this exact policy enforced from `vite preview` (vite.config.ts reads it from here) with zero violations
+# across the demo and live suites. Rollback without a code change: rename the header to
+# `Content-Security-Policy-Report-Only` (docs/release/RUNBOOK.md). Netlify snippet injection or third-party scripts
+# need their origins added here first.
+# Release 3.0 (embedded Jira routes) will need `frame-ancestors 'self' https://*.atlassian.net` on those routes only.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Frame-Options = "SAMEORIGIN"
+
+# Hashed build assets are immutable.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

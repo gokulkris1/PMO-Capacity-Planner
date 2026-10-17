@@ -1,0 +1,302 @@
+/* styles/tokens.css — PMO Capacity Planner design tokens (source: docs/product/DESIGN_SYSTEM.md) */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  /* Brand & interaction */
+  --color-primary: #1f5fcc;
+  --color-primary-hover: #184ea8;
+  --color-primary-pressed: #123f8a;
+  --color-primary-subtle: #ebf2fd;
+  /* Primary text on --color-primary-subtle (active nav, selection counts); AA in both themes (QA-030). */
+  --color-primary-on-subtle: var(--color-primary);
+  --color-primary-border: #b7cdf3;
+  --color-on-primary: #ffffff;
+  --color-link: #1f5fcc;
+  --color-link-hover: #184ea8;
+  --color-focus: #4c8df6;
+  /* Chrome */
+  --color-nav-bg: #0b1f3a;
+  --color-nav-hover: #13294b;
+  --color-nav-active: #1b3a66;
+  --color-nav-border: #1b3a66;
+  --color-nav-text: #c7d2e3;
+  --color-nav-text-active: #ffffff;
+  --color-nav-muted: #8c9db8;
+  --color-nav-accent: #6fa4ff;
+  /* Surfaces */
+  --color-bg: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #eef1f6;
+  --color-surface-hover: #f5f8fc;
+  --color-chip-bg: #e3e8ef;
+  --color-scrim: rgba(11, 31, 58, 0.48);
+  /* Borders */
+  --color-border: #dce2ea;
+  --color-border-strong: #b8c3d2;
+  --color-border-input: #7d8aa0;
+  --color-border-input-hover: #5e6c84;
+  /* Text */
+  --color-text: #14233b;
+  --color-text-secondary: #44546f;
+  --color-text-tertiary: #5e6c84;
+  --color-text-disabled: #9aa6b8;
+  --color-text-inverse: #ffffff;
+  --color-tooltip-bg: #14233b;
+  --color-tooltip-text: #ffffff;
+  --color-skeleton: #e3e8ef;
+  --color-skeleton-shine: #f4f6f9;
+  /* Status */
+  --color-success: #17744a;
+  --color-success-bg: #e6f4ec;
+  --color-success-border: #a8d5bc;
+  --color-success-fill: #2e9e6a;
+  --color-warning: #a35200;
+  --color-warning-bg: #fff3e0;
+  --color-warning-border: #f5c98a;
+  --color-warning-fill: #f5a524;
+  --color-danger: #c22e2e;
+  --color-danger-bg: #fdecec;
+  --color-danger-border: #f2b8b8;
+  --color-danger-fill: #c22e2e;
+  --color-danger-hover: #a32424;
+  --color-danger-pressed: #8a1e1e;
+  --color-info: #0b6e8f;
+  --color-info-bg: #e3f3f8;
+  --color-info-border: #a9d8e6;
+  --color-info-fill: #0b6e8f;
+  --color-neutral: #44546f;
+  --color-neutral-bg: #eef1f6;
+  --color-neutral-border: #b8c3d2;
+  --color-neutral-fill: #5e6c84;
+  /* Utilisation bands */
+  --band-bench-fg: var(--color-text-secondary);
+  --band-bench-bg: var(--color-surface-sunken);
+  --band-under-fg: var(--color-warning);
+  --band-under-bg: var(--color-warning-bg);
+  --band-on-target-fg: var(--color-success);
+  --band-on-target-bg: var(--color-success-bg);
+  --band-over-fg: var(--color-danger);
+  --band-over-bg: var(--color-danger-bg);
+  /* Charts */
+  --chart-1: #1f5fcc;
+  --chart-2: #00897a;
+  --chart-3: #c77a12;
+  --chart-4: #6e56cf;
+  --chart-5: #c2417a;
+  --chart-6: #4e7f2a;
+  --chart-7: #2e93d1;
+  --chart-8: #9a5b2e;
+  --chart-other: #5c6b82;
+  --chart-target: #0b1f3a;
+  --chart-bench: #e3e8ef;
+  --chart-bench-hatch: #b8c3d2;
+  --chart-grid: #e3e8ef;
+  --chart-axis: #5e6c84;
+  /* Elevation */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(11, 31, 58, 0.08);
+  --elevation-2: 0 4px 12px rgba(11, 31, 58, 0.12);
+  --elevation-3: 0 12px 32px rgba(11, 31, 58, 0.18);
+
+  /* Theme-independent tokens */
+  --font-sans:
+    'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-display-size: 28px;
+  --text-display-line: 36px;
+  --text-display-weight: 600;
+  --text-h1-size: 24px;
+  --text-h1-line: 32px;
+  --text-h1-weight: 600;
+  --text-h2-size: 20px;
+  --text-h2-line: 28px;
+  --text-h2-weight: 600;
+  --text-h3-size: 16px;
+  --text-h3-line: 24px;
+  --text-h3-weight: 600;
+  --text-body-size: 14px;
+  --text-body-line: 20px;
+  --text-body-weight: 400;
+  --text-table-size: 13px;
+  --text-table-line: 18px;
+  --text-caption-size: 12px;
+  --text-caption-line: 16px;
+  --text-overline-size: 11px;
+  --text-overline-line: 16px;
+  --text-overline-tracking: 0.04em;
+  --text-kpi-size: 28px;
+  --text-kpi-line: 36px;
+  --space-0: 0;
+  --space-025: 2px;
+  --space-050: 4px;
+  --space-075: 6px;
+  --space-100: 8px;
+  --space-150: 12px;
+  --space-200: 16px;
+  --space-250: 20px;
+  --space-300: 24px;
+  --space-400: 32px;
+  --space-500: 40px;
+  --space-600: 48px;
+  --space-800: 64px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-sticky-corner: 11;
+  --z-page-header: 20;
+  --z-sidebar: 100;
+  --z-topbar: 110;
+  --z-dropdown: 1000;
+  --z-drawer: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+  --z-tooltip: 1400;
+  --z-skip-link: 1500;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --sidebar-width: 248px;
+  --sidebar-collapsed: 64px;
+  --topbar-height: 56px;
+  --page-gutter: 24px;
+  --drawer-sm: 480px;
+  --drawer-lg: 720px;
+  --dialog-sm: 400px;
+  --dialog-md: 560px;
+  --dialog-lg: 800px;
+  --control-height-sm: 28px;
+  --control-height-md: 32px;
+  --control-height-lg: 40px;
+  --row-compact: 32px;
+  --row-comfortable: 40px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-primary: #2f6fdb;
+  --color-primary-hover: #255fc4;
+  --color-primary-pressed: #1f55b0;
+  --color-primary-subtle: #1a2c4d;
+  --color-primary-on-subtle: var(--color-link);
+  --color-primary-border: #2f4c7e;
+  --color-on-primary: #ffffff;
+  --color-link: #7ea8f5;
+  --color-link-hover: #a3c2f8;
+  --color-focus: #6fa4ff;
+  --color-nav-bg: #0a1220;
+  --color-nav-hover: #121c30;
+  --color-nav-active: #1b2b47;
+  --color-nav-border: #1b2b47;
+  --color-bg: #0e1522;
+  --color-surface: #141c2b;
+  --color-surface-raised: #1a2436;
+  --color-surface-sunken: #101827;
+  --color-surface-hover: #1a2436;
+  --color-chip-bg: #2a3447;
+  --color-scrim: rgba(0, 0, 0, 0.6);
+  --color-border: #2a3447;
+  --color-border-strong: #3a465c;
+  --color-border-input: #6b7a93;
+  --color-border-input-hover: #8d9ab0;
+  --color-text: #e6ebf2;
+  --color-text-secondary: #b4bfcf;
+  --color-text-tertiary: #8d9ab0;
+  --color-text-disabled: #5d6a80;
+  --color-text-inverse: #14233b;
+  --color-tooltip-bg: #e6ebf2;
+  --color-tooltip-text: #14233b;
+  --color-skeleton: #1f2a3d;
+  --color-skeleton-shine: #26324a;
+  --color-success: #4cc38a;
+  --color-success-bg: #10291e;
+  --color-success-border: #2b6b4b;
+  --color-success-fill: #4cc38a;
+  --color-warning: #f0a54a;
+  --color-warning-bg: #2e2210;
+  --color-warning-border: #6b4a1a;
+  --color-warning-fill: #f5a524;
+  --color-danger: #f07171;
+  --color-danger-bg: #33181a;
+  --color-danger-border: #6e2a2d;
+  --color-danger-fill: #c22e2e;
+  --color-info: #4fb5d6;
+  --color-info-bg: #0f2731;
+  --color-info-border: #1d5266;
+  --color-info-fill: #4fb5d6;
+  --color-neutral: #b4bfcf;
+  --color-neutral-bg: #101827;
+  --color-neutral-border: #3a465c;
+  --color-neutral-fill: #8d9ab0;
+  --chart-1: #4c82eb;
+  --chart-2: #00998a;
+  --chart-3: #c07f22;
+  --chart-4: #8a76e3;
+  --chart-5: #d45f90;
+  --chart-6: #5c9636;
+  --chart-7: #3a98d8;
+  --chart-8: #be6e38;
+  --chart-other: #8c9ab0;
+  --chart-target: #e6ebf2;
+  --chart-bench: #2a3447;
+  --chart-bench-hatch: #3a465c;
+  --chart-grid: #2a3447;
+  --chart-axis: #8d9ab0;
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-2: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --elevation-3: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --page-gutter: 16px;
+  }
+}
+:root[data-embedded] {
+  --page-gutter: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Release 3.0 only: inside Jira, map onto Atlassian tokens (fallbacks = our light values). Not active in 2.0. */
+:root[data-embedded='atlassian'] {
+  --color-text: var(--ds-text, #14233b);
+  --color-text-secondary: var(--ds-text-subtle, #44546f);
+  --color-text-tertiary: var(--ds-text-subtlest, #5e6c84);
+  --color-text-disabled: var(--ds-text-disabled, #9aa6b8);
+  --color-link: var(--ds-link, #1f5fcc);
+  --color-primary: var(--ds-background-brand-bold, #1f5fcc);
+  --color-primary-hover: var(--ds-background-brand-bold-hovered, #184ea8);
+  --color-primary-pressed: var(--ds-background-brand-bold-pressed, #123f8a);
+  --color-primary-subtle: var(--ds-background-selected, #ebf2fd);
+  --color-focus: var(--ds-border-focused, #4c8df6);
+  --color-bg: var(--ds-surface, #f4f6f9);
+  --color-surface: var(--ds-surface-raised, #ffffff);
+  --color-surface-raised: var(--ds-surface-overlay, #ffffff);
+  --color-surface-sunken: var(--ds-surface-sunken, #eef1f6);
+  --color-border: var(--ds-border, #dce2ea);
+  --color-border-input: var(--ds-border-input, #7d8aa0);
+  --color-success: var(--ds-text-success, #17744a);
+  --color-success-bg: var(--ds-background-success, #e6f4ec);
+  --color-warning: var(--ds-text-warning, #a35200);
+  --color-warning-bg: var(--ds-background-warning, #fff3e0);
+  --color-danger: var(--ds-text-danger, #c22e2e);
+  --color-danger-bg: var(--ds-background-danger, #fdecec);
+  --color-info: var(--ds-text-information, #0b6e8f);
+  --color-info-bg: var(--ds-background-information, #e3f3f8);
+  --elevation-1: var(--ds-shadow-raised, 0 1px 2px rgba(11, 31, 58, 0.08));
+  --elevation-2: var(--ds-shadow-overlay, 0 4px 12px rgba(11, 31, 58, 0.12));
+  --elevation-3: var(--ds-shadow-overlay, 0 12px 32px rgba(11, 31, 58, 0.18));
+}

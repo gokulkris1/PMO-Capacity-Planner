@@ -26,3 +26,13 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+.env.*
+!.env.example
+
+# Test and build reports
+coverage/
+playwright-report/
+test-results/
+*_logs.txt
+*_payload.json
+.system_logs.txt

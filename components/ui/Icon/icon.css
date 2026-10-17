@@ -1,0 +1,22 @@
+.pcp-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  color: currentColor;
+  vertical-align: middle;
+}
+
+/* Spinner rotation (LoaderCircle) shared by Button and Spinner. */
+@keyframes pcp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pcp-icon--spin {
+  animation: pcp-spin 0.8s linear infinite;
+}
+
+html.pcp-scroll-locked,
+html.pcp-scroll-locked body {
+  overflow: hidden;
+}

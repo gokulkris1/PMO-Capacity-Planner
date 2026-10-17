@@ -1,0 +1,46 @@
+/* Reports (RP-04) — tokens only. */
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+@media (max-width: 1279px) {
+  .rp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .rp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.rp-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  padding: var(--space-200) var(--space-300) var(--space-300);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.rp-card__icon {
+  color: var(--color-primary);
+}
+.rp-card__title {
+  margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 600;
+}
+.rp-card__body {
+  margin: 0 0 var(--space-100);
+  flex: 1 1 auto;
+  color: var(--color-text-secondary);
+}
+.rp-util {
+  width: 104px;
+}
+.rp-gap {
+  color: var(--color-danger);
+  font-weight: 600;
+}

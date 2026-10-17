@@ -1,0 +1,397 @@
+.pcp-settings {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-400);
+  align-items: start;
+}
+
+@media (max-width: 1023px) {
+  .pcp-settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-200);
+  }
+}
+
+.pcp-settings__nav {
+  position: sticky;
+  top: var(--space-300);
+}
+
+.pcp-settings__nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 1023px) {
+  .pcp-settings__nav {
+    position: static;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .pcp-settings__nav-list {
+    flex-direction: row;
+    gap: var(--space-050);
+    padding-bottom: var(--space-100);
+  }
+}
+
+.pcp-settings__nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  height: 36px;
+  padding: 0 var(--space-150);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.pcp-settings__nav-item:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.pcp-settings__nav-item--active,
+.pcp-settings__nav-item--active:hover {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-on-subtle);
+}
+
+.pcp-settings__content {
+  min-width: 0;
+}
+
+.pcp-settings__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-300);
+  margin-bottom: var(--space-300);
+}
+
+.pcp-settings__section-titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  min-width: 0;
+}
+
+.pcp-settings__section-title {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+}
+
+.pcp-settings__section-desc {
+  color: var(--color-text-secondary);
+}
+
+.pcp-settings__section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-shrink: 0;
+}
+
+.pcp-settings__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  max-width: 720px;
+}
+
+.pcp-settings__body--wide {
+  max-width: none;
+}
+
+.pcp-settings__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.pcp-settings__grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+
+.pcp-settings__grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+
+@media (max-width: 767px) {
+  .pcp-settings__grid-2,
+  .pcp-settings__grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pcp-settings__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-100);
+  width: 100%;
+}
+
+.pcp-settings__footer-note {
+  margin-right: auto;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-300);
+}
+
+.pcp-settings__row + .pcp-settings__row {
+  padding-top: var(--space-200);
+  border-top: 1px solid var(--color-border);
+}
+
+.pcp-settings__row-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-025);
+  min-width: 0;
+}
+
+.pcp-settings__row-title {
+  font-weight: 600;
+}
+
+.pcp-settings__row-desc {
+  color: var(--color-text-secondary);
+}
+
+.pcp-settings__preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-100) var(--space-200);
+  padding: var(--space-150) var(--space-200);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+
+.pcp-settings__preview-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+  font-size: var(--text-table-size);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pcp-settings__inline {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-150);
+}
+
+.pcp-settings__inline > .pcp-field {
+  width: 120px;
+}
+
+.pcp-settings__sep {
+  padding-bottom: var(--space-100);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-settings__plan-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-150);
+}
+
+@media (max-width: 767px) {
+  .pcp-settings__plan-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pcp-settings__plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  padding: var(--space-200);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.pcp-settings__plan--current {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.pcp-settings__plan-name {
+  font-weight: 600;
+}
+
+.pcp-settings__plan ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  font-size: var(--text-table-size);
+  color: var(--color-text-secondary);
+}
+
+.pcp-settings__usage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+
+.pcp-settings__usage-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+}
+
+.pcp-settings__usage-value {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pcp-settings__meter {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.pcp-settings__meter-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.pcp-settings__invite-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pcp-settings__invite-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  padding: var(--space-100) var(--space-150);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.pcp-settings__invite-email {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.pcp-settings__roles {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-100) var(--space-300);
+  margin: 0;
+}
+
+.pcp-settings__roles dt {
+  font-weight: 600;
+}
+
+.pcp-settings__roles dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.pcp-settings__ws-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+
+.pcp-settings__ws-role {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  align-items: center;
+  gap: var(--space-200);
+}
+
+.pcp-settings__muted {
+  color: var(--color-text-tertiary);
+}
+
+.pcp-settings__select-cell {
+  width: 180px;
+}
+
+/* Sticky save bar for multi-card forms (Planning). The margins keep its resting place clear of the last card's help
+   text: scrolled to the end it sits below the content instead of being lifted over it by the sticky offset (QA-035). */
+.pcp-settings__savebar {
+  position: sticky;
+  bottom: var(--space-200);
+  margin-top: var(--space-100);
+  margin-bottom: var(--space-200);
+  z-index: var(--z-page-header);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-100);
+  padding: var(--space-150) var(--space-200);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-2);
+}
+
+/* Settings › Crafts (QA-034): the description wraps to two lines and the holders header stacks, so the table fits. */
+.pcp-settings__desc {
+  display: -webkit-box;
+  min-width: 160px;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.pcp-settings__stacked-head {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 14px;
+}
+
+.pcp-settings__stacked-head .pcp-settings__muted {
+  font-weight: 400;
+}
+
+.pcp-settings__craft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-025);
+}

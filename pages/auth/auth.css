@@ -1,0 +1,140 @@
+.pcp-auth {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  /* Corporate brand rule: the navy of the app's sidebar, then a line of the primary blue (no gradient, ST-07). */
+  border-top: 6px solid var(--color-nav-bg);
+  box-shadow: inset 0 2px 0 var(--color-primary);
+}
+
+.pcp-auth__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-300);
+  padding: var(--space-600) var(--space-200) var(--space-400);
+}
+
+.pcp-auth__main:focus {
+  outline: none;
+}
+
+.pcp-auth__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-150);
+  max-width: 440px;
+  text-align: center;
+}
+
+.pcp-auth__value {
+  color: var(--color-text-secondary);
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+}
+
+.pcp-auth__card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-400);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-2);
+}
+
+@media (max-width: 479px) {
+  .pcp-auth__card {
+    padding: var(--space-300) var(--space-200);
+  }
+}
+
+.pcp-auth__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-050);
+  margin-bottom: var(--space-300);
+}
+
+.pcp-auth__title {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-line);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pcp-auth__subtitle {
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.pcp-auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.pcp-auth__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+  margin-top: var(--space-100);
+}
+
+.pcp-auth__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+}
+
+.pcp-auth__links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-050);
+  color: var(--color-text-secondary);
+}
+
+.pcp-auth__footer {
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.pcp-auth__legal {
+  padding: var(--space-200);
+  color: var(--color-text-tertiary);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  text-align: center;
+}
+
+.pcp-auth__divider {
+  height: 1px;
+  margin: var(--space-100) 0;
+  background: var(--color-border);
+}
+
+.pcp-auth__code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-150);
+}
+
+.pcp-auth__readonly {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pcp-auth__list {
+  margin: 0;
+  padding-left: var(--space-250);
+  color: var(--color-text-secondary);
+}

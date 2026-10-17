@@ -1,94 +1,60 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import Stripe from 'stripe';
-import { neon } from '@neondatabase/serverless';
-import jwt from 'jsonwebtoken';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy');
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is missing");
+/**
+ * POST /api/checkout (HS-06, ST-06): Stripe Checkout for the caller's organisation. Public mode only (404 in
+ * internal mode), Org Admins only (org.billing), 503 when Stripe is not configured; no dummy keys.
+ */
+import { z } from 'zod';
+import { auditCtx, parseWith, requireActor, withApi } from './_lib/api';
+import { audit } from './_lib/audit';
+import { requireOrg } from './_lib/authz';
+import { assertPublicBilling, priceFor, stripeClient } from './_lib/billing';
+import { one } from './_lib/db';
+import { appBaseUrl } from './_lib/env';
+import { forbidden, notFound, upstreamError } from './_lib/errors';
+import { errorFields, log } from './_lib/log';
 
-const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'OPTIONS, POST',
-    'Content-Type': 'application/json',
-};
-
-function fail(msg: string, status = 400) { return { statusCode: status, headers: CORS, body: JSON.stringify({ error: msg }) }; }
-
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-
-// Price mapping 
-const PRICES: Record<string, string> = {
-    'PRO': process.env.STRIPE_PRICE_PRO || 'price_dummy_pro',
-    'MAX': process.env.STRIPE_PRICE_MAX || 'price_dummy_max',
-};
-
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
-    if (event.httpMethod !== 'POST') return fail('Method Not Allowed', 405);
-
-    // 1. Authenticate user
-    const authHeader = event.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return fail('Unauthorized', 401);
-    const token = authHeader.split(' ')[1];
-
-    let userId: string;
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-        userId = decoded.id;
-    } catch {
-        return fail('Invalid token', 401);
-    }
-
-    try {
-        const { plan, orgSlug } = JSON.parse(event.body || '{}');
-        if (!plan || !PRICES[plan]) return fail('Invalid plan selected');
-        if (!orgSlug) return fail('orgSlug required');
-
-        // 2. Validate tenant access
-        const sql = getDb();
-        const rows = await sql`
-            SELECT u.email, u.org_id 
-            FROM users u
-            JOIN organizations o ON u.org_id = o.id
-            WHERE u.id = ${userId} AND o.slug = ${orgSlug}
-        `;
-
-        if (rows.length === 0) return fail('Unauthorized for this tenant', 403);
-        const { email, org_id } = rows[0];
-
-        // 3. Generate Stripe Checkout Session
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            billing_address_collection: 'auto',
-            customer_email: email,
-            line_items: [
-                {
-                    price: PRICES[plan],
-                    quantity: 1,
-                },
-            ],
-            mode: 'subscription',
-            success_url: `${process.env.URL || 'http://localhost:5173'}/o/${orgSlug}?upgrade=success`,
-            cancel_url: `${process.env.URL || 'http://localhost:5173'}/o/${orgSlug}?upgrade=cancelled`,
-            metadata: {
-                userId,
-                orgId: org_id,
-                plan
-            }
-        });
-
-        return {
-            statusCode: 200,
-            headers: CORS,
-            body: JSON.stringify({ url: session.url })
-        };
-    } catch (e: any) {
-        console.error('Checkout error:', e);
-        return fail('Failed to create checkout session: ' + e.message, 500);
-    }
-};
+export const handler = withApi({ fn: 'checkout' }, async (ctx) => {
+  assertPublicBilling();
+  if (ctx.method !== 'POST') throw notFound('Not found');
+  const body = parseWith(
+    z.object({ plan: z.enum(['PRO', 'MAX']), orgSlug: z.string().optional() }),
+    ctx.body,
+    'Invalid plan selected',
+  );
+  const actor = requireActor(ctx);
+  const membership = await one<{ org_id: string; slug: string }>(
+    ctx.db,
+    `SELECT m.org_id, o.slug FROM org_memberships m JOIN organizations o ON o.id = m.org_id WHERE m.user_id = $1`,
+    [actor.userId],
+  );
+  if (!membership) throw forbidden('Unauthorized for this tenant');
+  if (body.orgSlug && body.orgSlug !== membership.slug) throw forbidden('Unauthorized for this tenant');
+  const access = await requireOrg(ctx, membership.org_id, 'org.billing');
+  const price = priceFor(body.plan);
+  const stripe = stripeClient();
+  const base = appBaseUrl();
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      billing_address_collection: 'auto',
+      customer: access.org.stripe_customer_id ? String(access.org.stripe_customer_id) : undefined,
+      customer_email: access.org.stripe_customer_id ? undefined : actor.email,
+      client_reference_id: membership.org_id,
+      line_items: [{ price, quantity: 1 }],
+      success_url: `${base}/o/${membership.slug}/settings/billing?upgrade=success`,
+      cancel_url: `${base}/o/${membership.slug}/settings/billing?upgrade=cancelled`,
+      metadata: { orgId: membership.org_id, plan: body.plan, userId: actor.userId },
+      subscription_data: { metadata: { orgId: membership.org_id, plan: body.plan } },
+    });
+    await audit(ctx.db, auditCtx(ctx), {
+      action: 'billing.checkout_started',
+      orgId: membership.org_id,
+      targetType: 'org',
+      targetId: membership.org_id,
+      after: { plan: body.plan },
+    });
+    return { url: session.url };
+  } catch (e) {
+    log('error', { event: 'stripe.checkout_failed', requestId: ctx.requestId, err: errorFields(e) });
+    throw upstreamError('Billing is not available right now. Try again later.');
+  }
+});

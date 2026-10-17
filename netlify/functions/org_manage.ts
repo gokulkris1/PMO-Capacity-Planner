@@ -1,257 +1,158 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { neon } from '@neondatabase/serverless';
-import jwt from 'jsonwebtoken';
+/**
+ * Legacy /api/org_manage — platform cockpit routes only (ST-09, SEC-17/18).
+ * Org creation moved to POST /api/v2/orgs and workspace creation to POST /api/v2/orgs/:orgId/workspaces:
+ * the old create paths answer 410. Everything else requires platform admin and is audited.
+ */
+import type { Ctx } from './_lib/api';
+import { auditCtx, requireActor, withApi } from './_lib/api';
+import { audit } from './_lib/audit';
+import { UUID_RE } from './_lib/authz';
+import { one, withTx } from './_lib/db';
+import { bestEffort } from './_lib/entity';
+import { GONE_MESSAGE, badRequest, forbidden, gone, notFound } from './_lib/errors';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
-
-const CORS = {
-    'Access-Control-Allow-Origin': process.env.URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Content-Type': 'application/json',
-};
-
-function ok(body: unknown, status = 200) { return { statusCode: status, headers: CORS, body: JSON.stringify(body) }; }
-function fail(msg: string, status = 400) { return { statusCode: status, headers: CORS, body: JSON.stringify({ error: msg }) }; }
-
-const getDb = () => neon(
-    process.env.NETLIFY_DATABASE_URL_UNPOOLED ||
-    process.env.NETLIFY_DATABASE_URL ||
-    process.env.NEON_DATABASE_URL || ''
-);
-
-function generateSlug(name: string) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Math.floor(Math.random() * 1000);
+function platformOnly(ctx: Ctx) {
+  if (!requireActor(ctx).isPlatformAdmin) throw forbidden('Forbidden');
 }
 
-export const handler: Handler = async (event: HandlerEvent) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
+async function listOrgs(ctx: Ctx) {
+  const orgs = await ctx.db.query(
+    `SELECT o.id, o.name, o.slug, o.logo_url, o.plan, o.created_at,
+       (SELECT count(*)::int FROM org_memberships m WHERE m.org_id = o.id) AS user_count,
+       (SELECT count(*)::int FROM org_memberships m WHERE m.org_id = o.id AND m.role = 'ORG_ADMIN') AS admin_count,
+       (SELECT count(*)::int FROM workspaces w WHERE w.org_id = o.id) AS workspace_count,
+       (SELECT count(*)::int FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE w.org_id = o.id) AS project_count,
+       (SELECT count(*)::int FROM resources r JOIN workspaces w ON w.id = r.workspace_id WHERE w.org_id = o.id) AS resource_count,
+       (SELECT max(e.occurred_at) FROM audit_events e WHERE e.org_id = o.id) AS last_activity
+     FROM organizations o ORDER BY o.created_at DESC NULLS LAST`,
+  );
+  const admins = await ctx.db.query(
+    `SELECT u.id, u.email, u.name, m.role, m.org_id FROM org_memberships m JOIN users u ON u.id = m.user_id WHERE m.role = 'ORG_ADMIN' ORDER BY u.name`,
+  );
+  const workspaces = await ctx.db.query(
+    `SELECT w.id, w.name, w.org_id, (SELECT count(*)::int FROM workspace_members wm WHERE wm.workspace_id = w.id) AS member_count
+     FROM workspaces w ORDER BY w.name`,
+  );
+  await audit(ctx.db, auditCtx(ctx, 'platform_admin'), {
+    action: 'support.access',
+    targetType: 'platform',
+    targetId: 'orgs',
+  });
+  return {
+    orgs: orgs.map((o) => ({
+      ...o,
+      admins: admins.filter((a) => a.org_id === o.id),
+      workspaces: workspaces.filter((w) => w.org_id === o.id),
+    })),
+  };
+}
 
-    const authHeader = event.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return fail('Unauthorized', 401);
-
-    let userId: string, userRole: string;
-    try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { id: string; role?: string };
-        userId = decoded.id;
-        userRole = decoded.role || 'USER';
-    } catch { return fail('Invalid token', 401); }
-
-    const sql = getDb();
-
-    try {
-        // ── GET: List all orgs (SUPERUSER only) ──────────────────────
-        if (event.httpMethod === 'GET') {
-            if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
-
-            const orgs = await sql`
-                SELECT o.id, o.name, o.slug, o.logo_url, o.primary_color, o.created_at,
-                    (SELECT COUNT(*)::int FROM users u WHERE u.org_id = o.id) as user_count,
-                    (SELECT COUNT(*)::int FROM users u WHERE u.org_id = o.id AND u.role = 'ORG_ADMIN') as admin_count,
-                    (SELECT COUNT(*)::int FROM workspaces w WHERE w.org_id = o.id) as workspace_count,
-                    (SELECT COUNT(*)::int FROM projects p JOIN workspaces w ON w.id = p.workspace_id WHERE w.org_id = o.id) as project_count,
-                    (SELECT COUNT(*)::int FROM resources r JOIN workspaces w ON w.id = r.workspace_id WHERE w.org_id = o.id) as resource_count
-                FROM organizations o ORDER BY o.created_at DESC
-            `;
-
-            // Get admins per org
-            const admins = await sql`
-                SELECT u.id, u.email, u.name, u.role, u.org_id 
-                FROM users u WHERE u.role IN ('ORG_ADMIN', 'ADMIN') ORDER BY u.name
-            `;
-
-            // Get workspaces per org
-            const workspaces = await sql`
-                SELECT w.id, w.name, w.org_id,
-                    (SELECT COUNT(*)::int FROM workspace_members wm WHERE wm.workspace_id = w.id) as member_count
-                FROM workspaces w ORDER BY w.name
-            `;
-
-            return ok({
-                orgs: orgs.map(o => ({
-                    ...o,
-                    admins: admins.filter(a => a.org_id === o.id),
-                    workspaces: workspaces.filter(w => w.org_id === o.id),
-                }))
-            });
-        }
-
-        // ── POST: Create a new org ───────────────────────────────────
-        // Can be called by SUPERUSER (top-down) or any user without an org (bottom-up)
-        if (event.httpMethod === 'POST') {
-            const subpath = event.path.replace(/^.*\/api\/org_manage/, '');
-
-            // POST /api/org_manage/:orgId/workspace — create workspace in org
-            if (subpath.match(/^\/[^/]+\/workspace$/)) {
-                const orgId = subpath.split('/')[1];
-                const { name } = JSON.parse(event.body || '{}');
-                if (!name) return fail('Workspace name required');
-
-                // Permission: SUPERUSER, ORG_ADMIN (own org), PMO_ADMIN (own org)
-                if (userRole !== 'SUPERUSER') {
-                    const [caller] = await sql`SELECT org_id, role FROM users WHERE id = ${userId}`;
-                    if (caller.org_id !== orgId && !['ORG_ADMIN', 'ADMIN', 'PMO_ADMIN'].includes(caller.role)) {
-                        return fail('Forbidden', 403);
-                    }
-                }
-
-                const [ws] = await sql`
-                    INSERT INTO workspaces (id, org_id, name)
-                    VALUES (gen_random_uuid(), ${orgId}, ${name})
-                    RETURNING id, name
-                `;
-
-                // Add creator as PMO_ADMIN in the new workspace
-                await sql`
-                    INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
-                    VALUES (${userId}, ${ws.id}, ${orgId}, 'PMO_ADMIN', ${userId})
-                    ON CONFLICT DO NOTHING
-                `;
-
-                return ok({ success: true, workspace: ws }, 201);
-            }
-
-            // POST /api/org_manage/:orgId/admin/:adminId/workspace — add admin to workspace
-            if (subpath.match(/^\/[^/]+\/admin\/[^/]+\/workspace$/)) {
-                if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
-                const [, orgId, , adminId] = subpath.split('/');
-                const { workspaceId, role } = JSON.parse(event.body || '{}');
-                if (!workspaceId) return fail('Workspace ID required');
-
-                await sql`
-                    INSERT INTO workspace_members (user_id, workspace_id, org_id, role, invited_by)
-                    VALUES (${adminId}, ${workspaceId}, ${orgId}, ${role || 'PMO_ADMIN'}, ${userId})
-                    ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = EXCLUDED.role
-                `;
-                return ok({ success: true });
-            }
-
-            // POST /api/org_manage/:orgId/admin/:adminId/workspace/:workspaceId — remove admin from workspace
-            // handled in the DELETE section at the bottom of this file.
-
-            // POST /api/org_manage — create org
-            const { orgName, adminEmail, plan, logoUrl, primaryColor } = JSON.parse(event.body || '{}');
-            if (!orgName) return fail('Organization name required');
-
-            // Bottom-up: any user without org. Top-down: superuser only
-            const [caller] = await sql`SELECT org_id, role FROM users WHERE id = ${userId}`;
-            if (caller.org_id && userRole !== 'SUPERUSER') {
-                return fail('You already belong to an organization', 400);
-            }
-
-            const orgSlug = generateSlug(orgName);
-
-            // Create org
-            const [org] = await sql`
-                INSERT INTO organizations (id, name, slug, logo_url, primary_color)
-                VALUES (gen_random_uuid(), ${orgName}, ${orgSlug}, ${logoUrl || null}, ${primaryColor || null})
-                RETURNING id, slug, name
-            `;
-
-            // Create default workspace
-            const [ws] = await sql`
-                INSERT INTO workspaces (id, org_id, name)
-                VALUES (gen_random_uuid(), ${org.id}, 'Default Workspace')
-                RETURNING id
-            `;
-
-            if (userRole === 'SUPERUSER' && adminEmail) {
-                // Top-down: assign admin to this org
-                const cleanEmail = adminEmail.toLowerCase().trim();
-                const existing = await sql`SELECT id FROM users WHERE email = ${cleanEmail}`;
-                let adminId: string;
-
-                if (existing.length > 0) {
-                    adminId = existing[0].id;
-                    await sql`UPDATE users SET org_id = ${org.id}, role = 'ORG_ADMIN' WHERE id = ${adminId}`;
-                } else {
-                    // Auto-create admin
-                    const bcrypt = await import('bcryptjs');
-                    const tempPw = 'Orbit' + Math.random().toString(36).slice(2, 8) + '!';
-                    const hash = await bcrypt.hash(tempPw, 10);
-                    const [newUser] = await sql`
-                        INSERT INTO users (email, password_hash, name, role, plan, org_id)
-                        VALUES (${cleanEmail}, ${hash}, ${cleanEmail.split('@')[0]}, 'ORG_ADMIN', ${plan || 'BASIC'}, ${org.id})
-                        RETURNING id
-                    `;
-                    adminId = newUser.id;
-                    console.log(`[DEV] Created admin ${cleanEmail} with temp password: ${tempPw}`);
-                }
-
-                // Add admin as PMO_ADMIN in default workspace
-                await sql`
-                    INSERT INTO workspace_members (user_id, workspace_id, org_id, role)
-                    VALUES (${adminId}, ${ws.id}, ${org.id}, 'PMO_ADMIN')
-                    ON CONFLICT DO NOTHING
-                `;
-            } else {
-                // Bottom-up: creator becomes ORG_ADMIN
-                await sql`UPDATE users SET org_id = ${org.id}, role = 'ORG_ADMIN' WHERE id = ${userId}`;
-                await sql`
-                    INSERT INTO workspace_members (user_id, workspace_id, org_id, role)
-                    VALUES (${userId}, ${ws.id}, ${org.id}, 'PMO_ADMIN')
-                    ON CONFLICT DO NOTHING
-                `;
-            }
-
-            return ok({ success: true, orgSlug: org.slug, orgId: org.id }, 201);
-        }
-
-        // ── PUT: Update org (superuser) ──────────────────────────────
-        if (event.httpMethod === 'PUT') {
-            if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
-            const subpath = event.path.replace(/^.*\/api\/org_manage/, '');
-            const orgId = subpath.replace(/^\//, '');
-            if (!orgId) return fail('Org ID required');
-
-            const { plan, name } = JSON.parse(event.body || '{}');
-
-            if (plan) {
-                // Update all users in this org to the new plan
-                await sql`UPDATE users SET plan = ${plan} WHERE org_id = ${orgId}`;
-            }
-            if (name) {
-                await sql`UPDATE organizations SET name = ${name} WHERE id = ${orgId}`;
-            }
-
-            return ok({ success: true });
-        }
-
-        // ── DELETE: Delete org (superuser) ────────────────────────────
-        if (event.httpMethod === 'DELETE') {
-            if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
-            const subpath = event.path.replace(/^.*\/api\/org_manage/, '');
-            // DELETE /api/org_manage/:orgId/admin/:adminId/workspace/:workspaceId — remove admin from workspace
-            if (subpath.match(/^\/[^/]+\/admin\/[^/]+\/workspace\/[^/]+$/)) {
-                if (userRole !== 'SUPERUSER') return fail('Forbidden', 403);
-                const [, orgId, , adminId, , workspaceId] = subpath.split('/');
-
-                await sql`DELETE FROM workspace_members WHERE user_id = ${adminId} AND workspace_id = ${workspaceId}`;
-                return ok({ success: true });
-            }
-
-            const orgId = subpath.replace(/^\//, '');
-            if (!orgId) return fail('Org ID required');
-
-            // Cascade: members → allocations → resources → projects → workspaces → users.org_id → org
-            await sql`DELETE FROM workspace_members WHERE org_id = ${orgId}`;
-            const wsIds = await sql`SELECT id FROM workspaces WHERE org_id = ${orgId}`;
-            for (const ws of wsIds) {
-                await sql`DELETE FROM allocations WHERE workspace_id = ${ws.id}`;
-                await sql`DELETE FROM resources WHERE workspace_id = ${ws.id}`;
-                await sql`DELETE FROM projects WHERE workspace_id = ${ws.id}`;
-            }
-            await sql`DELETE FROM workspaces WHERE org_id = ${orgId}`;
-            await sql`UPDATE users SET org_id = NULL, role = 'USER' WHERE org_id = ${orgId}`;
-            await sql`DELETE FROM organizations WHERE id = ${orgId}`;
-
-            return ok({ success: true });
-        }
-
-        return fail('Method not allowed', 405);
-    } catch (e: any) {
-        console.error('[org_manage]', e);
-        return fail('Failed: ' + e.message, 500);
+async function updateOrg(ctx: Ctx, orgId: string) {
+  const body = (ctx.body ?? {}) as { plan?: unknown; name?: unknown };
+  const plan = typeof body.plan === 'string' ? body.plan.toUpperCase() : null;
+  if (plan && !['BASIC', 'PRO', 'MAX', 'ENTERPRISE'].includes(plan))
+    throw badRequest('Invalid plan', { plan: 'Invalid plan' });
+  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null;
+  await withTx(async (q) => {
+    const before = await one(q, `SELECT name, plan FROM organizations WHERE id = $1`, [orgId]);
+    if (!before) throw notFound('Organisation not found');
+    await q.query(
+      `UPDATE organizations SET name = coalesce($2, name), plan = coalesce($3, plan), version = version + 1, updated_at = now(), updated_by = $4 WHERE id = $1`,
+      [orgId, name, plan, requireActor(ctx).userId],
+    );
+    if (plan) {
+      // Rollback safety: v1.1 reads the plan from users.plan (BASIC/PRO/MAX only).
+      await bestEffort(q, `UPDATE users SET plan = $2 WHERE org_id = $1`, [
+        orgId,
+        plan === 'ENTERPRISE' ? 'MAX' : plan,
+      ]);
     }
-};
+    await audit(q, auditCtx(ctx, 'platform_admin'), {
+      action: plan ? 'org.plan_change' : 'org.update',
+      orgId,
+      targetType: 'org',
+      targetId: orgId,
+      before,
+      after: { name: name ?? before.name, plan: plan ?? before.plan },
+    });
+  });
+  return { success: true };
+}
+
+/** Workspace-scoped tables, deleted before the workspaces of a deleted org (one transaction, ARC-09). */
+const WS_TABLES = [
+  'allocations',
+  'demand_lines',
+  'marketplace_offers',
+  'craft_change_requests',
+  'resources',
+  'projects',
+  'delivery_snapshots',
+  'sync_jobs',
+  'integration_mappings',
+  'external_identities',
+  'tribe_calibrations',
+  'planview_previews',
+  'workspace_integrations',
+  'workspace_members',
+];
+
+async function deleteOrg(ctx: Ctx, orgId: string) {
+  await withTx(async (q) => {
+    const before = await one(q, `SELECT name, slug FROM organizations WHERE id = $1`, [orgId]);
+    if (!before) throw notFound('Organisation not found');
+    for (const t of WS_TABLES) {
+      await q.query(`DELETE FROM ${t} WHERE workspace_id IN (SELECT id FROM workspaces WHERE org_id = $1)`, [orgId]);
+    }
+    await q.query(`DELETE FROM workspaces WHERE org_id = $1`, [orgId]);
+    await q.query(`UPDATE users SET org_id = NULL, token_version = token_version + 1 WHERE org_id = $1`, [orgId]);
+    await bestEffort(
+      q,
+      `UPDATE users SET role = 'USER' WHERE id IN (SELECT user_id FROM org_memberships WHERE org_id = $1) AND role <> 'SUPERUSER'`,
+      [orgId],
+    );
+    await q.query(`DELETE FROM org_memberships WHERE org_id = $1`, [orgId]);
+    for (const t of ['crafts', 'tribes', 'chapters', 'org_teams', 'invitations'])
+      await q.query(`DELETE FROM ${t} WHERE org_id = $1`, [orgId]);
+    await q.query(`DELETE FROM organizations WHERE id = $1`, [orgId]);
+    await audit(q, auditCtx(ctx, 'platform_admin'), {
+      action: 'org.delete',
+      orgId,
+      targetType: 'org',
+      targetId: orgId,
+      before,
+    });
+  });
+  return { success: true };
+}
+
+export const handler = withApi({ fn: 'org_manage' }, async (ctx) => {
+  const parts = ctx.subpath.split('/').filter(Boolean);
+  if (ctx.method === 'POST') {
+    // SEC-17/18: org and workspace creation now go through /api/v2 with ORG_ADMIN checks.
+    throw gone(GONE_MESSAGE);
+  }
+  platformOnly(ctx);
+  if (ctx.method === 'GET' && parts.length === 0) return listOrgs(ctx);
+  const orgId = parts[0];
+  if (!orgId || !UUID_RE.test(orgId)) throw notFound('Not found');
+  if (ctx.method === 'PUT' && parts.length === 1) return updateOrg(ctx, orgId);
+  if (ctx.method === 'DELETE' && parts.length === 1) return deleteOrg(ctx, orgId);
+  if (ctx.method === 'DELETE' && parts.length === 5 && parts[1] === 'admin' && parts[3] === 'workspace') {
+    await withTx(async (q) => {
+      await q.query(
+        `DELETE FROM workspace_members WHERE user_id::text = $1 AND workspace_id::text = $2 AND workspace_id IN (SELECT id FROM workspaces WHERE org_id = $3)`,
+        [parts[2], parts[4], orgId],
+      );
+      await audit(q, auditCtx(ctx, 'platform_admin'), {
+        action: 'member.remove',
+        orgId,
+        workspaceId: parts[4],
+        targetType: 'user',
+        targetId: parts[2],
+      });
+    });
+    return { success: true };
+  }
+  throw notFound('Not found');
+});

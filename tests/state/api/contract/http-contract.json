@@ -1,0 +1,3831 @@
+{
+  "recordedFrom": "scripts/local-api.ts (the 2.0 function handlers) on the v1.1 production replay after auto-migration (LOCAL_API_DB=v11, CONTEXT=production); user owen.owner (Planner)",
+  "recordedAt": "2026-10-17T01:00:08.348Z",
+  "credentials": {
+    "email": "owen.owner@acme.example",
+    "password": "<redacted>"
+  },
+  "interactions": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "owen.owner@acme.example",
+          "password": "Owen-Owner-2025-wrong"
+        },
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "270b6a78-197d-4e18-b337-5718a5ef48b3"
+        },
+        "body": {
+          "error": "Invalid email or password",
+          "code": "unauthorized",
+          "requestId": "270b6a78-197d-4e18-b337-5718a5ef48b3"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "body": {
+          "email": "owen.owner@acme.example",
+          "password": "Owen-Owner-2025"
+        },
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "4fd913a3-d802-4fd0-81b3-71786a47ac36"
+        },
+        "body": {
+          "user": {
+            "id": "50000000-0000-4000-8000-000000000009",
+            "email": "owen.owner@acme.example",
+            "name": "Owen Owner",
+            "isPlatformAdmin": false,
+            "emailVerified": true,
+            "twoFactorEnabled": false,
+            "role": "WORKSPACE_OWNER",
+            "plan": "MAX",
+            "orgId": "0a000000-0000-4000-8000-0000000000a1",
+            "orgSlug": "acme-bank"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/me",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "3bb3acbf-fbf3-4581-bd3e-89c270a53afe"
+        },
+        "body": {
+          "user": {
+            "id": "50000000-0000-4000-8000-000000000009",
+            "email": "owen.owner@acme.example",
+            "name": "Owen Owner",
+            "isPlatformAdmin": false,
+            "emailVerified": true,
+            "twoFactorEnabled": false
+          },
+          "org": {
+            "id": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Acme Bank",
+            "slug": "acme-bank",
+            "logoUrl": null,
+            "role": "MEMBER",
+            "plan": "MAX",
+            "features": {
+              "qbrSprintModule": false,
+              "aiAssistant": false,
+              "scenarios": false,
+              "planviewScheduledImport": false,
+              "jiraScheduledSync": true
+            },
+            "planning": {
+              "fiscalYearStartMonth": 1,
+              "thresholds": {
+                "benchBelow": 50,
+                "onTargetFrom": 90,
+                "onTargetTo": 105
+              },
+              "defaultTargetUtil": 100,
+              "sprintLengthDays": 14,
+              "planviewOwnership": "locked"
+            }
+          },
+          "workspaces": [
+            {
+              "id": "a1000000-0000-4000-8000-0000000000a1",
+              "name": "Default Workspace",
+              "role": "PLANNER",
+              "implicit": false,
+              "permissions": [
+                "org.view",
+                "data.read",
+                "people.write",
+                "people.write.own",
+                "craftProfile.approve",
+                "projects.write",
+                "demand.write",
+                "allocations.write",
+                "allocations.propose",
+                "allocations.respond.own",
+                "offers.write",
+                "offers.write.own",
+                "scenario.write",
+                "qbr.write",
+                "integrations.view",
+                "integrations.run",
+                "import.csv",
+                "export",
+                "ai.use"
+              ],
+              "linkedPersonId": null
+            },
+            {
+              "id": "a2000000-0000-4000-8000-0000000000a2",
+              "name": "Transformation",
+              "role": "PLANNER",
+              "implicit": false,
+              "permissions": [
+                "org.view",
+                "data.read",
+                "people.write",
+                "people.write.own",
+                "craftProfile.approve",
+                "projects.write",
+                "demand.write",
+                "allocations.write",
+                "allocations.propose",
+                "allocations.respond.own",
+                "offers.write",
+                "offers.write.own",
+                "scenario.write",
+                "qbr.write",
+                "integrations.view",
+                "integrations.run",
+                "import.csv",
+                "export",
+                "ai.use"
+              ],
+              "linkedPersonId": null
+            }
+          ],
+          "entitlements": {
+            "plan": "MAX",
+            "maxPeople": null,
+            "maxProjects": null,
+            "maxWorkspaces": null,
+            "aiQueriesPerMonth": 1000,
+            "scenarios": true,
+            "csvImport": true,
+            "csvExport": true,
+            "pdfExport": true,
+            "integrations": true,
+            "billingVisible": true
+          },
+          "appMode": "public"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/snapshot",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "a2dccd5f-e23f-4fd4-8a90-97b5756ee54a"
+        },
+        "body": {
+          "org": {
+            "id": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Acme Bank",
+            "slug": "acme-bank",
+            "logoUrl": null,
+            "plan": "MAX",
+            "features": {
+              "qbrSprintModule": false,
+              "aiAssistant": false,
+              "scenarios": false,
+              "planviewScheduledImport": false,
+              "jiraScheduledSync": true
+            },
+            "planning": {
+              "fiscalYearStartMonth": 1,
+              "thresholds": {
+                "benchBelow": 50,
+                "onTargetFrom": 90,
+                "onTargetTo": 105
+              },
+              "defaultTargetUtil": 100,
+              "sprintLengthDays": 14,
+              "planviewOwnership": "locked"
+            },
+            "defaultWorkspaceVisibility": "org",
+            "version": 1,
+            "updatedAt": "2026-10-17T00:59:27.425Z",
+            "updatedBy": null
+          },
+          "workspace": {
+            "id": "a1000000-0000-4000-8000-0000000000a1",
+            "orgId": "0a000000-0000-4000-8000-0000000000a1",
+            "name": "Default Workspace",
+            "dataVersion": 1,
+            "createdAt": "2025-01-10T00:00:00.000Z"
+          },
+          "people": [
+            {
+              "id": "r-gokul",
+              "name": "Gokul Gurijala",
+              "email": null,
+              "role": "Project Manager",
+              "type": "Permanent",
+              "department": "PMO",
+              "location": null,
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": null,
+              "homeTribeId": null,
+              "linkedUserId": null,
+              "primaryCraft": null,
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-kerrie",
+              "name": "Kerrie Dalton",
+              "email": null,
+              "role": "Programme Manager",
+              "type": "Contractor",
+              "department": "PMO",
+              "location": null,
+              "totalCapacity": 80,
+              "dailyRate": null,
+              "teamId": "t4",
+              "chapterId": null,
+              "homeTribeId": null,
+              "linkedUserId": null,
+              "primaryCraft": null,
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": ["Budgeting"],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-maria",
+              "name": "Maria Kelly",
+              "email": null,
+              "role": "Product Manager",
+              "type": "Permanent",
+              "department": "Digital",
+              "location": null,
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t2",
+              "chapterId": null,
+              "homeTribeId": null,
+              "linkedUserId": null,
+              "primaryCraft": "product-mgmt",
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-1700000000001",
+              "name": "Mary Vithalani",
+              "email": null,
+              "role": "Automation Product Manager",
+              "type": "Permanent",
+              "department": "",
+              "location": null,
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": null,
+              "chapterId": null,
+              "homeTribeId": null,
+              "linkedUserId": null,
+              "primaryCraft": "business-analysis",
+              "secondaryCrafts": [],
+              "tribeAffinity": [],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-noma",
+              "name": "Noma Odigie",
+              "email": "noma.odigie@acme.example",
+              "role": "Scrum Master",
+              "type": "Permanent",
+              "department": "PMO",
+              "location": null,
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": null,
+              "homeTribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "linkedUserId": "50000000-0000-4000-8000-000000000005",
+              "primaryCraft": "scrum-master",
+              "secondaryCrafts": [
+                {
+                  "craftId": "business-analysis",
+                  "proficiency": 2,
+                  "maxPct": 30
+                }
+              ],
+              "tribeAffinity": ["16de2007-ba17-4010-ba88-7261b9e0013e", "c95d7978-71d9-45fa-a036-8b6c7bdfdfba"],
+              "skills": ["Agile", "Jira"],
+              "targetUtil": 90,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "r-tom",
+              "name": "Tom Hayes",
+              "email": "tom.hayes@acme.example",
+              "role": "",
+              "type": "Permanent",
+              "department": "",
+              "location": "Dublin",
+              "totalCapacity": 100,
+              "dailyRate": null,
+              "teamId": "t1",
+              "chapterId": null,
+              "homeTribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "linkedUserId": "50000000-0000-4000-8000-000000000001",
+              "primaryCraft": "project-mgmt",
+              "secondaryCrafts": [
+                {
+                  "craftId": "delivery-lead",
+                  "proficiency": 3,
+                  "maxPct": 40
+                }
+              ],
+              "tribeAffinity": ["16de2007-ba17-4010-ba88-7261b9e0013e"],
+              "skills": [],
+              "targetUtil": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            }
+          ],
+          "projects": [
+            {
+              "id": "p-ledger",
+              "name": "Ledger",
+              "status": "Planning",
+              "priority": "Medium",
+              "description": "",
+              "startDate": null,
+              "endDate": null,
+              "budget": null,
+              "tribeId": "c95d7978-71d9-45fa-a036-8b6c7bdfdfba",
+              "stage": "Pipeline",
+              "initiatedOn": null,
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": "PV-9",
+              "source": "planview",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "p-legacy",
+              "name": "Legacy Migration",
+              "status": "Active",
+              "priority": "Medium",
+              "description": "",
+              "startDate": "2025-01-01",
+              "endDate": "2027-12-31",
+              "budget": 250000,
+              "tribeId": null,
+              "stage": null,
+              "initiatedOn": null,
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "p-nebula",
+              "name": "Nebula",
+              "status": "Planning",
+              "priority": "Medium",
+              "description": "",
+              "startDate": "2027-01-01",
+              "endDate": "2027-12-31",
+              "budget": null,
+              "tribeId": "ce9e4e4a-228d-4da6-b642-ff4a3bbd38dc",
+              "stage": "Initiated",
+              "initiatedOn": null,
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "p-1700000000002",
+              "name": "Operations Uplift",
+              "status": "Active",
+              "priority": "Low",
+              "description": "",
+              "startDate": null,
+              "endDate": null,
+              "budget": null,
+              "tribeId": null,
+              "stage": null,
+              "initiatedOn": null,
+              "ownerUserId": null,
+              "jiraKey": null,
+              "planviewId": null,
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "p-phoenix",
+              "name": "Phoenix",
+              "status": "Active",
+              "priority": "High",
+              "description": "Payments rebuild",
+              "startDate": "2026-10-01",
+              "endDate": "2027-06-30",
+              "budget": null,
+              "tribeId": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "stage": "In Flight",
+              "initiatedOn": "2026-06-01",
+              "ownerUserId": null,
+              "jiraKey": "PHX",
+              "planviewId": null,
+              "source": "manual",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            }
+          ],
+          "allocations": [
+            {
+              "id": "alloc-mobile-7",
+              "resourceId": "r-1700000000001",
+              "projectId": "p-1700000000002",
+              "percentage": 70,
+              "startDate": null,
+              "endDate": null,
+              "craftId": null,
+              "source": "planview",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000005",
+              "resourceId": "r-gokul",
+              "projectId": "p-nebula",
+              "percentage": 100,
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "craftId": "project-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000004",
+              "resourceId": "r-kerrie",
+              "projectId": "p-ledger",
+              "percentage": 30,
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000003",
+              "resourceId": "r-maria",
+              "projectId": "p-phoenix",
+              "percentage": 120,
+              "startDate": "2026-10-01",
+              "endDate": "2027-03-31",
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000002",
+              "resourceId": "r-noma",
+              "projectId": "p-ledger",
+              "percentage": 40,
+              "startDate": null,
+              "endDate": null,
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000001",
+              "resourceId": "r-noma",
+              "projectId": "p-phoenix",
+              "percentage": 60,
+              "startDate": "2026-10-01",
+              "endDate": "2026-12-31",
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "a-1712000000006",
+              "resourceId": "r-noma",
+              "projectId": "p-nebula",
+              "percentage": 25,
+              "startDate": "2027-04-01",
+              "endDate": "2027-06-30",
+              "craftId": "business-analysis",
+              "source": "marketplace",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            },
+            {
+              "id": "1",
+              "resourceId": "r-tom",
+              "projectId": "p-legacy",
+              "percentage": 50,
+              "startDate": null,
+              "endDate": null,
+              "craftId": null,
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.441Z",
+              "updatedBy": null
+            }
+          ],
+          "demand": [
+            {
+              "id": "b214dd52-0817-4fea-8107-aa501478080e",
+              "projectId": "p-ledger",
+              "quarterKey": "2027-Q1",
+              "craftId": "business-analysis",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
+            },
+            {
+              "id": "e64e1d52-8f3a-4ba7-8541-a1eec01c2d76",
+              "projectId": "p-nebula",
+              "quarterKey": "2027-Q2",
+              "craftId": "business-analysis",
+              "fte": 0.5,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
+            },
+            {
+              "id": "e973166b-5dcd-49a2-bfaa-2c7defeb1d76",
+              "projectId": "p-nebula",
+              "quarterKey": "2027-Q2",
+              "craftId": "delivery-lead",
+              "fte": 1,
+              "status": "Forecast",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
+            },
+            {
+              "id": "2b78841d-2d21-4c1e-9376-43f12306bab6",
+              "projectId": "p-phoenix",
+              "quarterKey": "2026-Q4",
+              "craftId": "scrum-master",
+              "fte": 1.5,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": null,
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
+            },
+            {
+              "id": "b47c8c18-3572-45c6-822e-23c5f4a32b29",
+              "projectId": "p-phoenix",
+              "quarterKey": "2027-Q1",
+              "craftId": "project-mgmt",
+              "fte": 2,
+              "status": "Confirmed",
+              "ownerUserId": null,
+              "note": "ramp up",
+              "createdAt": "2026-10-17T00:59:27.503Z",
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.503Z",
+              "updatedBy": null
+            }
+          ],
+          "tribes": [
+            {
+              "id": "ce9e4e4a-228d-4da6-b642-ff4a3bbd38dc",
+              "name": "Digital",
+              "leadName": null,
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "9a05e8e1-0ecd-4428-993e-1566287b5303",
+              "name": "Digital Experience",
+              "leadName": null,
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "c95d7978-71d9-45fa-a036-8b6c7bdfdfba",
+              "name": "Lending",
+              "leadName": null,
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "16de2007-ba17-4010-ba88-7261b9e0013e",
+              "name": "Payments",
+              "leadName": null,
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            }
+          ],
+          "chapters": [],
+          "teams": [
+            {
+              "id": "t4",
+              "name": "Delivery",
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "t2",
+              "name": "Digital Planning",
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "t1",
+              "name": "Programme Management",
+              "archived": false,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            }
+          ],
+          "crafts": [
+            {
+              "id": "programme-mgmt",
+              "name": "Programme Management",
+              "short": "PgM",
+              "description": "Multi-project programmes, benefits and governance",
+              "family": null,
+              "archived": false,
+              "sortOrder": 1,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "project-mgmt",
+              "name": "Project Management",
+              "short": "PM",
+              "description": "Plan, run and close a single project",
+              "family": null,
+              "archived": false,
+              "sortOrder": 2,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "scrum-master",
+              "name": "Scrum Master / Agile Delivery",
+              "short": "SM",
+              "description": "Sprint facilitation, flow, impediments",
+              "family": null,
+              "archived": false,
+              "sortOrder": 3,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "product-mgmt",
+              "name": "Product Management",
+              "short": "PdM",
+              "description": "Backlog ownership, discovery, roadmaps",
+              "family": null,
+              "archived": false,
+              "sortOrder": 4,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "business-analysis",
+              "name": "Business Analysis",
+              "short": "BA",
+              "description": "Requirements, process mapping, acceptance",
+              "family": null,
+              "archived": false,
+              "sortOrder": 5,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "digital-planning",
+              "name": "Digital Planning",
+              "short": "DP",
+              "description": "Portfolio sequencing, roadmap and demand planning",
+              "family": null,
+              "archived": false,
+              "sortOrder": 6,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "change-mgmt",
+              "name": "Change & Adoption",
+              "short": "CM",
+              "description": "Stakeholder readiness, comms, training",
+              "family": null,
+              "archived": false,
+              "sortOrder": 7,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "pmo-analytics",
+              "name": "PMO Analytics & Reporting",
+              "short": "AN",
+              "description": "Dashboards, status reporting, capacity data",
+              "family": null,
+              "archived": false,
+              "sortOrder": 8,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "risk-governance",
+              "name": "Risk, Governance & Compliance",
+              "short": "RG",
+              "description": "RAID, audit, regulatory gates",
+              "family": null,
+              "archived": false,
+              "sortOrder": 9,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "vendor-mgmt",
+              "name": "Vendor & Commercial Management",
+              "short": "VM",
+              "description": "Contracts, SOWs, supplier delivery",
+              "family": null,
+              "archived": false,
+              "sortOrder": 10,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "release-coord",
+              "name": "Release & Delivery Coordination",
+              "short": "RC",
+              "description": "Release trains, cutover, dependency tracking",
+              "family": null,
+              "archived": false,
+              "sortOrder": 11,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "tooling-admin",
+              "name": "Jira / Tooling Administration",
+              "short": "JA",
+              "description": "Jira, Planview and workflow configuration",
+              "family": null,
+              "archived": false,
+              "sortOrder": 12,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "delivery-lead",
+              "name": "delivery-lead",
+              "short": "X7AC",
+              "description": null,
+              "family": null,
+              "archived": false,
+              "sortOrder": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            },
+            {
+              "id": "x",
+              "name": "x",
+              "short": "X9DD",
+              "description": null,
+              "family": null,
+              "archived": false,
+              "sortOrder": 100,
+              "version": 1,
+              "updatedAt": "2026-10-17T00:59:27.460Z",
+              "updatedBy": null
+            }
+          ],
+          "offers": [],
+          "craftRequests": [],
+          "delivery": null,
+          "serverTime": "2026-10-17T01:00:08.147Z"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people/r-gokul",
+        "body": {
+          "version": 1,
+          "patch": {
+            "targetUtil": 95
+          }
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "11541393-adcc-485a-ae3f-1552df9e9356"
+        },
+        "body": {
+          "id": "r-gokul",
+          "name": "Gokul Gurijala",
+          "email": null,
+          "role": "Project Manager",
+          "type": "Permanent",
+          "department": "PMO",
+          "location": null,
+          "totalCapacity": 100,
+          "dailyRate": null,
+          "teamId": "t1",
+          "chapterId": null,
+          "homeTribeId": null,
+          "linkedUserId": null,
+          "primaryCraft": null,
+          "secondaryCrafts": [],
+          "tribeAffinity": [],
+          "skills": [],
+          "targetUtil": 95,
+          "version": 2,
+          "updatedAt": "2026-10-17T01:00:08.161Z",
+          "updatedBy": {
+            "id": "50000000-0000-4000-8000-000000000009",
+            "name": "Owen Owner"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people/r-gokul",
+        "body": {
+          "version": 1,
+          "patch": {
+            "targetUtil": 80
+          }
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "c4bec7f5-5b7f-4353-8536-711048ce6a3d"
+        },
+        "body": {
+          "error": "This record changed",
+          "code": "conflict",
+          "requestId": "c4bec7f5-5b7f-4353-8536-711048ce6a3d",
+          "current": {
+            "id": "r-gokul",
+            "name": "Gokul Gurijala",
+            "email": null,
+            "role": "Project Manager",
+            "type": "Permanent",
+            "department": "PMO",
+            "location": null,
+            "totalCapacity": 100,
+            "dailyRate": null,
+            "teamId": "t1",
+            "chapterId": null,
+            "homeTribeId": null,
+            "linkedUserId": null,
+            "primaryCraft": null,
+            "secondaryCrafts": [],
+            "tribeAffinity": [],
+            "skills": [],
+            "targetUtil": 95,
+            "version": 2,
+            "updatedAt": "2026-10-17T01:00:08.161Z",
+            "updatedBy": {
+              "id": "50000000-0000-4000-8000-000000000009",
+              "name": "Owen Owner"
+            }
+          },
+          "changedBy": {
+            "id": "50000000-0000-4000-8000-000000000009",
+            "name": "Owen Owner"
+          },
+          "changedAt": "2026-10-17T01:00:08.161Z"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/allocations/batch",
+        "body": {
+          "ops": [
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            },
+            {
+              "op": "delete",
+              "id": "a-1712000000005",
+              "version": 1
+            }
+          ],
+          "label": "too big"
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 413,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "d388647e-3962-4244-b3d3-3c974ff3ac2f"
+        },
+        "body": {
+          "error": "A batch can hold at most 500 changes.",
+          "code": "payload_too_large",
+          "requestId": "d388647e-3962-4244-b3d3-3c974ff3ac2f"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/allocations/batch",
+        "body": {
+          "ops": [
+            {
+              "op": "update",
+              "id": "a-1712000000005",
+              "version": 1,
+              "patch": {
+                "percentage": 33
+              }
+            }
+          ],
+          "label": "contract"
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "929b36d0-2c92-4e5a-bf81-25fedb66dd9a"
+        },
+        "body": {
+          "upserted": [
+            {
+              "id": "a-1712000000005",
+              "resourceId": "r-gokul",
+              "projectId": "p-nebula",
+              "percentage": 33,
+              "startDate": "2027-01-01",
+              "endDate": "2027-06-30",
+              "craftId": "project-mgmt",
+              "source": "manual",
+              "state": "confirmed",
+              "notes": null,
+              "externalRef": null,
+              "demandLineId": null,
+              "proposedAt": null,
+              "proposedBy": null,
+              "respondedAt": null,
+              "version": 2,
+              "updatedAt": "2026-10-17T01:00:08.203Z",
+              "updatedBy": {
+                "id": "50000000-0000-4000-8000-000000000009",
+                "name": "Owen Owner"
+              }
+            }
+          ],
+          "deleted": [],
+          "dataVersion": 3
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/demand",
+        "body": {
+          "projectId": "p-nebula",
+          "quarterKey": "2027-Q5",
+          "craftId": "project-mgmt",
+          "fte": 99,
+          "status": "Forecast",
+          "ownerUserId": null,
+          "note": null
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "9592851a-55eb-4154-b2ad-0fdaee491ce2"
+        },
+        "body": {
+          "error": "Check the highlighted fields.",
+          "code": "bad_request",
+          "requestId": "9592851a-55eb-4154-b2ad-0fdaee491ce2",
+          "fields": {
+            "quarterKey": "Use YYYY-Qn",
+            "fte": "Use 0\u201350 FTE"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/v2/workspaces/a1000000-0000-4000-8000-0000000000a1/people",
+        "body": {
+          "name": ""
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "0de654c9-421d-4040-bffd-7b6a65a3e1b1"
+        },
+        "body": {
+          "error": "Check the highlighted fields.",
+          "code": "bad_request",
+          "requestId": "0de654c9-421d-4040-bffd-7b6a65a3e1b1",
+          "fields": {
+            "name": "Enter a name"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/workspaces/00000000-0000-4000-8000-000000000000/snapshot",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "52338e6a-e463-46a4-a992-dd38a489c13d"
+        },
+        "body": {
+          "error": "Workspace not found",
+          "code": "not_found",
+          "requestId": "52338e6a-e463-46a4-a992-dd38a489c13d"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/workspace",
+        "body": {},
+        "csrf": true
+      },
+      "response": {
+        "status": 410,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "785162f3-873e-444a-b188-864d2bbd700a"
+        },
+        "body": {
+          "error": "PMO Capacity Planner was updated. Reload the page.",
+          "code": "gone",
+          "requestId": "785162f3-873e-444a-b188-864d2bbd700a"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/ai",
+        "body": {
+          "wsId": "a1000000-0000-4000-8000-0000000000a1",
+          "question": "How are we doing?"
+        },
+        "csrf": true
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "42b7b92d-06ad-4787-809e-a067a88d4c43"
+        },
+        "body": {
+          "error": "This feature is turned off for your organisation.",
+          "code": "feature_disabled",
+          "requestId": "42b7b92d-06ad-4787-809e-a067a88d4c43"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "body": null,
+        "csrf": true
+      },
+      "response": {
+        "status": 204,
+        "headers": {
+          "content-type": "",
+          "x-request-id": "9a68033f-8422-47e6-a46b-1984e88549ae"
+        },
+        "body": null
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "path": "/api/v2/me",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "e4960dfc-e7c9-4cd2-9201-d9a94035582f"
+        },
+        "body": {
+          "error": "Sign in to continue.",
+          "code": "unauthorized",
+          "requestId": "e4960dfc-e7c9-4cd2-9201-d9a94035582f"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/auth/refresh",
+        "body": null,
+        "csrf": false
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json",
+          "x-request-id": "bbcb6d58-77cb-41bc-b584-8c9581cb1add"
+        },
+        "body": {
+          "error": "Your session has ended. Sign in again.",
+          "code": "unauthorized",
+          "requestId": "bbcb6d58-77cb-41bc-b584-8c9581cb1add"
+        }
+      }
+    }
+  ]
+}

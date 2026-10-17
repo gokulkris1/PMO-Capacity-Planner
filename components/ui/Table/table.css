@@ -1,0 +1,168 @@
+/*
+ * Hand-built semantic tables (DESIGN_SYSTEM §8.9) for grids that DataTable does not fit: multi-row headers,
+ * grouped rows, inline editors. Sticky header and first column, compact density, sortable headers (SortTh).
+ */
+.pcp-tbl-wrap {
+  overflow: auto;
+  max-width: 100%;
+  position: relative;
+}
+.pcp-tbl-wrap--tall {
+  max-height: calc(100vh - 260px);
+}
+.pcp-tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-table-size);
+  line-height: var(--text-table-line);
+  color: var(--color-text);
+}
+.pcp-tbl caption {
+  text-align: left;
+}
+.pcp-tbl th,
+.pcp-tbl td {
+  padding: 0 var(--space-150);
+  height: var(--row-comfortable);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+  background: var(--color-surface);
+}
+.pcp-tbl--compact th,
+.pcp-tbl--compact td {
+  height: var(--row-compact);
+}
+.pcp-tbl tbody th {
+  font-weight: 400;
+}
+.pcp-tbl .pcp-num {
+  text-align: right;
+}
+.pcp-tbl thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: 36px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pcp-tbl thead tr:nth-child(2) th {
+  top: 36px;
+}
+.pcp-tbl .pcp-tbl-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 1px solid var(--color-border);
+}
+.pcp-tbl thead .pcp-tbl-sticky {
+  z-index: var(--z-sticky-corner);
+}
+.pcp-tbl tbody tr:hover > * {
+  background: var(--color-surface-hover);
+}
+.pcp-tbl tbody tr.is-selected > * {
+  background: var(--color-primary-subtle);
+}
+.pcp-tbl tbody tr.is-clickable {
+  cursor: pointer;
+}
+.pcp-tbl tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.pcp-tbl tr.pcp-tbl-group > * {
+  background: var(--color-surface-sunken);
+  font-weight: 600;
+}
+.pcp-tbl tr.pcp-tbl-total > * {
+  background: var(--color-surface-sunken);
+  font-weight: 600;
+}
+.pcp-tbl .pcp-tbl-check {
+  width: 40px;
+  padding-right: 0;
+}
+.pcp-tbl .pcp-tbl-menu {
+  width: 48px;
+  text-align: right;
+  padding-left: 0;
+}
+.pcp-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-050);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pcp-sort:hover {
+  color: var(--color-text);
+}
+.pcp-sort__icon {
+  color: var(--color-text-tertiary);
+  opacity: 0;
+}
+.pcp-sort:hover .pcp-sort__icon,
+.pcp-sort:focus-visible .pcp-sort__icon,
+.pcp-sort[data-sorted='true'] .pcp-sort__icon {
+  opacity: 1;
+}
+.pcp-sort[data-sorted='true'] .pcp-sort__icon {
+  color: var(--color-text-secondary);
+}
+.pcp-tbl th.pcp-num .pcp-sort {
+  flex-direction: row-reverse;
+}
+.pcp-rowlink {
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+}
+.pcp-rowlink:hover .pcp-person__name,
+.pcp-rowlink:hover .pcp-rowlink__label {
+  color: var(--color-link);
+  text-decoration: underline;
+}
+.pcp-rowlink:focus-visible {
+  outline-offset: 2px;
+}
+.pcp-link {
+  color: var(--color-link);
+  text-decoration: none;
+}
+.pcp-link:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+.pcp-tbl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-wrap: wrap;
+  padding: var(--space-150) var(--space-200);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 56px;
+}
+.pcp-tbl-toolbar--bulk {
+  background: var(--color-primary-subtle);
+}
+.pcp-tbl-toolbar__count {
+  font-weight: 600;
+  color: var(--color-primary-on-subtle);
+}

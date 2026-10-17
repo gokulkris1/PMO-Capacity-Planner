@@ -1,0 +1,127 @@
+.pcp-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-150);
+  min-width: 0;
+  padding: var(--space-200) var(--space-300) var(--space-300);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.pcp-chart__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-200);
+}
+
+.pcp-chart__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-025);
+  min-width: 0;
+}
+
+.pcp-chart__title {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-line);
+  font-weight: 600;
+}
+
+.pcp-chart__caption {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-chart__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  flex-shrink: 0;
+}
+
+.pcp-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-050) var(--space-200);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pcp-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+}
+
+.pcp-chart__body {
+  min-width: 0;
+}
+
+.pcp-chart__body .recharts-surface:focus,
+.pcp-chart__body .recharts-wrapper:focus {
+  outline: none;
+}
+
+.pcp-chart__body text {
+  font-variant-numeric: tabular-nums;
+}
+
+.pcp-chart__tooltip {
+  min-width: 200px;
+  padding: var(--space-100) var(--space-150);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-2);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+}
+
+.pcp-chart__tooltip-title {
+  margin-bottom: var(--space-050);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pcp-chart__tooltip-basis {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+.pcp-chart__tooltip ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pcp-chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  padding: 1px 0;
+}
+
+.pcp-chart__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.pcp-chart__tooltip-name {
+  flex: 1 1 auto;
+  color: var(--color-text-secondary);
+}
+
+.pcp-chart__tooltip-value {
+  color: var(--color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

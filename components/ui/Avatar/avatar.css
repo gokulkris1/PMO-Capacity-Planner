@@ -1,0 +1,87 @@
+.pcp-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-on-subtle);
+  font-weight: 600;
+  user-select: none;
+}
+
+.pcp-avatar--24 {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  line-height: 12px;
+}
+.pcp-avatar--28 {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+  line-height: 14px;
+}
+.pcp-avatar--32 {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+}
+.pcp-avatar--40 {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}
+
+.pcp-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.pcp-avatar__dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-info);
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+/* PersonLabel */
+.pcp-person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.pcp-person__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pcp-person__name {
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pcp-person__sub {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pcp-avatar__initials::before {
+  content: attr(data-initials);
+}
