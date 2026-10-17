@@ -38,3 +38,22 @@ test('an inline script is refused by the CSP (the policy is enforced, not report
   expect(i).toBeGreaterThanOrEqual(0);
   consoleErrors.splice(i, 1);
 });
+
+test('a page chunk missing after a new deploy reloads the app once instead of failing', async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.goto('/demo/w/demo/home');
+  await expect(page.locator('main h1')).toHaveText('Home');
+  let refused = 0;
+  await page.route(/\/assets\/ReportsPage-[^/]+\.js$/, async (route) => {
+    if (refused++ === 0) return route.fulfill({ status: 404, contentType: 'text/html', body: 'gone' });
+    return route.continue();
+  });
+  await page.getByRole('link', { name: 'Reports' }).click();
+  await expect(page.locator('main h1')).toHaveText('Reports');
+  expect(refused).toBeGreaterThanOrEqual(2);
+  // The refused chunk is the expected console error.
+  for (let i = consoleErrors.length - 1; i >= 0; i--)
+    if (/404|dynamically imported module|ReportsPage/.test(consoleErrors[i])) consoleErrors.splice(i, 1);
+});
