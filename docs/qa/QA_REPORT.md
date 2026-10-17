@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Release | 2.0.0 (branch `claude/resource-allocation-pmo-visibility-oi2g5f`, tested at `ec7415c`) |
+| Release | 2.0.0 (branch `claude/resource-allocation-pmo-visibility-oi2g5f`, round 1 tested at `ec7415c`, round 2 re-tested at `0844ca5`) |
 | Test dates | 17 Oct 2026 |
 | Tester | Independent adversarial QA (Claude), on behalf of gokulkris1 |
 | Scope | `docs/product/BACKLOG.md` Must stories (104), §6.3 acceptance checklist (45 items), `PRODUCT_BRIEF.md`, `RELEASE_NOTES_2.0.md`, `RUNBOOK.md` |
@@ -23,7 +23,153 @@ Gates on the fix round: `npm run ci` (547 Jest tests, 39 suites), `npm run check
 `npm run build && npm run check:bundle` and `npm run test:e2e` (demo and live full stack) all green. The schema is
 now at version 9 (0008 revoked sessions for QA-019, 0009 craft short codes for QA-034).
 
+## Re-test (round 2)
+
+Independent re-test of the fix round at `0844ca5`, 17 Oct 2026. QA re-ran every gate. Each defect marked Fixed was
+checked again with its original repro steps on the live local full stack (`LOCAL_API_DB=v11`, plus PostgreSQL 16
+for the deploy scenarios). A regression sweep was run around each change, and the 7 deferrals were reviewed. Round-2
+evidence is under `$QA/r2/`, and gate logs are under `$QA/logs/r2/`. No product code was changed by QA.
+
+### R2.1 Verdict
+
+**Go with conditions.** The conditions are operational only; go-live needs no further code change.
+
+- **Fixes hold.** All 11 Critical and Major defects are verified fixed. No Critical or Major defect was reopened or
+  newly found.
+- **Gates are green.** `npm run ci` passes with 549 tests in 40 suites (548 passed, 1 skipped: QA-039). The e2e suite passes with 92 of 92 tests, demo and live full stack. Guardrails are clean
+  (158 files), Home JS is 167.0 KB gzip against a 350 KB budget, and `npm audit --omit=dev` reports 0.
+- **Security and same-number checks hold.** The authorisation matrix is still 621 of 621. axe now reports
+  **0 findings in 180 scans**, down from 28 pages with serious findings. The same-number guarantee holds across
+  every view checked on live data.
+- **Open items.** 29 of the 31 claimed fixes are verified; 2 Cosmetic fixes are reopened (QA-032, QA-036). One new
+  Minor defect was found (QA-039), and one deferral reason is not accepted (QA-033).
+
+Conditions for go-live:
+
+1. **Run RUNBOOK step 2.4 (`db:migrate`) before publishing, despite "recommended, not required".** Without it, every
+   v1.1 user who opens the app while the first requests migrate lands on the sign-in page (QA-039). Users with a 2.0
+   cookie session are fine, but on go-live day every user is a v1.1 user.
+2. **Set `FROM_EMAIL` (CA-4) before go-live.** Until then, invitation, reset and 2FA emails come from the v1.1
+   `noreply@orbitspace.io` sender (QA-024, deferred).
+3. **PO sign-off on the data-mapping deferrals QA-014, QA-015 and QA-022.** QA-014 is visible on the standard v1.1
+   replay: a craft named `delivery-lead` with code `X7AC` appears in the craft pickers, in Demand › By craft, in the
+   Marketplace filter and in Tom Hayes's My plan.
+4. **Run the checks this sandbox cannot.** These are unchanged from §10: the Neon dry run (RUNBOOK 1.4, which also
+   decides whether step 2.4 is required), the customer Jira site and Planview sandbox (§6.3-32/34/37), Netlify headers
+   on the deploy preview, and Lighthouse.
+
+### R2.2 Gates
+
+| Gate | Round 2 result | Log |
+|---|---|---|
+| `npm run ci` (lint, typecheck, format, Jest, build) | Exit 0: 549 tests, 40 suites, 548 passed, 1 skipped (QA-039, new in round 2) | `$QA/logs/r2/npm-run-ci-2.log` |
+| `npm run check:guardrails -- --all` | 158 files clean | `$QA/logs/r2/guardrails.log` |
+| `npm run check:bundle` | Home JS 167.0 KB gzip (budget 350 KB) | `$QA/logs/r2/bundle.log` |
+| `npm run test:e2e` (demo + live full stack) | Exit 0: 92 passed (demo + live), including the 16 QA tests in `tests/e2e/qa/` | `$QA/logs/r2/e2e-2.log` |
+| `npm audit` | 0 production vulnerabilities (`--omit=dev`). Two moderate dev-only advisories have appeared since round 1 with the same lockfile: `esbuild` under `tsx` (dev server on Windows) and `sprintf-js` under Jest | `$QA/logs/r2/audit.log` |
+| Authorisation matrix (69 endpoints × 9 roles) | 621 of 621 | `$QA/r2/security-matrix.json` |
+| Targeted security checks | 118: 114 pass. The 4 others are expected: AC02-4 now answers 401 instead of 403 (stricter, because of the QA-008 fix), and AC02-7b, SEC01-c and PL01-size are the same false alarms as in round 1 | `$QA/r2/security-checks.json` |
+| Session regression checks (QA-001, QA-008, QA-019) | 10 of 10 | `$QA/r2/sessions-checks.json` |
+| Live functional flows (every role) | 151 checks: 137 pass, 1 N/T, 13 first-run fails, all triaged as script or data issues (§R2.5) | `$QA/r2/functional-results.jsonl` |
+| axe, 36 routes and states × 1440/1280/768 × light/dark | 180 scans, **0 violations** (round 1: 28 pages with serious findings) | `$QA/r2/shots/report-tom-all-all.json` |
+| Screenshots | 360 sweep + 124 flow captures | `$QA/r2/shots/`, `$QA/r2/flows/` |
+
+During the first round-2 `npm run ci`, `tests/backend/migrations.test.ts` › "gives up waiting for a lock held
+elsewhere without applying" timed out at Jest's default 5 s, while QA's browser runs were loading the machine. It
+passed 3 times in isolation and in the clean re-run. The test is not new, but its 5 s budget is tight for a PGlite
+start-up on a loaded CI runner, so it may flake.
+
+### R2.3 Defect-by-defect result
+
+"Verified" means the original repro was re-run and now gives the expected result.
+
+| ID | Sev | Dev resolution | Round 2 | Evidence |
+|---|---|---|---|---|
+| QA-005 | Critical | Fixed e1f3dd0 | **Verified.** Live import of the same CSV: "1 created, 1 updated, 0 skipped". Zoë is created with PM, SM:2:30 and BA:1:20, target 90 and skills; Noma is matched by email and updated. Bad rows are still flagged in the preview. | `r2/functional-results.jsonl` (F6-import), `r2/flows/F6-import-result.png` |
+| QA-001 | Major | Fixed 913eb8d | **Verified.** Login returns `{ user }` (AC03-1c). The 2FA second step returns `{ user }`. Refresh, `/session` and `/me` carry no JWT for cookie clients. A v1.1 token is still exchanged for a cookie with `{ user }` (AC03-2a/b). A bearer refresh still returns a token, but only to v1.1 bearer holders. | `r2/security-checks.json`, `r2/sessions-checks.json` |
+| QA-002 | Major | Fixed eb91245 | **Verified.** Live, all 6 people × QBR1–4 (24 cells) match on People, the Allocations person rows and Capacity Outlook (person pivot), including Noma at 111 % (target 90). | `r2/shots/tom-1440x900-light-allocations.png`, `…-people.png`, `r2/flows/R2-same-outlook-person.png` |
+| QA-003 | Major | Fixed 7ae3a2f | **Verified.** As Owen, on the locked Planview booking: PATCH `source`, `percentage`, `externalRef`, `notes` and `state`, a batch update, a batch source change and DELETE all get 409. Creating a booking with `source: planview` gets 400. The row is unchanged. (A PATCH that sets `externalRef` to its current value is a no-op 200.) | `r2/functional-results.jsonl` (R2-QA-003) |
+| QA-004 | Major | Fixed 5c7ef43 | **Verified.** Unstaffed demand per quarter matches at the same moment in the open-demand CSV, Demand › By craft and the Marketplace (QBR1 0.9, QBR2 3.0, QBR3 1.3, QBR4 0). Home, Tribes (Payments "Gap 0.9"), Projects ("In Flight · gap 0.9") and the QBR pack also match for QBR1. | `r2/functional-results.jsonl` (R2-same-unstaffed, R2-same-unstaffed-all), `r2/flows/R2-same-*.png` |
+| QA-006 | Major | Fixed e541c6c, a7dd124 | **Verified.** At 768 px, names are readable on People and Projects, and Allocations chips wrap without overlapping. | `r2/shots/tom-768x1024-light-people.png`, `…-projects.png`, `…-allocations.png` |
+| QA-007 | Major | Fixed e541c6c | **Verified.** axe finds 0 violations on Allocations › By project and on Capacity at 768, and on every other route. | `r2/shots/report-tom-all-all.json` |
+| QA-009 | Major | Fixed 863d6d0 | **Verified.** With egress failing, Jira test, projects, boards and usage all get 502 "Could not reach Jira at acme.atlassian.net. Check the address and try again in a minute." in about 10 ms; nothing is logged as unhandled. The UI toast shows the same text. | `r2/evidence-QA-009.txt`, `r2/functional-results.jsonl` (F8-jira-test) |
+| QA-010 | Major | Fixed 863d6d0 | **Verified against the real `acme.atlassian.net`** with a fake token. Test connection gets 502 "Jira rejected the credentials (401)…", the sync job fails with "Jira rejected the credentials", health is `failed`, and the Home banner shows the reason. | `r2/evidence-QA-010.txt`, `r2/functional-results.jsonl` (F8-sync, F8-home-banner) |
+| QA-011 | Major | Fixed 773608b | **Verified, with a new Minor gap (QA-039).** Tested on PostgreSQL 16 holding v1.1 data, with no manual `db:migrate`. (a) Fresh deploy: the first requests apply 0001–0009 and the user lands on Home in 4 s. (b) Migration lock held by another session for 25 s: a 2.0 cookie session shows "PMO Capacity Planner is being updated … Checking again automatically" and opens Home by itself at 23 s, with no reload. (c) Migration 0009 blocked by a table lock: `statement_timeout` cancels it at about 8 s, the request answers within 9 s (under Netlify's 10 s), the failure is logged as `migration.too_slow`, and a later request applies it. | `r2/QA-011.jsonl`, `r2/QA-011-*.png`, `r2/QA-011-*.api.log` |
+| QA-013 | Major | Fixed fb3b7fb | **Verified.** The confirm dialog lists the people per chapter. 4 chapters are created and 5 of 5 people with an above-the-table craft are assigned. | `r2/functional-results.jsonl` (F7-chapters-create) |
+| QA-008 | Minor | Fixed 197eb6d | **Verified.** After a role change the old token gets 401. A PATCH that sets the same role keeps the session. Self-PATCH keeps working with the fresh cookie. | `r2/security-checks.json` (AC06-2), `r2/sessions-checks.json` |
+| QA-012 | Minor | Fixed cba1da9 | **Verified.** Entering 151 shows "Enter 0–150", the drawer stays open and nothing is saved. Typing a valid value then saves. One harness quirk: Playwright `fill()` into the rejected field produced "9585"; real keyboard input is correct. | `r2/flows/R2-drawer-151.png` |
+| QA-016 | Minor | Fixed cba1da9 | **Verified.** At 390 px: 0 editable cells and no Add booking or Add person. | `r2/functional-results.jsonl` (F10-390) |
+| QA-018 | Minor | Fixed f8a90cd | **Verified.** My plan shows "Approved by Pat PMO". | `r2/flows/F13-approved.png` |
+| QA-019 | Minor | Fixed 197eb6d | **Verified.** After plain sign-out, the same cookie, and the same JWT sent as a bearer, both get 401, and refresh cannot revive it. A second browser stays signed in. Residual risk: a v1.1 token (which has no `jti`) is not revoked by plain sign-out or by the exchange. It expires within 7 days of go-live, and "Sign out of all devices" does revoke it. | `r2/sessions-checks.json` |
+| QA-021 | Minor | Fixed cba1da9 | **Verified.** "Too many attempts. Try again in 4 minutes." | `r2/flows/F1-ratelimit-ui.png` |
+| QA-023 | Minor | Fixed f8a90cd | **Verified.** The Home list is titled "Available", "below 50 % of target", and matches the tile (2 people). | `r2/shots/tom-1440x900-light-home.png` |
+| QA-025 | Minor | Fixed cba1da9 | **Verified** at view-model level (`tests/qa/viewModels.qa.test.ts` now passes). The live seed has no `'TBC'` row. | Jest |
+| QA-026 | Minor | Fixed f8a90cd | **Verified.** The Jira card shows "SYNC FAILING" with "Could not reach Jira…". | `r2/functional-results.jsonl` (F8-calibration-view text) |
+| QA-027 | Minor | Fixed cba1da9 | **Verified.** Signed out: "Sign in first, then enter the 6-digit code…" with a "Sign in to verify" button. | `r2/shots/tom-1440x900-light-verify-email.png` |
+| QA-028 | Minor | Fixed cba1da9 | **Verified.** `people-2026-10-17.csv` and `squad-catalogue-2026-10-17.csv`. | `r2/functional-results.jsonl` (F6-export, F5-export) |
+| QA-029 | Minor | Fixed f8a90cd | **Verified.** The toggle stays off and shows "The AI assistant is not set up on this deployment (no OpenAI key)…". | `r2/flows/R2-ai-toggle.png` |
+| QA-037 | Minor | Fixed 7baf420 | **Verified.** e2e `security.spec.ts` now asserts every HS-12 header. They are still Vite-served, not Netlify-served (see §10). | `$QA/logs/r2/e2e-2.log` |
+| QA-038 | Minor | Fixed f8a90cd | **Verified** live. A new org shows "Start your plan" with Add people and Install sample data. Sample data installs with fresh UUIDs, and a second install gets 409. "Import CSV" is not shown on this live org because it depends on the plan's `csvImport` entitlement, which a new public-mode org does not have. The entitlement check matches PL-07. | `r2/flows/F14-create-org.png`, `r2/functional-results.jsonl` (F14-sample) |
+| QA-030 | Cosmetic | Fixed f8a90cd | **Verified.** 0 `color-contrast` findings on all dark pages. | `r2/shots/report-tom-all-all.json`, `r2/shots/tom-768x1024-dark-settings-members.png` |
+| QA-031 | Cosmetic | Fixed f8a90cd | **Verified.** The cover reads "generated 17 Oct 2026". | `r2/qbr-pack.pdf` |
+| QA-032 | Cosmetic | Fixed cba1da9 | **Reopened.** My plan is fixed ("Tom Hayes · target 100%"). At 1280 px and below, the People row subtitle folds the team into the job-title line and shows "· Programme Management" for Tom Hayes, whose job title is empty: the same separator bug, in code added by the QA-006/QA-036 changes. | `r2/flows/R2-QA-036-people-1280.png`, `r2/shots/tom-768x1024-light-people.png` |
+| QA-034 | Cosmetic | Fixed cba1da9 | **Verified.** The table fits its card at 1440, and the codes are PGM and PDM. | `r2/shots/tom-1440x900-light-settings-crafts.png` |
+| QA-035 | Cosmetic | Fixed cba1da9 | **Verified.** With an unsaved change, scrolled to the bottom, the save bar sits 70 px below the last help text. | `r2/flows/R2-QA-035-planning-bottom-dirty.png` |
+| QA-036 | Cosmetic | Fixed cba1da9 | **Reopened.** "Already exists" and the invite copy are fixed. But the band filter still truncates, to "Band (QBR1): a…", at 768, 1280 and 1440 px, and at 1280 px the filter bar still wraps ("Group: none" drops to a second line). | `r2/flows/R2-QA-036-people-1280.png`, `r2/shots/tom-1440x900-light-people.png` |
+
+### R2.4 Deferred items: are the reasons acceptable?
+
+| ID | Sev | Dev reason (short) | QA view |
+|---|---|---|---|
+| QA-014 | Minor | Changing how v1.1 craft ids migrate needs PO sign-off | **Acceptable as a deferral, but decide before go-live.** It is visible on the standard v1.1 replay, not only on dirty data: `delivery-lead` / `X7AC` appears in pickers, By craft, the Marketplace filter and My plan, and the crafts `x` / `X9DD` exist too. If the PO keeps the migration as is, an admin can rename or archive these crafts after go-live. |
+| QA-015 | Minor | Restoring tribe leads and casing needs a PO rule | **Acceptable.** Both can be edited in Settings › Structure, and it changes no number. |
+| QA-017 | Minor | Virtualisation is a grid rework; first paint ≤ 1.5 s at 500 people | **Acceptable.** It matches the round-1 measurements and is documented in the release notes. |
+| QA-020 | Minor | Today/Window on quarter-shaped pages is a product decision | **Acceptable as a PO decision.** One correction: "every page already uses ?basis=" is not accurate. People, Capacity and Tribe detail do, but Allocations has no time-basis control. |
+| QA-022 | Minor | Mapping part-time capacity to a target changes production data; needs PO decision | **Acceptable, with PO sign-off before go-live.** It is a same-number deviation on Reports (supply 0.8 vs denominator 1.0 FTE for one person). |
+| QA-024 | Minor | Deliberate: the v1.1 sender is the only verified domain until `FROM_EMAIL` is set (CA-4) | **Acceptable only if `FROM_EMAIL` is set before go-live** (condition 2). |
+| QA-033 | Cosmetic | "No untinted Available value found on re-test; Available uses the sunken tint by design" | **Not accepted; still reproducible.** Person rows tint Available cells with the sunken background, but the Allocations group rows show Available totals untinted, while Under and Over totals in the same rows are tinted. Examples: "Programme Management" QBR4 31 %, "Delivery" 0 % and 30 %, "Digital Planning" QBR3–4 0 %. It is Cosmetic and can stay deferred, but the reason should be corrected. Evidence: `r2/shots/tom-1440x900-light-allocations.png`. |
+
+### R2.5 New defects found in round 2
+
+| ID | Sev | Area | Steps to reproduce | Expected | Actual | Evidence | Story / AC |
+|---|---|---|---|---|---|---|---|
+| QA-039 | Minor | Deploy: v1.1 session during migration | PostgreSQL 16 with v1.1 data and no manual `db:migrate`. Hold the migration advisory lock from another session for 25 s, or block migration 0009 with a table lock. Open the app in a browser holding the v1.1 `localStorage.pcp_token`. Separately, try to sign in on `/login` during the migration. | The same "is being updated" notice and automatic retry as a cookie session; afterwards the user is signed in. Sign-in during the migration says the app is being updated. | `POST /api/auth/session` gets 503 `migration_pending`, and the runtime goes straight to the sign-in page with no notice and no retry. It stays there after the migration finishes (92 s observed). The v1.1 token is kept, so a manual reload after the migration signs the user in (verified), as does signing in with the unchanged password. Signing in during the migration shows "Something went wrong. Try again, or quote reference …". Cause: `DataRuntime.boot()` treats an exchange result of `failed` with no CSRF cookie as anonymous. | `r2/QA-011.jsonl` (scenarios lock, slowfile, lock-login, and lock with reload), `r2/QA-011-lock-final.png`, `r2/QA-011-lock-login-login-during-migration.png`; test `tests/qa/deploy.qa.test.ts` › "QA-039 …" (skipped) | AC-03#AC2, SH-07#AC4, §6.3-2 |
+
+Triage of the 13 first-run failures in the live functional flows. None is a product defect:
+
+- **F2-lock:** my script sent a PATCH without the `patch` envelope, which is a no-op 200. The lock was re-checked
+  correctly in R2-QA-003.
+- **F4-gaplink:** the By-craft gap links exist and point to the Marketplace filtered by craft and quarter, but are
+  named by their value ("0.9"), so my selector missed them.
+- **F6-export-formula and F6-report-formula:** the import fixture's formula row is invalid by design, so no formula
+  name existed. Re-checked with a renamed person in R2-csv-formula: People export and the Utilisation-by-person
+  report both prefix `'`.
+- **F6-drawer-save:** caused by the Playwright `fill()` quirk above; keyboard entry saves.
+- **F6-drawer-crafts, F6-band, F7-rename-archive, F8-health, F8-calibration-view, F10-search, F10-titles:** the same
+  selector and expectation mistakes already reclassified as Pass in round 1, with the same evidence.
+- **F9-ai:** expected, because the QA-029 fix now refuses to switch AI on without a key. Re-checked in R2-ai.
+
+### R2.6 Updated counts
+
+| Severity | Round 1 | Fixed and verified | Reopened | Deferred (open) | New in round 2 | **Open after round 2** |
+|---|---:|---:|---:|---:|---:|---:|
+| Blocker | 0 | 0 | 0 | 0 | 0 | **0** |
+| Critical | 1 | 1 | 0 | 0 | 0 | **0** |
+| Major | 10 | 10 | 0 | 0 | 0 | **0** |
+| Minor | 20 | 14 | 0 | 6 | 1 | **7** (QA-014, 015, 017, 020, 022, 024, 039) |
+| Cosmetic | 7 | 4 | 2 | 1 | 0 | **3** (QA-032, 033, 036) |
+| **Total** | 38 | 29 | 2 | 7 | 1 | **10** |
+
+New QA test committed in round 2: `tests/qa/deploy.qa.test.ts`. It has 1 passing test and 1 skipped test, QA-039,
+which fails today for the reason above. The QA test files the developer edited in the fix round still keep every
+original assertion; the round-1 skipped and `fixme` tests were only un-skipped, and further tests were added.
+
+The rest of this report (§1–§11) is the round-1 record and is kept unchanged, apart from the developer's
+"Resolution" column and §0. The §1 verdict is superseded by §R2.1.
+
 ## 1. Verdict
+
+_Round-1 verdict, superseded by §R2.1._
 
 **Go with conditions.**
 
