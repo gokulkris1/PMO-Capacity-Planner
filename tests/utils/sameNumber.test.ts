@@ -10,13 +10,20 @@ import { loadOnDay } from '../../utils/viewModels/core';
 import {
   buildAllocationGrid,
   buildCapacityOutlook,
+  buildCraftBalance,
+  buildDemandGrid,
   buildHome,
+  buildOpenDemand,
   buildPeopleRows,
+  buildProjectRows,
   buildTribeView,
+  unstaffedByCraft,
   utilisationFor,
   type TimeBasis,
 } from '../../utils/viewModels';
-import { demoSnapshot, QUARTERS, TODAY } from './fixtures';
+import { buildQbrPack, type TableSection } from '../../utils/qbrPack';
+import { openDemandLines } from '../../utils/reportData';
+import { alloc, craft, demandLine, demoSnapshot, person, project, QUARTERS, snapshot, TODAY, tribe } from './fixtures';
 
 let s: D.WorkspaceSnapshot;
 beforeAll(async () => {
@@ -179,4 +186,100 @@ describe('same-number guarantee (RP-03#AC3)', () => {
       'on-target',
     );
   });
+});
+
+/**
+ * QA-004: one definition of unstaffed demand (per project × craft × quarter, utils/viewModels/unstaffed.ts) on Home,
+ * Demand, Projects, Tribes, Marketplace, Demand › By craft, the Capacity Outlook helpers, the open-demand CSV and the
+ * QBR pack. Checked on the demo workspace and on the QA scenario where a Product Manager over-staffs a project whose
+ * demand is for a Scrum Master.
+ */
+describe('same unstaffed demand everywhere (QA-004)', () => {
+  const qaScenario = (): D.WorkspaceSnapshot =>
+    snapshot({
+      people: [
+        person('noma', { name: 'Noma Odigie', primaryCraft: 'sm', targetUtil: 90 }),
+        person('maria', { name: 'Maria Kelly', primaryCraft: 'pm' }),
+      ],
+      projects: [
+        project('phoenix', { name: 'Phoenix', tribeId: 'tr1', startDate: '2026-10-01', endDate: '2027-06-30' }),
+        project('ledger', { name: 'Ledger', tribeId: 'tr1' }),
+      ],
+      tribes: [tribe('tr1', 'Payments')],
+      allocations: [
+        alloc('a1', {
+          resourceId: 'noma',
+          projectId: 'phoenix',
+          percentage: 60,
+          startDate: '2026-10-01',
+          endDate: '2026-12-31',
+        }),
+        alloc('a2', { resourceId: 'noma', projectId: 'ledger', percentage: 40 }),
+        alloc('a3', {
+          resourceId: 'maria',
+          projectId: 'phoenix',
+          percentage: 120,
+          startDate: '2026-10-01',
+          endDate: '2027-03-31',
+        }),
+      ],
+      demand: [
+        demandLine('d1', { projectId: 'phoenix', quarterKey: '2026-Q4', craftId: 'sm', fte: 1.5 }),
+        demandLine('d2', { projectId: 'ledger', quarterKey: '2026-Q4', craftId: 'pm', fte: 0.5 }),
+      ],
+      crafts: [craft('pm', 'PM'), craft('sm', 'SM')],
+    });
+
+  const check = (snap: D.WorkspaceSnapshot) => {
+    QUARTERS.forEach((q, qi) => {
+      const open = buildOpenDemand(snap, QUARTERS, { quarterKey: q.key, matchLimit: 0 });
+      const total = open.reduce((x, l) => x + l.openFte, 0);
+      // Home KPI
+      expect(buildHome(snap, QUARTERS, { kind: 'quarter', key: q.key }, t, null).kpis.unstaffedFte).toBeCloseTo(
+        total,
+        2,
+      );
+      // Demand page and Projects table (and the Home "projects with a gap" list)
+      const grid = buildDemandGrid(snap, QUARTERS);
+      expect(grid.reduce((x, d) => x + d.cells[qi].gapFte, 0)).toBeCloseTo(total, 2);
+      expect(buildProjectRows(snap, QUARTERS).reduce((x, r) => x + r.quarters[qi].gapFte, 0)).toBeCloseTo(total, 2);
+      for (const d of grid)
+        expect(d.cells[qi].gapFte).toBeCloseTo(
+          open.filter((l) => l.project.id === d.project.id).reduce((x, l) => x + l.openFte, 0),
+          2,
+        );
+      // Tribes
+      for (const tr of snap.tribes)
+        expect(buildTribeView(snap, QUARTERS, tr.id).gapFte[qi]).toBeCloseTo(
+          open.filter((l) => l.project.tribeId === tr.id).reduce((x, l) => x + l.openFte, 0),
+          2,
+        );
+      // Demand › By craft, the QBR pack's craft table and the Outlook craft pivot
+      const byCraft = unstaffedByCraft(snap, QUARTERS);
+      for (const row of buildCraftBalance(snap, QUARTERS)) {
+        const forCraft = open.filter((l) => l.craftId === row.craft.id).reduce((x, l) => x + l.openFte, 0);
+        expect(row.quarters[qi].gapFte).toBeCloseTo(forCraft, 2);
+        expect(byCraft.get(row.craft.id)?.[qi] ?? 0).toBeCloseTo(forCraft, 2);
+      }
+      // Open-demand CSV
+      const lines = openDemandLines(snap, QUARTERS).filter((x) => x.line.quarterKey === q.key);
+      expect(lines.reduce((x, l) => x + l.open, 0)).toBeCloseTo(total, 2);
+    });
+    // QBR pack: the open-demand table lists exactly the Marketplace lines.
+    const pack = buildQbrPack({ snapshot: snap, quarters: QUARTERS, thresholds: t, generatedOn: TODAY });
+    const openTable = pack.sections.find((x) => x.kind === 'table' && x.title === 'Open demand') as TableSection;
+    expect(openTable.rows).toHaveLength(buildOpenDemand(snap, QUARTERS, { matchLimit: 0 }).length);
+  };
+
+  it('the QA scenario: a Product Manager does not staff Scrum Master demand (0.9 FTE open in QBR1)', () => {
+    const snap = qaScenario();
+    // 0.9 SM open on Phoenix + 0.5 PM on Ledger (Maria's spare PM time on Phoenix does not cover Ledger).
+    expect(buildHome(snap, QUARTERS, { kind: 'quarter', key: '2026-Q4' }, t, null).kpis.unstaffedFte).toBe(1.4);
+    expect(buildTribeView(snap, QUARTERS, 'tr1').gapFte[0]).toBe(1.4);
+    const phoenix = buildDemandGrid(snap, QUARTERS).find((d) => d.project.id === 'phoenix')!.cells[0];
+    expect(phoenix).toMatchObject({ demandFte: 1.5, staffedFte: 0.6, gapFte: 0.9, bookedFte: 1.8 });
+    check(snap);
+  });
+
+  it('the demo workspace', () => check(s));
 });

@@ -134,7 +134,7 @@ export function buildQbrPack(i: QbrPackInput): QbrPackModel {
   sections.push({
     kind: 'table',
     title: 'Supply vs demand by craft',
-    caption: 'Per quarter: supply (above-the-table holders) / committed / demand / gap, in FTE.',
+    caption: 'Per quarter: supply (above-the-table holders) / committed / demand / unstaffed demand, in FTE.',
     columns: ['Craft', ...quarters.map((q) => q.label)],
     align: ['left', ...quarters.map(() => 'right' as const)],
     rows: balance.map((r) => [

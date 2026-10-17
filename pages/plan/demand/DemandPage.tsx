@@ -8,7 +8,13 @@ import { Link } from 'react-router-dom';
 import { Funnel, Map as MapIcon, Plus, Search, TriangleAlert, X } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useQuarters, useWorkspace } from '../../../state';
-import { buildAllocationGrid, buildCapacityOutlook, buildCatalogue, buildDemandGrid } from '../../../utils/viewModels';
+import {
+  buildAllocationGrid,
+  buildCapacityOutlook,
+  buildCatalogue,
+  buildDemandGrid,
+  unstaffedByCraft,
+} from '../../../utils/viewModels';
 import {
   Button,
   Card,
@@ -315,8 +321,13 @@ function ByProject({
                                 </span>
                               ))}
                             </span>
-                            {(c.demandFte > 0 || c.staffedFte > 0) && (
-                              <StaffBar demand={c.demandFte} staffed={c.staffedFte} proposed={c.proposedFte} />
+                            {(c.demandFte > 0 || c.bookedFte > 0) && (
+                              <StaffBar
+                                demand={c.demandFte}
+                                staffed={c.demandFte > 0 ? c.staffedFte : c.bookedFte}
+                                proposed={c.demandFte > 0 ? c.proposedFte : 0}
+                                gap={c.gapFte}
+                              />
                             )}
                           </>
                         );
@@ -371,9 +382,19 @@ function ByProject({
   );
 }
 
-function StaffBar({ demand, staffed, proposed }: { demand: number; staffed: number; proposed: number }) {
+function StaffBar({
+  demand,
+  staffed,
+  proposed,
+  gap,
+}: {
+  demand: number;
+  staffed: number;
+  proposed: number;
+  /** Unstaffed demand (per craft, `utils/viewModels/unstaffed.ts`). */
+  gap: number;
+}) {
   const scale = Math.max(demand, staffed + proposed, 0.1);
-  const gap = Math.max(0, demand - staffed);
   return (
     <span className="dm-staff">
       <span className="dm-staff__track" aria-hidden="true">
@@ -428,11 +449,14 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     });
     return map;
   }, [s, quarters]);
+  // Gap = unstaffed demand per project × craft, the Marketplace's number (QA-004). Surplus = committed beyond demand.
+  const unstaffed = useMemo(() => unstaffedByCraft(s, quarters), [s, quarters]);
   const rows = outlook.rows
     .map((r) => {
       const c = committed.get(r.id) ?? quarters.map(() => 0);
-      const gaps = r.points.map((p, i) => p.demandFte - c[i]);
-      return { ...r, committed: c, gaps, reach: reach.get(r.id) ?? quarters.map(() => 0) };
+      const gaps = unstaffed.get(r.id) ?? quarters.map(() => 0);
+      const surplus = r.points.map((p, i) => Math.max(0, c[i] - p.demandFte));
+      return { ...r, committed: c, gaps, surplus, reach: reach.get(r.id) ?? quarters.map(() => 0) };
     })
     .filter((r) => r.points.some((p) => p.supplyFte > 0 || p.demandFte > 0) || r.committed.some((v) => v > 0));
   return (
@@ -463,7 +487,7 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 Craft
               </th>
               <th scope="colgroup" colSpan={quarters.length} className="dm-craft__group">
-                Gap (demand − committed)
+                Unstaffed demand
               </th>
               <th scope="colgroup" colSpan={6} className="dm-craft__group is-basis">
                 {b.caption}
@@ -518,7 +542,9 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                           {fmt.fte(g)}
                         </Link>
                       ) : (
-                        <span className="pcp-text-tertiary">{g < -0.04 ? `+${fmt.fte(-g)}` : '0.0'}</span>
+                        <span className="pcp-text-tertiary">
+                          {r.surplus[i] > 0.04 ? `+${fmt.fte(r.surplus[i])}` : '0.0'}
+                        </span>
                       )}
                     </td>
                   ))}
@@ -542,8 +568,8 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       </div>
       <div className="pcp-card__footer">
         <span className="pcp-caption pcp-text-tertiary">
-          A positive gap links to the Marketplace filtered to that craft and quarter. A “+” value means more is
-          committed than demanded.
+          Unstaffed demand is counted per project and craft, as on the Marketplace, and links to it filtered to that
+          craft and quarter. A “+” value means more is committed under the craft than demanded.
         </span>
       </div>
     </Card>

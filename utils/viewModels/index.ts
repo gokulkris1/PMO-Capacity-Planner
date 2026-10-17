@@ -9,7 +9,8 @@
  *    tentative counts). Utilisation (`relativePct`, `utilisationFor`, bands) is load as a % of the
  *    person's target (A-4); groups use Σload ÷ Σtarget.
  *  - FTE = % ÷ 100. Demand-side "staffed" = confirmed bookings, "proposed" = tentative bookings,
- *    "gap"/"open" = demand − staffed − proposed.
+ *    "gap"/"open" = max(0, demand − staffed − proposed) per project × craft × quarter, summed for any scope
+ *    (one definition, `./unstaffed.ts`, QA-004).
  *  - Every per-person number comes from `core.loadIndex` (same-number guarantee, RP-03#AC3).
  *
  * Pure: no React, DOM, Node or Netlify imports.
@@ -40,6 +41,7 @@ import { allocationShare } from '../craftEngine';
 import type { QuarterView, TimeBasis } from './types';
 import { buildSearchIndex as buildSearchIndexImpl } from '../search';
 import { buildDemandGrid, projectsWithoutDemand } from './demand';
+import { demandCells, unstaffedPerQuarter } from './unstaffed';
 
 export { buildDemandGrid, projectsWithoutDemand };
 
@@ -709,8 +711,9 @@ export function buildHome(
 
 /**
  * One tribe (ORG-05): its projects, demand per quarter, staffed FTE (confirmed + tentative bookings
- * on its projects; equals the Outlook tribe pivot's committed FTE), gap = demand − staffed, and the
- * people serving it with their load on it. Throws for an unknown tribe id.
+ * on its projects; equals the Outlook tribe pivot's committed FTE), gap = unstaffed demand on its projects
+ * (per project × craft, the same number as the Marketplace and Home; QA-004), and the people serving it with
+ * their load on it. Throws for an unknown tribe id.
  */
 export function buildTribeView(
   s: D.WorkspaceSnapshot,
@@ -749,7 +752,8 @@ export function buildTribeView(
     projects,
     demandFte: demandFte.map(round2),
     staffedFte: staffed.map(round2),
-    gapFte: quarters.map((_, i) => round2(demandFte[i] - staffed[i])),
+    // Unstaffed demand on the tribe's projects, per craft (utils/viewModels/unstaffed.ts, QA-004).
+    gapFte: unstaffedPerQuarter(demandCells(s, quarters), quarters, (c) => projectMap.has(c.projectId)).map(round2),
     people,
   };
 }
@@ -767,6 +771,7 @@ export * from './marketplace';
 export * from './planning';
 export * from './delivery';
 export * from './matching';
+export * from './unstaffed';
 export { MAX_CELL_PCT, MAX_BATCH_OPS, inverseOps, diffAllocations, type QuarterCellEdit } from './allocationOps';
 
 /** AL-07: several quarter cells as one atomic batch (one undo step); creates get ids from `newId`. */

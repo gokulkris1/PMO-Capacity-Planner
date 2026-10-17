@@ -9,13 +9,7 @@ import type * as D from '../shared/contracts/dto';
 import { BAND_LABEL, type UtilisationThresholds } from '../shared/utilisation';
 import { toCsvRows, type CsvCell } from './csv';
 import { effectiveWindow } from './craftEngine';
-import {
-  buildCapacityOutlook,
-  buildCatalogue,
-  buildPeopleRows,
-  staffedFteByProjectCraft,
-  type OutlookPoint,
-} from './viewModels';
+import { buildCapacityOutlook, buildCatalogue, buildPeopleRows, demandCells, type OutlookPoint } from './viewModels';
 import type { QuarterView } from './viewModels/types';
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -77,24 +71,37 @@ export interface OpenDemandLineRow {
   open: number;
 }
 
-/** Per demand line: staffed (confirmed, that craft), proposed (tentative) and open FTE (DM-03#AC5). */
+/**
+ * Per demand line: staffed (confirmed, that craft), proposed (tentative) and open FTE (DM-03#AC5). Lines of the same
+ * project × craft × quarter share that cell's staffing in order, so their open FTE adds up to the cell's open FTE
+ * (`utils/viewModels/unstaffed.ts`, the Marketplace number; QA-004).
+ */
 export function openDemandLines(
   s: D.WorkspaceSnapshot,
   q: QuarterView[],
   _t?: UtilisationThresholds,
 ): OpenDemandLineRow[] {
-  const confirmed = staffedFteByProjectCraft(s, q, { includeTentative: false });
-  const all = staffedFteByProjectCraft(s, q, { includeTentative: true });
-  const qi = new Map(q.map((x, i) => [x.key, i]));
-  return s.demand
-    .filter((l) => qi.has(l.quarterKey))
-    .map((l) => {
-      const i = qi.get(l.quarterKey) ?? 0;
-      const k = `${l.projectId}|${l.craftId}`;
-      const staffed = confirmed.get(k)?.[i] ?? 0;
-      const proposed = Math.max(0, (all.get(k)?.[i] ?? 0) - staffed);
-      return { line: l, quarter: q[i], staffed, proposed, open: Math.max(0, l.fte - staffed - proposed) };
-    });
+  const out: OpenDemandLineRow[] = [];
+  for (const cell of demandCells(s, q)) {
+    let staffedLeft = cell.staffedFte;
+    let proposedLeft = cell.proposedFte;
+    for (const l of cell.lines) {
+      const fte = Number(l.fte) || 0;
+      const staffed = Math.min(fte, staffedLeft);
+      staffedLeft -= staffed;
+      const proposed = Math.min(fte - staffed, proposedLeft);
+      proposedLeft -= proposed;
+      out.push({
+        line: l,
+        quarter: q[cell.quarterIndex],
+        staffed,
+        proposed,
+        open: Math.max(0, fte - staffed - proposed),
+      });
+    }
+  }
+  const order = new Map(s.demand.map((l, i) => [l.id, i]));
+  return out.sort((a, b) => (order.get(a.line.id) ?? 0) - (order.get(b.line.id) ?? 0));
 }
 
 export function openDemandCsv(s: D.WorkspaceSnapshot, q: QuarterView[], t?: UtilisationThresholds): string {

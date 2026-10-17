@@ -97,6 +97,10 @@ export function craft(id: string, short: string, o: Partial<D.CraftDTO> = {}): D
   return { ...v, id, name: o.name ?? id, short, description: null, family: null, archived: false, sortOrder: 0, ...o };
 }
 
+export function tribe(id: string, name: string, o: Partial<D.TribeDTO> = {}): D.TribeDTO {
+  return { ...v, id, name, leadName: null, archived: false, ...o };
+}
+
 /** A minimal snapshot; pass the lists you need. */
 export function snapshot(o: Partial<D.WorkspaceSnapshot> = {}): D.WorkspaceSnapshot {
   return {

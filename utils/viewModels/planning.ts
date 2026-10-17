@@ -20,6 +20,7 @@ import {
   type PersonQuarter,
 } from './core';
 import { buildDemandGrid } from './demand';
+import { unstaffedByCraft } from './unstaffed';
 import type { QuarterView } from './types';
 
 /* ── Demand "By craft" (DM-02#AC1) ─────────────────────────────────────────────────── */
@@ -33,7 +34,7 @@ export interface CraftBalanceRow {
     /** FTE booked under this craft by anyone. */
     committedFte: number;
     demandFte: number;
-    /** demand − committed. */
+    /** Unstaffed demand for the craft: Σ open per project (`./unstaffed.ts`, QA-004), the Marketplace's number. */
     gapFte: number;
     /** Above-the-table holders' unbooked capacity in this craft. */
     benchFte: number;
@@ -44,19 +45,20 @@ export interface CraftBalanceRow {
 
 export function buildCraftBalance(s: D.WorkspaceSnapshot, quarters: QuarterView[]): CraftBalanceRow[] {
   const counted = countedAllocations(s);
+  const unstaffed = unstaffedByCraft(s, quarters);
   return [...s.crafts]
     .filter((c) => !c.archived)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
     .map((craft) => ({
       craft,
-      quarters: quarters.map((q) => {
+      quarters: quarters.map((q, i) => {
         const b = craftBalance(craft, q, s.people, s.projects, counted, s.demand);
         return {
           quarterKey: q.key,
           supplyFte: b.primarySupply,
           committedFte: b.committed,
           demandFte: b.demand,
-          gapFte: b.gap,
+          gapFte: round2(unstaffed.get(craft.id)?.[i] ?? 0),
           benchFte: b.primaryBench,
           reachFte: b.secondaryReach,
         };

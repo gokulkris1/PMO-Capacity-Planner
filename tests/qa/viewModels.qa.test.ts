@@ -92,7 +92,7 @@ describe('QA: unstaffed demand is counted the same way on Home and in the Market
 
   // QA-004 (Major): Home "Unstaffed demand" reads 0.0 FTE for QBR1 because Maria's 120 % Product Manager booking on
   // Phoenix is counted as staffing its Scrum Master demand (project-level gap), while Marketplace shows 0.9 FTE open.
-  it.skip('QA-004 Home "Unstaffed demand" for QBR1 equals the Marketplace open demand for QBR1', () => {
+  it('QA-004 Home "Unstaffed demand" for QBR1 equals the Marketplace open demand for QBR1', () => {
     const s = nomaSnapshot();
     const home = buildHome(s, QUARTERS, { kind: 'quarter', key: '2026-Q4' }, t, null);
     const open = buildOpenDemand(s, QUARTERS, { quarterKey: '2026-Q4' }).reduce((x, l) => x + l.openFte, 0);

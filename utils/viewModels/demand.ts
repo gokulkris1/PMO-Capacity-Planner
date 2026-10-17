@@ -4,15 +4,18 @@
  * Pure: no React, DOM, Node or Netlify imports.
  */
 import type * as D from '../../shared/contracts/dto';
-import { byId, fteIn, groupBy, round2 } from './core';
+import { byId, countedAllocations, fteIn, groupBy, round2 } from './core';
+import { demandCells } from './unstaffed';
 import type { QuarterView } from './types';
 
 const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
 
 /**
- * Projects × quarters. Per cell: the demand lines, demand FTE, staffed FTE (confirmed bookings on
- * the project), proposed FTE (tentative bookings) and gap = demand − staffed − proposed (the
- * "open" FTE; negative when over-staffed).
+ * Projects × quarters. Per cell: the demand lines, demand FTE, staffed FTE (confirmed bookings on the project under
+ * a craft it demands that quarter), proposed FTE (tentative ones, likewise), gap = unstaffed demand summed over the
+ * cell's crafts (`utils/viewModels/unstaffed.ts`: never negative, and a booking under one craft never covers
+ * another craft's demand, QA-004), and bookedFte = every confirmed or tentative booking on the project that quarter
+ * whatever its craft (to show staffing that has no demand behind it).
  */
 export function buildDemandGrid(
   s: D.WorkspaceSnapshot,
@@ -27,34 +30,28 @@ export function buildDemandGrid(
     staffedFte: number;
     proposedFte: number;
     gapFte: number;
+    bookedFte: number;
   }>;
 }> {
   const tribes = byId(s.tribes);
-  const onProject = groupBy(
-    s.allocations.filter((a) => a.state !== 'declined'),
-    (a) => a.projectId,
-  );
+  const onProject = groupBy(countedAllocations(s), (a) => a.projectId);
+  const cellsOf = groupBy(demandCells(s, quarters), (c) => `${c.projectId}|${c.quarterKey}`);
   const linesOf = groupBy(s.demand, (l) => `${l.projectId}|${l.quarterKey}`);
   return [...s.projects].sort(byName).map((p) => ({
     project: p,
     tribe: (p.tribeId && tribes.get(p.tribeId)) || null,
     cells: quarters.map((q) => {
-      const lines = linesOf.get(`${p.id}|${q.key}`) ?? [];
-      let staffed = 0,
-        proposed = 0;
-      for (const a of onProject.get(p.id) ?? []) {
-        const fte = fteIn(a, p, q);
-        if (a.state === 'confirmed') staffed += fte;
-        else proposed += fte;
-      }
-      const demand = lines.reduce((x, l) => x + l.fte, 0);
+      const cells = cellsOf.get(`${p.id}|${q.key}`) ?? [];
+      const sum = (f: (c: (typeof cells)[number]) => number) => cells.reduce((x, c) => x + f(c), 0);
+      const booked = (onProject.get(p.id) ?? []).reduce((x, a) => x + fteIn(a, p, q), 0);
       return {
         quarterKey: q.key,
-        lines,
-        demandFte: round2(demand),
-        staffedFte: round2(staffed),
-        proposedFte: round2(proposed),
-        gapFte: round2(demand - staffed - proposed),
+        lines: linesOf.get(`${p.id}|${q.key}`) ?? [],
+        demandFte: round2(sum((c) => c.demandFte)),
+        staffedFte: round2(sum((c) => c.staffedFte)),
+        proposedFte: round2(sum((c) => c.proposedFte)),
+        gapFte: round2(sum((c) => c.openFte)),
+        bookedFte: round2(booked),
       };
     }),
   }));

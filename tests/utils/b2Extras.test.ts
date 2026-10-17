@@ -49,14 +49,19 @@ describe('rankMatches', () => {
 });
 
 describe('staffedFteByProjectCraft', () => {
-  it('sums to the demand grid staffed FTE for every project that has demand', () => {
+  it('sums to the demand grid staffed FTE (demanded crafts) and booked FTE (all crafts) per project', () => {
     const staffed = staffedFteByProjectCraft(s, QUARTERS);
+    const all = staffedFteByProjectCraft(s, QUARTERS, { includeTentative: true });
     const grid = buildDemandGrid(s, QUARTERS);
     for (const row of grid) {
-      const keys = [...staffed.keys()].filter((k) => k.startsWith(`${row.project.id}|`));
       row.cells.forEach((c, qi) => {
-        const total = keys.reduce((x, k) => x + staffed.get(k)![qi], 0);
-        expect(total).toBeCloseTo(c.staffedFte, 1);
+        const demanded = new Set(c.lines.map((l) => l.craftId));
+        const keys = [...staffed.keys()].filter(
+          (k) => k.startsWith(`${row.project.id}|`) && demanded.has(k.split('|')[1]),
+        );
+        expect(keys.reduce((x, k) => x + staffed.get(k)![qi], 0)).toBeCloseTo(c.staffedFte, 1);
+        const booked = [...all.keys()].filter((k) => k.startsWith(`${row.project.id}|`));
+        expect(booked.reduce((x, k) => x + all.get(k)![qi], 0)).toBeCloseTo(c.bookedFte, 1);
       });
     }
   });

@@ -9,7 +9,13 @@ import { Link } from 'react-router-dom';
 import { Activity, Funnel, Gauge, X } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useQuarters, useWorkspace } from '../../../state';
-import { buildAllocationGrid, buildCapacityOutlook, buildPeopleRows, type PersonRow } from '../../../utils/viewModels';
+import {
+  buildCapacityOutlook,
+  buildPeopleRows,
+  unstaffedByCraft,
+  unstaffedByTribe,
+  type PersonRow,
+} from '../../../utils/viewModels';
 import {
   BandCell,
   Button,
@@ -77,34 +83,20 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     [s, quarters, pivot, craft, chapter, tribe, thresholds],
   );
 
-  // Staffed FTE used for the gap: by craft (confirmed bookings under that craft) and by tribe (bookings on its projects).
-  const staffed = useMemo(() => {
-    const opts = { includeTentative: false, thresholds } as const;
-    const byCraft = new Map<string, number[]>();
-    for (const g of buildAllocationGrid(s, quarters, { ...opts, groupBy: 'none', pivot: 'person' }).groups)
-      for (const r of g.rows)
-        if (r.kind === 'booking' && r.craftId) {
-          const cur = byCraft.get(r.craftId) ?? quarters.map(() => 0);
-          byCraft.set(
-            r.craftId,
-            cur.map((v, i) => v + (r.cells[i]?.pct ?? 0) / 100),
-          );
-        }
-    const byTribe = new Map<string, number[]>();
-    for (const g of buildAllocationGrid(s, quarters, { ...opts, groupBy: 'tribe', pivot: 'project' }).groups)
-      byTribe.set(
-        g.id,
-        g.totals.map((c) => c.pct / 100),
-      );
-    return { byCraft, byTribe };
-  }, [s, quarters, thresholds]);
+  // Gap = unstaffed demand, per project × craft (utils/viewModels/unstaffed.ts): the same number as Demand, Home and
+  // the Marketplace (QA-004). By craft for the craft and chapter pivots, by the projects' tribe for the tribe pivot.
+  const unstaffed = useMemo(
+    () => ({ byCraft: unstaffedByCraft(s, quarters), byTribe: unstaffedByTribe(s, quarters) }),
+    [s, quarters],
+  );
 
-  const staffedFor = (rowId: string): number[] | null => {
-    if (pivot === 'craft') return staffed.byCraft.get(rowId) ?? quarters.map(() => 0);
-    if (pivot === 'tribe') return staffed.byTribe.get(rowId) ?? quarters.map(() => 0);
+  const gapFor = (rowId: string): number[] | null => {
+    const none = quarters.map(() => 0);
+    if (pivot === 'craft') return unstaffed.byCraft.get(rowId) ?? none;
+    if (pivot === 'tribe') return unstaffed.byTribe.get(rowId) ?? none;
     if (pivot === 'chapter') {
       const c = s.chapters.find((x) => x.id === rowId)?.craftId;
-      return c ? (staffed.byCraft.get(c) ?? quarters.map(() => 0)) : null;
+      return c ? (unstaffed.byCraft.get(c) ?? none) : null;
     }
     return null;
   };
@@ -223,7 +215,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
 
       <Card
         title={`By ${pivot}`}
-        subtitle="Load and supply in FTE; utilisation is load as a % of target; gap is demand not covered by confirmed bookings"
+        subtitle="Load and supply in FTE; utilisation is load as a % of target; gap is unstaffed demand (per project and craft, as on the Marketplace)"
         flush
       >
         {rows.length === 0 ? (
@@ -285,10 +277,10 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   { id: '__squad', label: scopeLabel || 'Squad', points: model.squad, total: true },
                   ...rows.map((r) => ({ ...r, total: false })),
                 ].map((r) => {
-                  const st = r.total ? null : staffedFor(r.id);
+                  const gaps = r.total ? null : gapFor(r.id);
                   const p = r.points[qi];
                   const load = p ? p.aboveFte + p.belowFte + p.undeclaredFte : 0;
-                  const gap = st && p ? Math.max(0, p.demandFte - (st[qi] ?? 0)) : null;
+                  const gap = gaps && p ? (gaps[qi] ?? 0) : null;
                   return (
                     <tr key={r.id} className={cx(r.total && 'pcp-tbl-total')}>
                       <th scope="row" className="pcp-tbl-sticky co-col-name">

@@ -7,8 +7,8 @@ import type * as D from '../../shared/contracts/dto';
 import type { UtilBand, UtilisationThresholds } from '../../shared/utilisation';
 import { suggestMatches, type DemandLine, type MatchSuggestion } from '../craftEngine';
 import { dayNumber } from '../quarters';
-import { effectiveCraft } from './allocationOps';
-import { byId, countedAllocations, fteIn, groupBy, loadIndex, round1, round2, toPersonQuarter } from './core';
+import { byId, countedAllocations, loadIndex, round1, round2, toPersonQuarter } from './core';
+import { demandCells } from './unstaffed';
 import type { QuarterView } from './types';
 
 export interface OpenDemandLine {
@@ -44,33 +44,21 @@ export function buildOpenDemand(
   const projects = byId(s.projects);
   const tribes = byId(s.tribes);
   const crafts = byId(s.crafts);
-  const people = byId(s.people);
   const counted = countedAllocations(s);
-  const countedByProject = groupBy(counted, (a) => a.projectId);
-  const groups = new Map<string, D.DemandLineDTO[]>();
-  for (const l of s.demand) {
-    if (o.quarterKey && l.quarterKey !== o.quarterKey) continue;
-    if (o.craftId && l.craftId !== o.craftId) continue;
-    const k = `${l.projectId}|${l.quarterKey}|${l.craftId}`;
-    groups.set(k, [...(groups.get(k) ?? []), l]);
-  }
   const out: OpenDemandLine[] = [];
-  for (const [key, lines] of groups) {
-    const { projectId, quarterKey, craftId } = lines[0];
+  // The shared definition of unstaffed demand (utils/viewModels/unstaffed.ts, QA-004).
+  for (const cell of demandCells(s, quarters)) {
+    const { key, lines, projectId, quarterKey, craftId } = cell;
+    if (o.quarterKey && quarterKey !== o.quarterKey) continue;
+    if (o.craftId && craftId !== o.craftId) continue;
     const project = projects.get(projectId);
-    const quarter = quarters.find((q) => q.key === quarterKey);
+    const quarter = quarters[cell.quarterIndex];
     if (!project || !quarter) continue;
     if (o.tribeId && project.tribeId !== o.tribeId) continue;
-    let staffed = 0,
-      proposed = 0;
-    for (const a of countedByProject.get(projectId) ?? []) {
-      if (effectiveCraft(a, people.get(a.resourceId)) !== craftId) continue;
-      const fte = fteIn(a, project, quarter);
-      if (a.state === 'confirmed') staffed += fte;
-      else proposed += fte;
-    }
-    const demand = lines.reduce((x, l) => x + l.fte, 0);
-    const open = demand - staffed - proposed;
+    const staffed = cell.staffedFte;
+    const proposed = cell.proposedFte;
+    const demand = cell.demandFte;
+    const open = cell.openFte;
     if (open <= 0.005 && !o.includeCovered) continue;
     const tribe = (project.tribeId && tribes.get(project.tribeId)) || null;
     const line: DemandLine = {

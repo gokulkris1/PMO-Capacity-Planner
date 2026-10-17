@@ -253,13 +253,25 @@ describe('buildDemandGrid (DM-02)', () => {
     const rows = buildProjectRows(s, QUARTERS);
     expect(rows.find((r) => r.project.id === 'p4')?.datesLocked).toBe(true);
     expect(rows.find((r) => r.project.id === 'p1')?.datesLocked).toBe(false);
-    expect(rows.find((r) => r.project.id === 'p1')?.quarters[0]).toMatchObject({ demandFte: 1.8, staffedFte: 2.05 });
+    // Staffed counts bookings under the crafts the project demands (QA-004); the gap is the Marketplace's open FTE.
+    expect(rows.find((r) => r.project.id === 'p1')?.quarters[0]).toMatchObject({ demandFte: 1.8, staffedFte: 1.3 });
+    const open = buildOpenDemand(s, QUARTERS, { quarterKey: Q4.key }).filter((l) => l.project.id === 'p1');
+    expect(rows.find((r) => r.project.id === 'p1')?.quarters[0].gapFte).toBeCloseTo(
+      open.reduce((x, l) => x + l.openFte, 0),
+      2,
+    );
+    expect(buildDemandGrid(s, QUARTERS).find((r) => r.project.id === 'p1')?.cells[0].bookedFte).toBe(2.05);
   });
 
   it('By craft: supply, committed, demand, gap, bench and reach (DM-02#AC1)', () => {
     const pm = buildCraftBalance(s, QUARTERS).find((r) => r.craft.id === 'project-mgmt')!.quarters[0];
     expect(pm).toMatchObject({ supplyFte: 2, demandFte: 1.8 });
-    expect(pm.gapFte).toBeCloseTo(pm.demandFte - pm.committedFte, 5);
+    // Unstaffed per project × craft (QA-004): the Marketplace's open FTE for the craft, not demand − committed.
+    const open = buildOpenDemand(s, QUARTERS, { quarterKey: Q4.key, craftId: 'project-mgmt' });
+    expect(pm.gapFte).toBeCloseTo(
+      open.reduce((x, l) => x + l.openFte, 0),
+      2,
+    );
     expect(pm.reachFte).toBe(0); // Claire holds PM below the table but is fully booked in Q4
     const q3 = buildCraftBalance(s, QUARTERS).find((r) => r.craft.id === 'project-mgmt')!.quarters[2];
     expect(q3.reachFte).toBe(0.5); // …and free in QBR3, capped at her 50%
@@ -371,7 +383,9 @@ describe('Home, tribes, My Plan and requests', () => {
       overCount: 2,
       availableCount: 2,
     });
-    expect(h.kpis.unstaffedFte).toBe(0.22);
+    const open = buildOpenDemand(s, QUARTERS, { quarterKey: Q4.key }).reduce((x, l) => x + l.openFte, 0);
+    expect(h.kpis.unstaffedFte).toBeCloseTo(open, 2); // QA-004: the Marketplace number
+    expect(h.kpis.unstaffedFte).toBeGreaterThan(0);
     expect(h.over.map((r) => r.person.name)).toEqual(['Noma Odigie', 'Maria Kelly']);
     expect(h.pendingApprovals).toBe(1);
     expect(h.myPendingProposals).toBe(1);
@@ -385,7 +399,11 @@ describe('Home, tribes, My Plan and requests', () => {
     const v = buildTribeView(s, QUARTERS, 'tribe-payments');
     expect(v.projects.map((p) => p.name)).toEqual(['Orion Security', 'Skyline API']);
     expect(v.demandFte[0]).toBe(2.3);
-    expect(v.gapFte[0]).toBe(Math.round((v.demandFte[0] - v.staffedFte[0]) * 100) / 100);
+    const open = buildOpenDemand(s, QUARTERS, { quarterKey: Q4.key, tribeId: 'tribe-payments' });
+    expect(v.gapFte[0]).toBeCloseTo(
+      open.reduce((x, l) => x + l.openFte, 0),
+      2,
+    ); // QA-004
     expect(v.people.find((p) => p.person.name === 'Noma Odigie')?.pctByQuarter[0]).toBe(40);
     expect(() => buildTribeView(s, QUARTERS, 'nope')).toThrow('Unknown tribe');
   });
