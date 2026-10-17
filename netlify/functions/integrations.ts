@@ -22,7 +22,8 @@ import {
   saveConfig,
   upsertProvider,
 } from './_lib/integrationsStore';
-import { outboundHttpError } from './_lib/net';
+import { JIRA_DOMAIN_MESSAGE, normaliseJiraDomain, outboundHttpError } from './_lib/net';
+import { decryptSecret } from './_lib/crypto';
 import { aggregateUsage } from './_lib/jira/aggregate';
 import { boardSprints, jiraFetch, jiraFields, searchPage } from './_lib/jira/client';
 import { detectJiraFields, jqlString } from './_lib/jira/fields';
@@ -66,18 +67,45 @@ async function config(ctx: Ctx, access: WorkspaceAccess) {
   };
 }
 
+/**
+ * UAT-02: "Test connection" tests what is in the form (`domain`, `email`, `apiToken` in the body), each field left
+ * out falling back to the saved setting, so an admin can test before saving. The saved API token is only used for
+ * the saved site and account: testing another site or account needs the token typed in. Detected field ids are
+ * stored only when the test ran against the saved site and account. A bare host ("acme.atlassian.net") is accepted.
+ */
+function jiraTestCreds(stored: Awaited<ReturnType<typeof loadStored>>, body: unknown) {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const text = (k: string) => (typeof b[k] === 'string' ? (b[k] as string).trim() : '');
+  if (!text('domain') && !text('email') && !text('apiToken')) return { creds: jiraCreds(stored), persist: true };
+  const saved = stored.jira?.config;
+  const domain = text('domain') ? normaliseJiraDomain(text('domain')) : (saved?.domain ?? null);
+  if (!domain) throw badRequest(JIRA_DOMAIN_MESSAGE, { domain: JIRA_DOMAIN_MESSAGE });
+  const email = text('email') || saved?.email || '';
+  if (!/^[^\s@]+@[^\s@]+$/.test(email)) throw badRequest('Enter the Jira account email', { email: 'Required' });
+  const same = !!saved && saved.domain === domain && saved.email === email;
+  const token = text('apiToken');
+  if (!token && !(same && stored.jira?.secretEnc))
+    throw badRequest('Enter the API token to test this site and account.', { apiToken: 'Required to test' });
+  const config = same && saved ? saved : { domain, email, projectKeys: [], boardIds: [] };
+  return {
+    creds: { domain, email, apiToken: token || decryptSecret(stored.jira!.secretEnc!), config },
+    persist: same,
+  };
+}
+
 async function jiraTest(ctx: Ctx, access: WorkspaceAccess) {
   const stored = await loadStored(ctx.db, access.workspaceId);
-  const creds = jiraCreds(stored);
+  const { creds, persist } = jiraTestCreds(stored, ctx.body);
   const [me, fields] = await Promise.all([jiraFetch(creds, '/rest/api/3/myself'), jiraFields(creds)]);
   const detected = detectJiraFields(fields, creds.config.storyPointsFieldId);
-  await upsertProvider(
-    ctx.db,
-    access.workspaceId,
-    'jira',
-    { ...creds.config, storyPointsFieldId: detected.storyPointsFieldId, sprintFieldId: detected.sprintFieldId },
-    undefined,
-  );
+  if (persist)
+    await upsertProvider(
+      ctx.db,
+      access.workspaceId,
+      'jira',
+      { ...creds.config, storyPointsFieldId: detected.storyPointsFieldId, sprintFieldId: detected.sprintFieldId },
+      undefined,
+    );
   const m = (me ?? {}) as Record<string, unknown>;
   return {
     ok: true,

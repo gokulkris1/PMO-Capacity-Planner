@@ -35,6 +35,8 @@ export interface JiraConnection {
   boardIds: number[];
   storyPointField: string | null;
   lastTestedAt: D.ISODateTime | null;
+  /** UAT-01: false when the deployment cannot store credentials (no INTEGRATIONS_ENC_KEY). */
+  secretsWritable: boolean;
 }
 
 export interface PlanviewConnection {
@@ -77,7 +79,12 @@ export interface OrgAdmin {
 export interface IntegrationSettings {
   get(): Promise<{ jira: JiraConnection; planview: PlanviewConnection }>;
   saveJira(r: Partial<Omit<JiraConnection, 'status' | 'hasSecret'>> & { apiToken?: string }): Promise<void>;
-  testJira(): Promise<{ ok: boolean; storyPointField: string | null; message: string }>;
+  /** UAT-02: tests the form's values (site, email, token); any left out fall back to the saved settings. */
+  testJira(form?: {
+    siteUrl?: string;
+    email?: string;
+    apiToken?: string;
+  }): Promise<{ ok: boolean; storyPointField: string | null; message: string }>;
   savePlanview(r: Partial<Omit<PlanviewConnection, 'status' | 'hasSecret'>> & { secret?: string }): Promise<void>;
   testPlanview(): Promise<{ ok: boolean; message: string }>;
 }
@@ -150,6 +157,7 @@ function jiraFrom(rt: DataRuntime, c: LegacyIntegrationConfig['jira']): JiraConn
     boardIds: c.boardIds,
     storyPointField: c.storyPointsFieldId ?? null,
     lastTestedAt: t.jiraTestedAt,
+    secretsWritable: true,
   };
 }
 
@@ -246,7 +254,10 @@ export function buildIntegrationSettings(rt: DataRuntime): IntegrationSettings {
   return {
     async get() {
       const c = await api.integrationSettings.config(requireWs(rt));
-      return { jira: jiraFrom(rt, c.jira), planview: planviewFrom(rt, c.planview) };
+      return {
+        jira: { ...jiraFrom(rt, c.jira), secretsWritable: c.secretsWritable !== false },
+        planview: planviewFrom(rt, c.planview),
+      };
     },
     async saveJira(r) {
       await api.integrationSettings.save(requireWs(rt), {
@@ -260,11 +271,15 @@ export function buildIntegrationSettings(rt: DataRuntime): IntegrationSettings {
         },
       });
     },
-    async testJira() {
+    async testJira(form = {}) {
       const t = tests(rt);
       t.jiraTestedAt = new Date().toISOString();
       try {
-        const res = await api.integrationSettings.testJira(requireWs(rt));
+        const res = await api.integrationSettings.testJira(requireWs(rt), {
+          ...(form.siteUrl?.trim() && { domain: domainOf(form.siteUrl) }),
+          ...(form.email?.trim() && { email: form.email.trim() }),
+          ...(form.apiToken && { apiToken: form.apiToken }),
+        });
         t.jiraOk = !!res.ok;
         return {
           ok: !!res.ok,

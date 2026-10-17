@@ -210,6 +210,50 @@ describe('Jira usage and test', () => {
     expect(search[1].headers.Authorization).toBe(`Basic ${Buffer.from('pm@acme.com:jira-token').toString('base64')}`);
   });
 
+  it('UAT-02/03 "Test connection" tests the form values (bare host accepted) without saving them', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/rest/api/3/myself')) return jsonResponse({ displayName: 'Form User', accountId: 'a1' });
+      return jsonResponse([{ id: 'customfield_7', name: 'Story point estimate', schema: { custom: 'float' } }]);
+    });
+    // Nothing saved yet: the typed site, email and token are tested.
+    const r = await call(integrations, 'POST', path('/jira/test'), {
+      token: admin.token,
+      body: { domain: 'Beta.Atlassian.net', email: 'me@beta.com', apiToken: 'typed-token' },
+    });
+    expect(r.status).toBe(200);
+    expect(r.json).toMatchObject({ ok: true, displayName: 'Form User' });
+    expect(fetchMock.mock.calls[0][0]).toBe('https://beta.atlassian.net/rest/api/3/myself');
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      `Basic ${Buffer.from('me@beta.com:typed-token').toString('base64')}`,
+    );
+    const cfg = await call(integrations, 'GET', path('/config'), { token: admin.token });
+    expect(cfg.json.jira).toMatchObject({ configured: false, domain: '', hasSecret: false });
+
+    // Saved settings: a test of another site without a token is refused (the saved token stays with its site).
+    await saveJira();
+    const other = await call(integrations, 'POST', path('/jira/test'), {
+      token: admin.token,
+      body: { domain: 'other.atlassian.net' },
+    });
+    expect(other.status).toBe(400);
+    expect(other.json.fields).toEqual({ apiToken: 'Required to test' });
+    // The saved site, given in the form as a bare host, uses the saved token and stores the detected fields.
+    fetchMock.mockClear();
+    const same = await call(integrations, 'POST', path('/jira/test'), {
+      token: admin.token,
+      body: { domain: 'acme.atlassian.net', email: 'pm@acme.com' },
+    });
+    expect(same.status).toBe(200);
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      `Basic ${Buffer.from('pm@acme.com:jira-token').toString('base64')}`,
+    );
+    const bad = await call(integrations, 'POST', path('/jira/test'), {
+      token: admin.token,
+      body: { domain: 'acme.example.com', apiToken: 'x' },
+    });
+    expect(bad.status).toBe(400);
+  });
+
   it('maps upstream failures to a generic 502 and a missing config to 400', async () => {
     const none = await call(integrations, 'POST', path('/jira/usage'), { token: planner.token, body: {} });
     expect(none.status).toBe(400);
@@ -236,6 +280,19 @@ describe('encryption key (HS-09)', () => {
     expect(() => encryptSecret('x')).toThrow();
     const r = await saveJira();
     expect(r.status).toBe(503);
+  });
+
+  it('UAT-01 says which setting is missing (not_configured) and the config tells the form up front', async () => {
+    const before = await call(integrations, 'GET', path('/config'), { token: admin.token });
+    expect(before.json.secretsWritable).toBe(true);
+    delete process.env.INTEGRATIONS_ENC_KEY;
+    const r = await saveJira();
+    expect(r.status).toBe(503);
+    expect(r.json.code).toBe('not_configured');
+    expect(r.json.error).toMatch(/INTEGRATIONS_ENC_KEY/);
+    expect(r.json.error).toMatch(/Nothing was saved/);
+    const after = await call(integrations, 'GET', path('/config'), { token: admin.token });
+    expect(after.json.secretsWritable).toBe(false);
   });
 });
 

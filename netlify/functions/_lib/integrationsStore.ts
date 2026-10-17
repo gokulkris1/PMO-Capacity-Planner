@@ -6,7 +6,7 @@
  */
 import type { Queryable } from './db';
 import { json } from './db';
-import { decryptSecret, encryptSecret } from './crypto';
+import { decryptSecret, encryptSecret, hasEncryptionKey } from './crypto';
 import { badRequest } from './errors';
 import { JIRA_DOMAIN_MESSAGE, assertPublicHttpsUrl, normaliseJiraDomain } from './net';
 import { DEFAULT_CALIBRATION, type Calibration } from './jira/aggregate';
@@ -146,6 +146,8 @@ export function configResponse(s: Stored) {
   const j = s.jira?.config;
   const p = s.planview?.config;
   return {
+    // UAT-01: false when INTEGRATIONS_ENC_KEY is missing, so the form says so before anyone types a token.
+    secretsWritable: hasEncryptionKey(),
     jira: {
       configured: jiraConfigured(s),
       domain: j?.domain || '',

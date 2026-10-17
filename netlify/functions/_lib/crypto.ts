@@ -4,7 +4,7 @@
  * Legacy secrets: `iv:tag:ct` with sha256(JWT_SECRET + ':integrations'); still decrypted, never written.
  */
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { serviceUnavailable } from './errors';
+import { notConfigured, serviceUnavailable } from './errors';
 import { log } from './log';
 
 export function sha256Hex(s: string): string {
@@ -47,14 +47,16 @@ export function hasEncryptionKey(): boolean {
   return v2Key() !== null;
 }
 
-/** HS-09#AC1/AC4: writes fail closed (503) without INTEGRATIONS_ENC_KEY. */
+/** UAT-01: what a PMO Admin sees when saving credentials on a deployment without INTEGRATIONS_ENC_KEY. */
+export const ENCRYPTION_KEY_MISSING =
+  'Credentials cannot be saved yet: this deployment has no encryption key for them (INTEGRATIONS_ENC_KEY). ' +
+  'Ask whoever runs the deployment to set it (see the admin guide), then save again. Nothing was saved.';
+
+/** HS-09#AC1/AC4: writes fail closed (503 not_configured) without INTEGRATIONS_ENC_KEY. */
 export function encryptSecret(plain: string): string {
   const key = v2Key();
   if (!key) {
-    throw serviceUnavailable(
-      'Saving credentials is not configured. Ask your administrator to set the integration encryption key.',
-      'INTEGRATIONS_ENC_KEY missing or invalid',
-    );
+    throw notConfigured(ENCRYPTION_KEY_MISSING, 'INTEGRATIONS_ENC_KEY missing or invalid');
   }
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);

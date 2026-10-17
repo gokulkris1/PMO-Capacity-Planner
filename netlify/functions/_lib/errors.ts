@@ -58,3 +58,6 @@ export const gatewayTimeout = (message: string, logMessage?: string) =>
   new HttpError(504, 'server_error', message, { logMessage });
 export const serviceUnavailable = (message: string, logMessage?: string) =>
   new HttpError(503, 'server_error', message, { logMessage });
+/** UAT-01: a server setting an administrator must make (e.g. INTEGRATIONS_ENC_KEY); the message says which. */
+export const notConfigured = (message: string, logMessage?: string) =>
+  new HttpError(503, 'not_configured', message, { logMessage });

@@ -1,10 +1,11 @@
 import type * as D from './dto';
 
 export type ApiErrorCode = 'bad_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'gone'
-  | 'payload_too_large' | 'rate_limited' | 'entitlement' | 'feature_disabled' | 'migration_pending' | 'server_error';
+  | 'payload_too_large' | 'rate_limited' | 'entitlement' | 'feature_disabled' | 'migration_pending' | 'not_configured'
+  | 'server_error';
 /** Every non-2xx JSON body. HTTP status: 400 bad_request, 401 unauthorized, 403 forbidden|entitlement|feature_disabled,
  *  404 not_found, 409 conflict, 410 gone, 413 payload_too_large, 429 rate_limited (+Retry-After), 500 server_error,
- *  502 upstream (code server_error), 503 migration_pending|server_error. */
+ *  502 upstream (code server_error), 503 migration_pending|not_configured|server_error. */
 export interface ApiError {
   error: string; code: ApiErrorCode; requestId?: string;
   fields?: Record<string, string>;                // 400: field path -> message

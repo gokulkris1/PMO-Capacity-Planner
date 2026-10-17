@@ -261,11 +261,12 @@ export function createApiClient(t: Transport) {
       config: (wsId: D.ID) => get<LegacyIntegrationConfig>(LEGACY.integrationsConfig, { wsId }),
       save: (wsId: D.ID, body: LegacyIntegrationSave) =>
         t.request<LegacyIntegrationConfig>('POST', LEGACY.integrationsConfig, body, { query: { wsId } }),
-      testJira: (wsId: D.ID) =>
+      /** UAT-02: tests the given form values; fields left out fall back to the saved settings. */
+      testJira: (wsId: D.ID, form: { domain?: string; email?: string; apiToken?: string } = {}) =>
         t.request<{ ok: boolean; displayName?: string; storyPointsFieldId: string | null }>(
           'POST',
           LEGACY.jiraTest,
-          {},
+          form,
           { query: { wsId } },
         ),
       testPlanview: (wsId: D.ID) =>
@@ -311,6 +312,8 @@ export const LEGACY = {
 } as const;
 
 export interface LegacyIntegrationConfig {
+  /** UAT-01: false when the server has no INTEGRATIONS_ENC_KEY, so API tokens and secrets cannot be saved. */
+  secretsWritable?: boolean;
   jira: {
     configured: boolean;
     domain: string;

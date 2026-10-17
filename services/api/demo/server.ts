@@ -2450,7 +2450,10 @@ const extras: Record<string, Handler> = {
     const a = legacyWs(c);
     need(a, 'integrations.manage');
     const st = integrationSettings(a.ws);
-    if (!st.jira.domain || !st.jira.hasSecret)
+    // UAT-02: the form's values are tested when given (a typed token, or the saved one for the saved site).
+    const form = (c.body ?? {}) as { domain?: string; apiToken?: string };
+    const formReady = !!form.domain && (!!form.apiToken || (form.domain === st.jira.domain && st.jira.hasSecret));
+    if (!formReady && (!st.jira.domain || !st.jira.hasSecret))
       badRequest({}, 'Jira is not configured for this workspace (domain, email and API token are required)');
     st.jira.storyPointsFieldId ??= 'customfield_10016';
     return {

@@ -24,6 +24,10 @@ const STATUS: Record<JiraConnection['status'], { tone: 'neutral' | 'success' | '
   error: { tone: 'danger', label: 'Error' },
 };
 
+/** UAT-03: "acme.atlassian.net" and "https://acme.atlassian.net" are both a Jira Cloud site. */
+const JIRA_SITE_RE = /^(https:\/\/)?[a-z0-9][a-z0-9-]*\.atlassian\.net\/?$/i;
+const JIRA_SITE_MESSAGE = 'Use your Jira Cloud site, e.g. acme.atlassian.net';
+
 const list = (s: string) =>
   s
     .split(/[\s,]+/)
@@ -113,12 +117,14 @@ function JiraCard({
   const [siteError, setSiteError] = useState<string | null>(null);
   const st = STATUS[initial.status];
 
+  const siteOk = () => {
+    const ok = !site.trim() || JIRA_SITE_RE.test(site.trim());
+    setSiteError(ok ? null : JIRA_SITE_MESSAGE);
+    return ok;
+  };
+
   const save = async () => {
-    if (site && !/^https:\/\/[^\s]+\.atlassian\.net\/?$/i.test(site.trim())) {
-      setSiteError('Use your Jira Cloud address, e.g. https://acme.atlassian.net');
-      return;
-    }
-    setSiteError(null);
+    if (!siteOk()) return;
     setSaving(true);
     try {
       await gaps.integrations.saveJira({
@@ -140,10 +146,12 @@ function JiraCard({
     }
   };
 
+  // UAT-02: tests what is in the form, saved or not (the saved token is used for the saved site and account).
   const runTest = async () => {
+    if (!siteOk()) return;
     setTesting(true);
     try {
-      const r = await gaps.integrations.testJira();
+      const r = await gaps.integrations.testJira({ siteUrl: site, email, apiToken: token || undefined });
       setTest({ ok: r.ok, message: r.message, field: r.storyPointField });
     } catch (e) {
       setTest({ ok: false, message: errorText(e), field: null });
@@ -182,6 +190,12 @@ function JiraCard({
       }
     >
       <div className="pcp-settings__form">
+        {manage && !initial.secretsWritable ? (
+          <Banner tone="warning" title="Credentials cannot be saved on this deployment yet.">
+            The server has no encryption key for integration secrets (INTEGRATIONS_ENC_KEY). Whoever runs the deployment
+            sets it in the hosting environment; see the admin guide. You can still test a connection.
+          </Banner>
+        ) : null}
         {test ? (
           <Banner tone={test.ok ? 'success' : 'danger'}>
             {test.message}
@@ -197,7 +211,7 @@ function JiraCard({
           <FormField label="Site" error={siteError}>
             <TextField
               value={site}
-              placeholder="https://acme.atlassian.net"
+              placeholder="acme.atlassian.net"
               readOnly={!manage}
               onChange={(e) => setSite(e.target.value)}
             />
