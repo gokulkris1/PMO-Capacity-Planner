@@ -162,6 +162,94 @@ describe('ensureSchema (auto-apply on first use)', () => {
   });
 });
 
+describe('auto-migration inside the function time limit (QA-011)', () => {
+  /** A clock that moves `step` ms every time it is read: every file "takes" longer than the budget. */
+  const slowClock = (step: number) => {
+    let t = 0;
+    return () => (t += step);
+  };
+  const files = (n: number) =>
+    parseMigrations(
+      Array.from({ length: n }, (_, i) => ({
+        file: `${String(i + 1).padStart(4, '0')}_step_${i + 1}.sql`,
+        sql: `CREATE TABLE IF NOT EXISTS qa011_step_${i + 1} (id int);`,
+      })),
+    );
+  const advisoryLocks = async (db: PgliteDb) =>
+    Number((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory'`))[0].n);
+
+  it('applies one file per invocation when files are slow, persisting progress in schema_migrations', async () => {
+    const db = new PgliteDb();
+    const all = files(3);
+    const opts = { migrations: all, budgetMs: 4000, hardLimitMs: 8000 };
+    const r1 = await db.session((s) => applyPending(s, { ...opts, now: slowClock(5000) }));
+    expect(r1).toMatchObject({ applied: [1], remaining: 2, lockAcquired: true });
+    expect([...(await appliedMigrations(db)).keys()]).toEqual([1]);
+    const r2 = await db.session((s) => applyPending(s, { ...opts, now: slowClock(5000) }));
+    expect(r2).toMatchObject({ applied: [2], remaining: 1 });
+    const r3 = await db.session((s) => applyPending(s, { ...opts, now: slowClock(5000) }));
+    expect(r3).toMatchObject({ applied: [3], remaining: 0 });
+    expect(await advisoryLocks(db)).toBe(0);
+    await db.close();
+  });
+
+  it('applies everything in one invocation when it fits the budget', async () => {
+    const db = new PgliteDb();
+    const r = await db.session((s) => applyPending(s, { migrations: files(4), budgetMs: 4000, now: slowClock(10) }));
+    expect(r).toMatchObject({ applied: [1, 2, 3, 4], remaining: 0 });
+    await db.close();
+  });
+
+  it('runs each file under a statement_timeout of what is left before the hard limit', async () => {
+    const db = new PgliteDb();
+    await db.session((s) => applyPending(s, { migrations: files(1), hardLimitMs: 8000, now: slowClock(500) }));
+    expect(db.statements.find((t) => t.startsWith('SET LOCAL statement_timeout'))).toBe(
+      'SET LOCAL statement_timeout = 7500',
+    );
+    await db.close();
+  });
+
+  it('a file that hits the statement timeout is rolled back and the lock is still released', async () => {
+    const db = new PgliteDb();
+    const slow = parseMigrations([
+      { file: '0001_ok.sql', sql: 'CREATE TABLE IF NOT EXISTS qa011_ok (id int);' },
+      {
+        file: '0002_slow.sql',
+        sql: "CREATE TABLE qa011_slow (id int); DO $$ BEGIN RAISE EXCEPTION 'canceling statement due to statement timeout' USING ERRCODE = 'query_canceled'; END $$;",
+      },
+    ]);
+    await expect(db.session((s) => applyPending(s, { migrations: slow, hardLimitMs: 8000 }))).rejects.toMatchObject({
+      code: '57014',
+    });
+    expect([...(await appliedMigrations(db)).keys()]).toEqual([1]);
+    expect((await db.query(`SELECT to_regclass('qa011_slow') AS t`))[0].t).toBeNull();
+    expect(db.statements.filter((t) => t.includes('pg_advisory_unlock'))).toHaveLength(1);
+    expect(await advisoryLocks(db)).toBe(0);
+    await db.close();
+  });
+
+  it('ensureSchema answers migration_pending while files are left and resolves once the last one is applied', async () => {
+    const db = new PgliteDb();
+    resetSchemaCheck();
+    const all = files(3);
+    const opts = { migrations: all, budgetMs: 4000, hardLimitMs: 8000 };
+    const outcomes: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      outcomes.push(
+        await ensureSchema(db, { ...opts, now: slowClock(5000) }).then(
+          () => 'ok',
+          (e: { code?: string }) => e.code ?? 'error',
+        ),
+      );
+    }
+    expect(outcomes).toEqual(['migration_pending', 'migration_pending', 'ok', 'ok', 'ok']);
+    expect([...(await appliedMigrations(db)).keys()]).toEqual([1, 2, 3]);
+    expect(await advisoryLocks(db)).toBe(0);
+    resetSchemaCheck();
+    await db.close();
+  });
+});
+
 describe('v1.1 production-shaped database', () => {
   let db: PgliteDb;
   const hash = bcrypt.hashSync('correct horse battery', 4);

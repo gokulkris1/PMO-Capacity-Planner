@@ -2,15 +2,23 @@ import { useEffect, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import type { Permission } from '../../shared/permissions';
 import type { FeatureFlag } from '../../shared/features';
-import { useFeature, useSession, useWorkspace, useWorkspaceData } from '../../state';
+import { useBootState, useFeature, useSession, useWorkspace, useWorkspaceData } from '../../state';
 import { Skeleton } from '../ui/Skeleton';
-import { ForbiddenPage, MaintenancePage, NotFoundPage } from '../../pages/system/SystemPages';
+import { BootErrorPage, ForbiddenPage, MaintenancePage, NotFoundPage } from '../../pages/system/SystemPages';
 import { AppShell } from './AppShell';
 import { DEMO_ENABLED } from './env';
 import { lastWorkspace, rememberWorkspace, WorkspaceBaseProvider, workspaceBase } from './workspacePath';
 
-/** Full-viewport loading state while the session resolves. */
+/**
+ * Full-viewport loading state while the session resolves. When the boot failed (QA-011) it shows why instead of
+ * spinning forever: the maintenance notice for a 503 (the runtime retries on its own and boots as soon as the API
+ * is ready), or an error with "Try again" for anything else.
+ */
 export function SessionLoading() {
+  const { bootError, maintenance, retry } = useBootState();
+  if (bootError && (maintenance || bootError.status === 503 || bootError.code === 'migration_pending'))
+    return <MaintenancePage onRetry={() => void retry()} autoRetry={!!maintenance} />;
+  if (bootError) return <BootErrorPage error={bootError} onRetry={() => void retry()} />;
   return (
     <div className="pcp-session-loading">
       <Skeleton variant="page" label="your workspace" />
@@ -83,7 +91,7 @@ export function WorkspaceLayout({ demo = false }: { demo?: boolean }) {
 
   const err = data.error;
   if (err?.code === 'migration_pending' || err?.status === 503)
-    return <MaintenancePage onRetry={() => void data.reload()} />;
+    return <MaintenancePage onRetry={() => void data.reload()} autoRetry />;
   if (err?.status === 403) return <ForbiddenPage scope="workspace" fullPage homeHref={fallback} />;
 
   const base = demo ? `/demo/w/${encodeURIComponent(target.id)}` : workspaceBase(orgParam ?? '', target.id);

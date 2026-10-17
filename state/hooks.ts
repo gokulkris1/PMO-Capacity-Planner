@@ -14,7 +14,7 @@ import { today } from '../utils/clock';
 import { rollingQuarterViews } from '../utils/quarters';
 import type { QuarterView } from '../utils/viewModels/types';
 import { buildMutations, type Mutations } from './mutations';
-import type { ConflictInfo, DataRuntime, RuntimeState, SessionNotice } from './runtime';
+import type { ConflictInfo, DataRuntime, MaintenanceState, RuntimeState, SessionNotice } from './runtime';
 import { useRuntime } from './session';
 
 function useRuntimeState(): [RuntimeState, DataRuntime] {
@@ -120,6 +120,24 @@ export function useWorkspaceData(): {
   return useMemo(
     () => ({ status, error: s.dataError, snapshot: s.snapshot, reload }),
     [status, s.dataError, s.snapshot, reload],
+  );
+}
+
+/**
+ * QA-011 / SH-07#AC4: why the app is not booting yet. `bootError` is set when `/me` failed with something other
+ * than 401 (the app would otherwise sit on "Loading your workspace"); `maintenance` is set while the API answers
+ * 503 and the runtime is retrying on its own. `retry()` tries again at once.
+ */
+export function useBootState(): {
+  bootError: ApiRequestError | null;
+  maintenance: MaintenanceState | null;
+  retry(): Promise<void>;
+} {
+  const [s, rt] = useRuntimeState();
+  const bootError = s.status === 'loading' && s.dataStatus === 'error' ? s.dataError : null;
+  return useMemo(
+    () => ({ bootError, maintenance: s.maintenance, retry: () => rt.retryNow() }),
+    [bootError, s.maintenance, rt],
   );
 }
 

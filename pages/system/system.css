@@ -101,3 +101,37 @@
 .pcp-demo-banner {
   padding: var(--space-200) var(--page-gutter) 0;
 }
+
+/* QA-011: the maintenance notice says it is retrying on its own. */
+.pcp-system__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+  margin-top: var(--space-150);
+  font-size: var(--text-table-size);
+  color: var(--color-text-tertiary);
+}
+
+.pcp-system__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pcp-system-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pcp-system-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcp-system__pulse {
+    animation: none;
+  }
+}

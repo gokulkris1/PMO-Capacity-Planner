@@ -6,6 +6,7 @@ import { useDocumentTitle } from '../../components/ui/hooks';
 import { useWorkspaceBase } from '../../components/shell/workspacePath';
 import { Wordmark } from '../../components/shell/ProductMark';
 import { cx } from '../../components/ui/internal/utils';
+import { userMessage, type ApiRequestError } from '../../services/api/errors';
 import './system.css';
 
 interface SystemMessageProps {
@@ -113,8 +114,11 @@ export function ForbiddenPage({
   );
 }
 
-/** 503 migration_pending: full-page update notice with "Try again" (SH-07#AC4). */
-export function MaintenancePage({ onRetry }: { onRetry?: () => void }) {
+/**
+ * 503 migration_pending: full-page update notice with "Try again" (SH-07#AC4). With `autoRetry` the data runtime
+ * is already checking again every few seconds and opens the workspace as soon as the API is ready (QA-011).
+ */
+export function MaintenancePage({ onRetry, autoRetry = false }: { onRetry?: () => void; autoRetry?: boolean }) {
   return (
     <SystemMessage
       icon={ServerCog}
@@ -129,7 +133,33 @@ export function MaintenancePage({ onRetry }: { onRetry?: () => void }) {
         </Button>
       }
     >
-      <p>This usually takes a few minutes. Your data is safe; nothing you saved is lost.</p>
+      <p>This usually takes under a minute. Your data is safe; nothing you saved is lost.</p>
+      {autoRetry ? (
+        <p className="pcp-system__status" role="status" aria-live="polite">
+          <span className="pcp-system__pulse" aria-hidden="true" />
+          Checking again automatically. Your workspace opens as soon as the update is done.
+        </p>
+      ) : null}
+    </SystemMessage>
+  );
+}
+
+/** The session could not load for a reason other than maintenance (network, 500): never an endless spinner. */
+export function BootErrorPage({ error, onRetry }: { error: ApiRequestError; onRetry: () => void }) {
+  return (
+    <SystemMessage
+      icon={TriangleAlert}
+      title="We couldn't open PMO Capacity Planner"
+      documentTitle="Something went wrong"
+      fullPage
+      tone="danger"
+      actions={
+        <Button variant="primary" iconBefore={RefreshCw} onClick={onRetry}>
+          Try again
+        </Button>
+      }
+    >
+      <p>{userMessage(error)}</p>
     </SystemMessage>
   );
 }

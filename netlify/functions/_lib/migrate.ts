@@ -1,17 +1,22 @@
 /**
  * Migration runner (PL-02) used by both the functions (auto-apply on first use) and `npm run db:migrate`.
  *
- * Auto-apply design (production constraint: no maintenance window, nobody runs migrations by hand):
+ * Auto-apply design (production constraint: no maintenance window, nobody runs migrations by hand, and every
+ * Netlify function invocation is killed after 10 s):
  * 1. The first request a function instance serves calls `ensureSchema()`. If `schema_migrations` already holds
  *    every version this build needs, nothing else happens (one cheap query per cold start).
- * 2. Otherwise it opens one dedicated connection, takes the Postgres advisory lock `MIGRATION_LOCK_KEY`
- *    (polling `pg_try_advisory_lock` for up to ~7 s so the request stays inside Netlify's 10 s limit),
- *    re-reads the applied versions (another instance may have finished meanwhile), and applies each pending
- *    `migrations/NNNN_*.sql` in its own transaction together with its `schema_migrations` row, then unlocks.
- * 3. Concurrent cold starts serialise on the lock; the loser finds nothing pending and continues.
- * 4. Only when applying fails (or the lock is still held by a running migration after the wait) does the request
- *    get 503 `migration_pending`; the next request retries. Every migration is additive and idempotent, so a
- *    retry after a partial failure is safe.
+ * 2. Otherwise it opens one dedicated connection and takes the Postgres advisory lock `MIGRATION_LOCK_KEY`
+ *    (polling `pg_try_advisory_lock` for at most `AUTO_LOCK_WAIT_MS`). It re-reads the applied versions (another
+ *    invocation may have finished meanwhile) and applies pending `migrations/NNNN_*.sql` files one at a time, each
+ *    in its own transaction together with its `schema_migrations` row, so progress is persisted file by file.
+ * 3. Time budget (QA-011): it always applies the first pending file, then starts another only while less than
+ *    `AUTO_BUDGET_MS` has passed. Each file runs with `statement_timeout` set to what is left before
+ *    `AUTO_HARD_LIMIT_MS`, so a slow file fails cleanly (rolled back, nothing recorded) instead of being cut off by
+ *    the platform. Whatever is left is applied by the next invocations; the client retries on its own.
+ * 4. The lock is released in a `finally` on every path. It is a session lock, so even a killed invocation cannot
+ *    leave it held: Postgres drops it when the connection closes.
+ * 5. Until the schema is current, requests answer 503 `migration_pending` (the app shows its maintenance state and
+ *    retries with backoff). Every migration is additive and idempotent, so a retry after a failure is safe.
  */
 import { createHash } from 'node:crypto';
 import type { Db, Queryable, Session } from './db';
@@ -104,9 +109,12 @@ export async function releaseLock(s: Session): Promise<void> {
   await s.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => undefined);
 }
 
-async function applyOne(s: Session, m: Migration): Promise<void> {
+async function applyOne(s: Session, m: Migration, statementTimeoutMs?: number): Promise<void> {
   await s.exec('BEGIN');
   try {
+    // SET LOCAL lasts until COMMIT/ROLLBACK, so the dedicated connection is left as it was.
+    if (statementTimeoutMs)
+      await s.exec(`SET LOCAL statement_timeout = ${Math.max(1, Math.floor(statementTimeoutMs))}`);
     await s.exec(m.sql);
     await s.query('INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, $2, $3)', [
       m.version,
@@ -124,31 +132,67 @@ export interface ApplyResult {
   applied: number[];
   modified: number[];
   lockAcquired: boolean;
+  /** Pending files left for a later invocation because the time budget ran out (0 when the schema is current). */
+  remaining: number;
 }
 
-/** Applies pending migrations under the advisory lock. Throws when a migration fails. */
-export async function applyPending(
-  s: Session,
-  opts: { lockWaitMs?: number; migrations?: Migration[] } = {},
-): Promise<ApplyResult> {
+export interface ApplyOptions {
+  lockWaitMs?: number;
+  migrations?: Migration[];
+  /** Start another file only while less than this has passed since the call (the first file always runs). */
+  budgetMs?: number;
+  /** Each file's statement_timeout is what is left of this (measured from the call); unset = no timeout. */
+  hardLimitMs?: number;
+  /** Tests: the clock. */
+  now?: () => number;
+}
+
+/** Applies pending migrations under the advisory lock. Throws when a migration fails; the lock is always released. */
+export async function applyPending(s: Session, opts: ApplyOptions = {}): Promise<ApplyResult> {
   const all = opts.migrations ?? MIGRATIONS;
+  const now = opts.now ?? Date.now;
+  const started = now();
   // Lock first: concurrent `CREATE TABLE IF NOT EXISTS` on a fresh database races in the catalog
   // (unique violation on pg_type_typname_nsp_index), which made concurrent cold starts answer 503.
   const locked = await acquireLock(s, opts.lockWaitMs ?? 7000);
-  if (!locked) return { applied: [], modified: [], lockAcquired: false };
+  if (!locked) return { applied: [], modified: [], lockAcquired: false, remaining: -1 };
   try {
     await s.exec(SCHEMA_TABLE_SQL);
     const applied = await appliedMigrations(s);
+    const pending = pendingMigrations(applied, all);
     const result: ApplyResult = {
       applied: [],
       modified: modifiedMigrations(applied, all).map((m) => m.version),
       lockAcquired: true,
+      remaining: pending.length,
     };
-    for (const m of pendingMigrations(applied, all)) {
-      const started = Date.now();
-      await applyOne(s, m);
+    for (const m of pending) {
+      const elapsed = now() - started;
+      if (result.applied.length > 0 && opts.budgetMs !== undefined && elapsed >= opts.budgetMs) break;
+      const t0 = now();
+      const timeout = opts.hardLimitMs !== undefined ? Math.max(1000, opts.hardLimitMs - elapsed) : undefined;
+      try {
+        await applyOne(s, m, timeout);
+      } catch (e) {
+        const err = e as { code?: string };
+        // 57014 = query_canceled (statement_timeout): this one file is too slow for a function invocation.
+        if (err?.code === '57014') {
+          log('error', {
+            event: 'migration.too_slow',
+            version: m.version,
+            name: m.name,
+            timeoutMs: timeout,
+            hint: 'Run npm run db:migrate against the database to apply it without the function time limit.',
+          });
+        }
+        throw e;
+      }
       result.applied.push(m.version);
-      log('info', { event: 'migration.applied', version: m.version, name: m.name, durationMs: Date.now() - started });
+      result.remaining -= 1;
+      log('info', { event: 'migration.applied', version: m.version, name: m.name, durationMs: now() - t0 });
+    }
+    if (result.remaining > 0) {
+      log('info', { event: 'migration.deferred', remaining: result.remaining, elapsedMs: now() - started });
     }
     return result;
   } finally {
@@ -158,25 +202,64 @@ export async function applyPending(
 
 // ── Cold-start guard used by withApi ─────────────────────────────────────────
 
+/** Auto-apply limits for one function invocation (Netlify kills it at 10 s). Overridable for tests and ops. */
+export const AUTO_LOCK_WAIT_MS = 2000;
+export const AUTO_BUDGET_MS = 4000;
+export const AUTO_HARD_LIMIT_MS = 8000;
+
+export interface EnsureOptions {
+  lockWaitMs?: number;
+  budgetMs?: number;
+  hardLimitMs?: number;
+  migrations?: Migration[];
+  now?: () => number;
+}
+
+let autoOptions: EnsureOptions = {};
+
+/** Tests only: the options `ensureSchema` uses when a function calls it without any (e.g. a slow-deploy clock). */
+export function configureAutoMigration(opts: EnsureOptions | null): void {
+  autoOptions = opts ?? {};
+}
+
+/** Expected while a deploy is migrating (lock held elsewhere, or budget used up): not an error. */
+class PendingError extends Error {}
+
 let ready: Promise<void> | null = null;
 
-/** Resolves when the schema is at REQUIRED_SCHEMA_VERSION; applies pending migrations once per instance. */
-export function ensureSchema(db: Db): Promise<void> {
+/**
+ * Resolves when the schema is at REQUIRED_SCHEMA_VERSION. Otherwise applies as many pending migrations as fit in
+ * this invocation's budget and rejects with 503 `migration_pending` while any are left (the next request carries
+ * on). Memoised per instance once the schema is current.
+ */
+export function ensureSchema(db: Db, options: EnsureOptions = {}): Promise<void> {
   if (!ready) {
+    const opts = { ...autoOptions, ...options };
+    const all = opts.migrations ?? MIGRATIONS;
     ready = (async () => {
       const applied = await appliedMigrations(db);
-      const modified = modifiedMigrations(applied);
+      const modified = modifiedMigrations(applied, all);
       if (modified.length) {
         log('error', { event: 'migration.modified', versions: modified.map((m) => m.version) });
       }
-      if (pendingMigrations(applied).length === 0) return;
-      const result = await db.session((s) => applyPending(s));
-      if (!result.lockAcquired) throw new Error('Migration lock is held by another instance');
+      if (pendingMigrations(applied, all).length === 0) return;
+      const result = await db.session((s) =>
+        applyPending(s, {
+          migrations: all,
+          lockWaitMs: opts.lockWaitMs ?? AUTO_LOCK_WAIT_MS,
+          budgetMs: opts.budgetMs ?? AUTO_BUDGET_MS,
+          hardLimitMs: opts.hardLimitMs ?? AUTO_HARD_LIMIT_MS,
+          now: opts.now,
+        }),
+      );
+      if (!result.lockAcquired) throw new PendingError('Migration lock is held by another invocation');
+      if (result.remaining > 0) throw new PendingError(`${result.remaining} migration(s) left for the next request`);
       const after = await appliedMigrations(db);
-      if (pendingMigrations(after).length) throw new Error('Migrations still pending after apply');
+      if (pendingMigrations(after, all).length) throw new Error('Migrations still pending after apply');
     })().catch((e: unknown) => {
       ready = null;
-      log('error', { event: 'migration.failed', err: errorFields(e) });
+      if (e instanceof PendingError) log('info', { event: 'migration.pending', reason: e.message });
+      else log('error', { event: 'migration.failed', err: errorFields(e) });
       throw migrationPending();
     });
   }

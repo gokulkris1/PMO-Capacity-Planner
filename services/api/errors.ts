@@ -53,7 +53,7 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   gone: 'This action is no longer available.',
   payload_too_large: 'Too many changes in one go.',
   rate_limited: 'Too many requests. Wait a moment and try again.',
-  migration_pending: 'PMO Capacity Planner is being updated. This usually takes a few minutes.',
+  migration_pending: 'PMO Capacity Planner is being updated. This usually takes under a minute.',
   server_error: 'Something went wrong.',
   [NETWORK_ERROR_CODE]: 'Network error. Check your connection and try again.',
 };

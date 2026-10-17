@@ -57,7 +57,33 @@ export interface RuntimeState {
   conflict: ConflictInfo | null;
   notice: SessionNotice | null;
   pendingCount: number;
+  /**
+   * Set while the API answers 503 (`migration_pending` during a deploy, SH-07#AC4, QA-011). The runtime retries on
+   * its own (every `maintenanceRetryMs` for `maintenanceFastForMs`, then every `maintenanceSlowRetryMs`) and boots
+   * as soon as the API is ready; "Try again" retries at once.
+   */
+  maintenance: MaintenanceState | null;
 }
+
+export interface MaintenanceState {
+  since: number;
+  attempts: number;
+  nextRetryAt: number | null;
+}
+
+/** 503 from the API: a deploy is migrating the database (or the API is briefly unavailable). */
+export function isMaintenanceError(e: unknown): e is ApiRequestError {
+  return e instanceof ApiRequestError && (e.code === 'migration_pending' || e.status === 503);
+}
+
+export interface Timers {
+  set(fn: () => void, ms: number): unknown;
+  clear(handle: unknown): void;
+}
+const REAL_TIMERS: Timers = {
+  set: (fn, ms) => setTimeout(fn, ms),
+  clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+};
 
 export interface RuntimeOptions {
   transport: Transport;
@@ -68,6 +94,12 @@ export interface RuntimeOptions {
   refetchAfterMs?: number;
   /** Clock for the focus throttle (tests). */
   nowMs?: () => number;
+  /** Maintenance auto-retry (QA-011): interval, how long to use it, then the slower interval. */
+  maintenanceRetryMs?: number;
+  maintenanceFastForMs?: number;
+  maintenanceSlowRetryMs?: number;
+  /** Timer functions (tests). */
+  timers?: Timers;
 }
 
 export const UNDO_LIMIT = 20;
@@ -144,6 +176,9 @@ export class DataRuntime {
   private started: Promise<void> | null = null;
   private lastFetchAt = 0;
   private snapshotSeq = 0;
+  private readonly timers: Timers;
+  private readonly retry: { fastMs: number; fastForMs: number; slowMs: number };
+  private retryHandle: unknown = null;
 
   constructor(o: RuntimeOptions) {
     this.transport = o.transport;
@@ -152,6 +187,12 @@ export class DataRuntime {
     this.storage = safeStorage(o.storage);
     this.refetchAfterMs = o.refetchAfterMs ?? 60_000;
     this.nowMs = o.nowMs ?? (() => Date.now());
+    this.timers = o.timers ?? REAL_TIMERS;
+    this.retry = {
+      fastMs: o.maintenanceRetryMs ?? 3000,
+      fastForMs: o.maintenanceFastForMs ?? 120_000,
+      slowMs: o.maintenanceSlowRetryMs ?? 30_000,
+    };
     this.store = createStore<RuntimeState>({
       mode: o.mode ?? (o.transport.kind === 'demo' ? 'demo' : 'live'),
       status: 'loading',
@@ -164,6 +205,7 @@ export class DataRuntime {
       conflict: null,
       notice: null,
       pendingCount: 0,
+      maintenance: null,
     });
     o.transport.on('session-expired', () => this.handleSessionExpired());
   }
@@ -224,12 +266,49 @@ export class DataRuntime {
     try {
       await this.loadMe();
     } catch (e) {
-      // Not a 401: the API is down or being migrated (SH-07#AC4). Surface it through useWorkspaceData().
+      // Not a 401: the API is down or being migrated (SH-07#AC4). Surface it through useWorkspaceData() and the
+      // session loading screen; a 503 is retried automatically until the API is ready (QA-011).
       this.set({ status: 'loading', dataStatus: 'error', dataError: asApiError(e) });
+      if (isMaintenanceError(e)) this.scheduleMaintenanceRetry();
       return;
     }
     if (this.getState().status === 'authenticated')
       await this.selectWorkspace(this.getState().activeWorkspaceId).catch(() => undefined);
+    else this.endMaintenance();
+  }
+
+  /* ── maintenance auto-retry (QA-011) ──────────────────────────────────────────── */
+
+  /** "Try again" on the maintenance page, and each automatic retry: re-runs whatever failed. */
+  retryNow(): Promise<void> {
+    if (this.retryHandle !== null) this.timers.clear(this.retryHandle);
+    this.retryHandle = null;
+    const m = this.getState().maintenance;
+    if (m) this.set({ maintenance: { ...m, attempts: m.attempts + 1, nextRetryAt: null } });
+    return this.loadSnapshot().catch(() => undefined);
+  }
+
+  private scheduleMaintenanceRetry(): void {
+    if (this.retryHandle !== null) this.timers.clear(this.retryHandle);
+    const now = this.nowMs();
+    const m = this.getState().maintenance ?? { since: now, attempts: 0, nextRetryAt: null };
+    const delay = now - m.since < this.retry.fastForMs ? this.retry.fastMs : this.retry.slowMs;
+    this.set({ maintenance: { ...m, nextRetryAt: now + delay } });
+    this.retryHandle = this.timers.set(() => {
+      this.retryHandle = null;
+      void this.retryNow();
+    }, delay);
+  }
+
+  private endMaintenance(): void {
+    if (this.retryHandle !== null) this.timers.clear(this.retryHandle);
+    this.retryHandle = null;
+    if (this.getState().maintenance) this.set({ maintenance: null });
+  }
+
+  /** Stops background timers (tests, and when the provider unmounts). */
+  dispose(): void {
+    this.endMaintenance();
   }
 
   /** Re-reads `/me` and (re)selects a workspace: after accepting an invitation, creating an org, etc. */
@@ -250,7 +329,9 @@ export class DataRuntime {
         this.set({ me: null, status: 'anonymous' });
         return null;
       }
-      this.set({ status: this.getState().me ? 'authenticated' : 'anonymous' });
+      // Keep 'loading' during the boot so a 503 never flashes the sign-in redirect.
+      const status = this.getState().status;
+      this.set({ status: this.getState().me ? 'authenticated' : status === 'loading' ? 'loading' : 'anonymous' });
       throw e;
     }
   }
@@ -275,6 +356,7 @@ export class DataRuntime {
   }
 
   private clearSession(notice: SessionNotice | null = null): void {
+    this.endMaintenance();
     this.server = null;
     this.pending = [];
     this.set({
@@ -334,6 +416,7 @@ export class DataRuntime {
     const last = this.storage.get(LAST_WORKSPACE_KEY);
     const chosen = list.find((w) => w.id === preferred) ?? list.find((w) => w.id === last) ?? list[0] ?? null;
     if (!chosen) {
+      this.endMaintenance();
       this.server = null;
       this.pending = [];
       this.set({
@@ -346,6 +429,7 @@ export class DataRuntime {
     }
     if (preferred && chosen.id !== preferred) {
       // SH-01#AC3: a workspace the user cannot open is a 403, not a silent switch.
+      this.endMaintenance();
       this.server = null;
       this.pending = [];
       this.set({
@@ -376,26 +460,32 @@ export class DataRuntime {
   /** Reloads the active workspace snapshot (also the conflict dialog's "Reload"). */
   async loadSnapshot(): Promise<void> {
     if (this.getState().status === 'loading' && this.getState().dataStatus === 'error') {
-      // The boot failed (e.g. 503 migration_pending): "Try again" re-runs it.
+      // The boot failed (e.g. 503 migration_pending): "Try again" and the automatic retry re-run it. While in
+      // maintenance the error stays up until the API answers, so the page does not flicker between retries.
       this.started = null;
-      this.set({ dataStatus: 'idle', dataError: null });
+      if (!this.getState().maintenance) this.set({ dataStatus: 'idle', dataError: null });
       return this.start();
     }
     const wsId = this.getState().activeWorkspaceId;
     if (!wsId || this.getState().status !== 'authenticated') return;
     const seq = ++this.snapshotSeq;
-    if (!this.server) this.set({ dataStatus: 'loading', dataError: null });
+    if (!this.server && !this.getState().maintenance) this.set({ dataStatus: 'loading', dataError: null });
     try {
       const s = await this.api.workspace.snapshot(wsId);
       if (seq !== this.snapshotSeq || wsId !== this.getState().activeWorkspaceId) return;
       this.server = s;
       this.lastFetchAt = this.nowMs();
       this.set({ dataStatus: 'ready', dataError: null });
+      this.endMaintenance();
       this.publish();
     } catch (e) {
       if (seq !== this.snapshotSeq) return;
       const err = e instanceof ApiRequestError ? e : new ApiRequestError(0, 'server_error', 'Something went wrong.');
-      if (!this.server) this.set({ dataStatus: 'error', dataError: err });
+      if (!this.server) {
+        this.set({ dataStatus: 'error', dataError: err });
+        if (isMaintenanceError(err)) this.scheduleMaintenanceRetry();
+        else this.endMaintenance();
+      }
       throw err;
     }
   }

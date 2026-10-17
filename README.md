@@ -76,9 +76,12 @@ Nothing falls back to a built-in secret. No server key is ever exposed to the br
 - The schema lives in `migrations/0001…0007_*.sql`. The files are additive and idempotent: they never drop or
   rename a v1.1 column, and v1.1 role and plan columns are still written. `scripts/db/embed-migrations.mjs` embeds
   them into the functions bundle (`netlify/functions/_lib/migrations.generated.ts`; CI fails when it is stale).
-- **Nobody runs SQL by hand.** The first API request after a deploy applies pending migrations under a PostgreSQL
-  advisory lock. Concurrent cold starts wait for the lock, and each file is its own transaction. While the
-  migrations run, other requests get 503 `migration_pending` and the app shows "PMO Capacity Planner is being updated" with "Try again".
+- **Nobody runs SQL by hand, and `db:migrate` is optional.** The first API requests after a deploy apply pending
+  migrations under a PostgreSQL advisory lock, one transaction per file, recorded in `schema_migrations` as each
+  commits. Each invocation spends at most about 4 s on migrations (always at least one file, each under a
+  `statement_timeout`), so it stays inside Netlify's 10 s limit; files left over are applied by the next requests.
+  Until the schema is current, requests get 503 `migration_pending` and the app shows "PMO Capacity Planner is
+  being updated", retries every 3 s on its own and opens the workspace as soon as the API is ready.
   `GET /api/health` shows `schemaVersion` and `requiredSchemaVersion`.
 - `npm run db:migrate -- --dry-run` applies everything inside one transaction against a copy (a Neon branch),
   prints row counts and the role mapping, then rolls back. `npm run db:migrate` applies for real.

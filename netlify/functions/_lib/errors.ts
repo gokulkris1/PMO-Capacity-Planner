@@ -48,8 +48,8 @@ export const entitlementError = (message: string) => new HttpError(403, 'entitle
 export const featureDisabled = (message = 'This feature is turned off for your organisation.') =>
   new HttpError(403, 'feature_disabled', message);
 export const migrationPending = () =>
-  new HttpError(503, 'migration_pending', 'PMO Capacity Planner is being updated. This usually takes a few minutes.', {
-    retryAfterSec: 30,
+  new HttpError(503, 'migration_pending', 'PMO Capacity Planner is being updated. This usually takes under a minute.', {
+    retryAfterSec: 3,
   });
 export const upstreamError = (message: string, logMessage?: string) =>
   new HttpError(502, 'server_error', message, { logMessage });

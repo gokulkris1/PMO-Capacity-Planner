@@ -9,11 +9,21 @@ release commit, after `npm ci`.
 
 ## 0. What happens at deploy
 
-- Netlify builds `main` and publishes the SPA and the functions together. Nobody runs SQL.
-- The first API request after the publish applies migrations 0001–0007 under a PostgreSQL advisory lock. They are
-  additive and idempotent, and each one is its own transaction. Until they finish, requests answer 503
-  `migration_pending` and users see "PMO Capacity Planner is being updated" with "Try again". On the test data
-  this takes seconds. The production time comes from the dry run (step 1.4).
+- Netlify builds `main` and publishes the SPA and the functions together. Nobody runs SQL, and nobody has to run
+  `db:migrate`: the deploy brings the schema up by itself.
+- The first API requests after the publish apply the pending migrations (0001–0007) under a PostgreSQL advisory
+  lock. Each file is its own transaction and is recorded in `schema_migrations` as soon as it commits, so progress
+  survives from one request to the next. One function invocation applies files for at most about 4 s (the first
+  file always runs), and each file runs under a `statement_timeout` that keeps the invocation inside Netlify's
+  10 s limit. If files are left, that request answers 503 `migration_pending` and the next request carries on.
+  The lock is released in a `finally`, and Postgres drops it anyway if an invocation dies, so it is never left held.
+- While requests answer 503, users see "PMO Capacity Planner is being updated" with "Try again". They do not have
+  to click: the app checks again every 3 s (every 30 s after 2 minutes) and opens the workspace as soon as the API
+  is ready. On the test data the whole upgrade takes seconds. The production time per file comes from the dry run
+  (step 1.4).
+- The one case auto-migration cannot handle is a single file that by itself takes longer than about 8 s on
+  production data: it is rolled back each time and logged as `migration.too_slow`. Step 1.4 catches it; then run
+  step 2.4, which has no time limit.
 - Users stay signed in: v1.1 sessions are exchanged for cookie sessions, and the same passwords and 2FA work.
 
 ## 1. Before go-live (T-7 to T-1 days)
@@ -23,7 +33,7 @@ release commit, after `npm ci`.
 | 1.1 | Customer actions done or explicitly accepted as open: CA-1…CA-10, CA-12 (see RELEASE_NOTES_2.0.md). At minimum: `JWT_SECRET` unchanged, `RESEND_API_KEY` + `FROM_EMAIL` set, the mode decided (`APP_MODE`), and platform admins named. | Signed off by the PMO lead |
 | 1.2 | CI green on the release commit: `npm run ci`, `npm run check:guardrails -- --all`, `npm run check:bundle`, `npm run test:e2e`. | All green (GitHub Actions "CI", both jobs) |
 | 1.3 | Rehearsal branch: in Neon create branch `rehearsal-2-0` from production (now). Point a deploy preview at it (Netlify → Environment variables → Deploy Previews context → database variables = the branch URL), or run the API locally: `DATABASE_URL=<branch url> npm run dev:api` with `npm run dev:vite`. | Branch exists |
-| 1.4 | Dry run on the branch: `DATABASE_URL=<branch url> npm run db:migrate -- --dry-run`. | Exit 0; row counts before = after for every v1.1 table; role summary matches who should be admin; note the duration |
+| 1.4 | Dry run on the branch: `DATABASE_URL=<branch url> npm run db:migrate -- --dry-run`. | Exit 0; row counts before = after for every v1.1 table; role summary matches who should be admin; note the duration. If any single file takes more than about 8 s, step 2.4 becomes required |
 | 1.5 | Full rehearsal on the branch: `npm run db:parity -- --snapshot before.json` (with `DATABASE_URL=<branch url>`), then open the preview: the first request shows the update notice or nothing, then sign-in works. Then `npm run db:parity -- --before before.json`. | "0 rows lost, 0 credential changes" |
 | 1.6 | On the preview: sign in as a real user with 2FA, open every page, make one allocation edit and reload, sign out. Run `E2E_BASE_URL=<preview url> npm run test:e2e` (demo suite against the preview). | All pass |
 | 1.7 | Delete the rehearsal branch, or keep it until go-live for comparison. | |
@@ -35,7 +45,7 @@ release commit, after `npm ci`.
 | 2.1 | PMO lead | Tell users: "2.0 goes live at HH:MM. Save your work. After the update, reload the page. Your login does not change." | |
 | 2.2 | Operator | Neon → Branches → create **`pre-2-0-<yyyymmdd>`** from production at the current time (instant backup). | Branch listed |
 | 2.3 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --snapshot before-prod.json` | File written; counts printed |
-| 2.4 | Operator | Optional, to take the migration off the first user request: `DATABASE_URL=$PROD_URL npm run db:migrate` | "applied 0001…0007" |
+| 2.4 | Operator | **Recommended, not required.** Takes the migration off the first user requests, so nobody sees the update notice: `DATABASE_URL=$PROD_URL npm run db:migrate`. If it is skipped (or forgotten), the first requests after the publish migrate the database by themselves (§0). Required only when step 1.4 showed a single file slower than about 8 s. | "Applied 1, …, 7" or "0 pending" |
 | 2.5 | Operator | Merge the release PR into `main`. Netlify builds and publishes (Deploys tab). | Deploy "Published" |
 | 2.6 | Operator | `curl -s <site>/api/health` (repeat until 200) | `{"ok":true,"schemaVersion":7,"requiredSchemaVersion":7,…}`; `env.JWT_SECRET` and the database true |
 | 2.7 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --before before-prod.json` | "0 rows lost, 0 credential changes" |
@@ -111,7 +121,7 @@ be explained. For a single broken page, prefer switching the feature off or a fi
 
 | Symptom | Cause and fix |
 |---|---|
-| 503 "is being updated" for more than 5 minutes | A migration failed. Netlify → Logs → `migration.failed` shows the error. Run `DATABASE_URL=$PROD_URL npm run db:migrate` locally to see it in full. Every migration is idempotent, so re-running is safe. If the lock is stuck: `SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND objid::text::bigint = 7283110020 % 4294967296;` then `SELECT pg_terminate_backend(<pid>);` |
+| 503 "is being updated" for more than 2 minutes | Normal progress is logged as `migration.applied` and `migration.deferred` (one or more files per request). `migration.too_slow` means one file needs more than one function invocation: run `DATABASE_URL=$PROD_URL npm run db:migrate`; the app picks it up within seconds. Otherwise a migration failed: Netlify → Logs → `migration.failed` shows the error. Run `DATABASE_URL=$PROD_URL npm run db:migrate` locally to see it in full. Every migration is idempotent, so re-running is safe. If the lock is stuck: `SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND objid::text::bigint = 7283110020 % 4294967296;` then `SELECT pg_terminate_backend(<pid>);` |
 | 503 "Service is not configured" | A required variable is missing. `/api/health` shows which (`env.JWT_SECRET`, database). |
 | Everyone has to sign in again | `JWT_SECRET` changed. Restore the old value; sessions work again immediately. |
 | 2FA or reset codes do not arrive | `RESEND_API_KEY` or `FROM_EMAIL` is not set, or the sender domain is not verified in Resend (log `otp.not_sent`). |

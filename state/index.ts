@@ -24,9 +24,10 @@ export {
   useSessionNotice,
   useApi,
   useJiraSync,
+  useBootState,
 } from './hooks';
 export { DataProvider, type DataProviderProps } from './session';
-export type { SessionNotice, SessionNoticeKind } from './runtime';
+export type { MaintenanceState, SessionNotice, SessionNoticeKind } from './runtime';
 export {
   useAccountActions,
   useOrgAdmin,
