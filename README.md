@@ -50,6 +50,8 @@ Production deploys from `main` through Netlify's Git integration. Branches deplo
   published deploys only.
 
 Going live, rolling back and the checks after deploy are in [`docs/release/RUNBOOK.md`](docs/release/RUNBOOK.md).
+The first day for Org Admins after the upgrade (roles, imported crafts, tribes, Jira, calibration, invitations) is in
+[`docs/admin-guide.md`](docs/admin-guide.md).
 
 ## Environment variables
 
@@ -60,7 +62,7 @@ Set these in Netlify → Project configuration → Environment variables. `.env.
 |---|---|---|
 | `NETLIFY_DATABASE_URL_UNPOOLED` / `NETLIFY_DATABASE_URL` / `DATABASE_URL` / `NEON_DATABASE_URL` | **Yes** (first one set wins) | API answers 503 |
 | `JWT_SECRET` | **Yes. Keep the value production already uses** | API answers 503. A new value signs everyone out (no data lost) |
-| `INTEGRATIONS_ENC_KEY` (32 bytes base64: `openssl rand -base64 32`) | Recommended | Existing Jira/Planview credentials keep working; saving new ones answers 503 |
+| `INTEGRATIONS_ENC_KEY` (32 bytes base64: `openssl rand -base64 32`) | Recommended | Existing Jira/Planview credentials keep working; Settings › Integrations says new ones cannot be saved, and saving answers 503 `not_configured` naming the variable |
 | `APP_MODE` + `VITE_APP_MODE` | Recommended (`internal` for a single-company deployment) | `public`: plans apply as in v1.1 (BASIC 5 people / 5 projects, CSV and scenarios from PRO); sign-up and `/demo` open |
 | `ALLOW_PUBLIC_SIGNUP` / `VITE_ALLOW_PUBLIC_SIGNUP` | Optional | Sign-up follows the mode (open in public, closed in internal) |
 | `ALLOWED_ORIGINS` | Optional | Only the site's own Netlify URLs may call the API from a browser |
@@ -73,7 +75,7 @@ Nothing falls back to a built-in secret. No server key is ever exposed to the br
 
 ## Database and migrations
 
-- The schema lives in `migrations/0001…0009_*.sql`. The files are additive and idempotent: they never drop or
+- The schema lives in `migrations/0001…0012_*.sql`. The files are additive and idempotent: they never drop or
   rename a v1.1 column, and v1.1 role and plan columns are still written. `scripts/db/embed-migrations.mjs` embeds
   them into the functions bundle (`netlify/functions/_lib/migrations.generated.ts`; CI fails when it is stale).
 - **Nobody runs SQL by hand, and `db:migrate` is optional.** The first API requests after a deploy apply pending
@@ -81,13 +83,18 @@ Nothing falls back to a built-in secret. No server key is ever exposed to the br
   commits. Each invocation spends at most about 4 s on migrations (always at least one file, each under a
   `statement_timeout`), so it stays inside Netlify's 10 s limit; files left over are applied by the next requests.
   Until the schema is current, requests get 503 `migration_pending` and the app shows "PMO Capacity Planner is
-  being updated", retries every 3 s on its own and opens the workspace as soon as the API is ready.
+  being updated", retries every 3 s on its own and opens the workspace as soon as the API is ready. A browser still
+  holding a v1.1 token keeps it and is signed in as soon as the exchange succeeds, and a sign-in typed during the
+  migration waits and retries too (QA-039).
+- 0010–0012 repair migrated v1.1 data without touching a v1.1 column: part-time capacity becomes the target where no
+  target was set (`resources.target_util`, QA-022), crafts named after raw v1.1 ids get readable names and codes and
+  a review flag (QA-014), and tribes take the v1.1 QBR spelling and lead (QA-015).
   `GET /api/health` shows `schemaVersion` and `requiredSchemaVersion`.
 - `npm run db:migrate -- --dry-run` applies everything inside one transaction against a copy (a Neon branch),
   prints row counts and the role mapping, then rolls back. `npm run db:migrate` applies for real.
 - `npm run db:parity -- --snapshot before.json` before the deploy, then `npm run db:parity -- --before before.json`
   after it, prints "0 rows lost, 0 credential changes" or the differences (ids only).
-- New migration: add `migrations/0010_<name>.sql` (additive, idempotent), run `node scripts/db/embed-migrations.mjs`
+- New migration: add `migrations/0013_<name>.sql` (additive, idempotent), run `node scripts/db/embed-migrations.mjs`
   and extend `tests/backend/migrations.test.ts`.
 
 Operations scripts (each prints counts or ids only, never secrets):

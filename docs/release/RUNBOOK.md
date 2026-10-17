@@ -11,7 +11,7 @@ release commit, after `npm ci`.
 
 - Netlify builds `main` and publishes the SPA and the functions together. Nobody runs SQL, and nobody has to run
   `db:migrate`: the deploy brings the schema up by itself.
-- The first API requests after the publish apply the pending migrations (0001–0009) under a PostgreSQL advisory
+- The first API requests after the publish apply the pending migrations (0001–0012) under a PostgreSQL advisory
   lock. Each file is its own transaction and is recorded in `schema_migrations` as soon as it commits, so progress
   survives from one request to the next. One function invocation applies files for at most about 4 s (the first
   file always runs), and each file runs under a `statement_timeout` that keeps the invocation inside Netlify's
@@ -20,7 +20,9 @@ release commit, after `npm ci`.
 - While requests answer 503, users see "PMO Capacity Planner is being updated" with "Try again". They do not have
   to click: the app checks again every 3 s (every 30 s after 2 minutes) and opens the workspace as soon as the API
   is ready. On the test data the whole upgrade takes seconds. The production time per file comes from the dry run
-  (step 1.4).
+  (step 1.4). Browsers that still hold a v1.1 token wait in the same state with the token kept, and are signed in
+  by the automatic retry; someone signing in on the login page during the migration sees "being updated, retrying"
+  and is signed in without a second click (QA-039). Nobody is sent to the sign-in page by the migration.
 - The one case auto-migration cannot handle is a single file that by itself takes longer than about 8 s on
   production data: it is rolled back each time and logged as `migration.too_slow`. Step 1.4 catches it; then run
   step 2.4, which has no time limit.
@@ -45,18 +47,18 @@ release commit, after `npm ci`.
 | 2.1 | PMO lead | Tell users: "2.0 goes live at HH:MM. Save your work. After the update, reload the page. Your login does not change." | |
 | 2.2 | Operator | Neon → Branches → create **`pre-2-0-<yyyymmdd>`** from production at the current time (instant backup). | Branch listed |
 | 2.3 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --snapshot before-prod.json` | File written; counts printed |
-| 2.4 | Operator | **Recommended, not required.** Takes the migration off the first user requests, so nobody sees the update notice: `DATABASE_URL=$PROD_URL npm run db:migrate`. If it is skipped (or forgotten), the first requests after the publish migrate the database by themselves (§0). Required only when step 1.4 showed a single file slower than about 8 s. | "Applied 1, …, 9" or "0 pending" |
+| 2.4 | Operator | **Recommended, not required.** Takes the migration off the first user requests, so nobody sees the update notice: `DATABASE_URL=$PROD_URL npm run db:migrate`. If it is skipped (or forgotten), the first requests after the publish migrate the database by themselves (§0), and v1.1 sessions wait for it instead of being signed out (QA-039). Required only when step 1.4 showed a single file slower than about 8 s. | "Applied 1, …, 12" or "0 pending" |
 | 2.5 | Operator | Merge the release PR into `main`. Netlify builds and publishes (Deploys tab). | Deploy "Published" |
-| 2.6 | Operator | `curl -s <site>/api/health` (repeat until 200) | `{"ok":true,"schemaVersion":9,"requiredSchemaVersion":9,…}`; `env.JWT_SECRET` and the database true |
+| 2.6 | Operator | `curl -s <site>/api/health` (repeat until 200) | `{"ok":true,"schemaVersion":12,"requiredSchemaVersion":12,…}`; `env.JWT_SECRET` and the database true |
 | 2.7 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --before before-prod.json` | "0 rows lost, 0 credential changes" |
 | 2.8 | Two testers | Smoke test (§3) | All pass |
-| 2.9 | Org Admins | CA-14: switch on Sprint planning where it is used (Settings › Features). CA-15: review roles. | |
+| 2.9 | Org Admins | The first-day checklist in `docs/admin-guide.md`: CA-14 switch on Sprint planning where it is used (Settings › Features), CA-15 review roles, review the crafts flagged "Imported — review", tribe leads. | |
 | 2.10 | Operator | If `INTEGRATIONS_ENC_KEY` is now set: `DATABASE_URL=$PROD_URL JWT_SECRET=… INTEGRATIONS_ENC_KEY=… npx tsx scripts/reencrypt_integrations.ts --dry-run`, then without `--dry-run`. | Counts only; "Test connection" still succeeds in Settings › Integrations |
 | 2.11 | PMO lead | Announce that 2.0 is live and link the release notes. | |
 
 ## 3. Checks after go-live
 
-1. `GET <site>/api/health` returns 200 with `schemaVersion` 9. Add it to the uptime monitor (CA-13).
+1. `GET <site>/api/health` returns 200 with `schemaVersion` 12. Add it to the uptime monitor (CA-13).
 2. Sign in with a v1.1 account (password and, for one account, 2FA). Home loads with the organisation's data, and
    there is no demo banner.
 3. Open a browser that was signed in to v1.1 before the deploy: it is still signed in, with no new sign-in prompt.
@@ -125,7 +127,7 @@ be explained. For a single broken page, prefer switching the feature off or a fi
 | 503 "Service is not configured" | A required variable is missing. `/api/health` shows which (`env.JWT_SECRET`, database). |
 | Everyone has to sign in again | `JWT_SECRET` changed. Restore the old value; sessions work again immediately. |
 | 2FA or reset codes do not arrive | `RESEND_API_KEY` or `FROM_EMAIL` is not set, or the sender domain is not verified in Resend (log `otp.not_sent`). |
-| Saving Jira/Planview credentials answers 503 | `INTEGRATIONS_ENC_KEY` is missing or is not 32 bytes base64 (log `crypto.bad_key`). |
+| Saving Jira/Planview credentials answers 503 `not_configured` ("Credentials cannot be saved yet …") | `INTEGRATIONS_ENC_KEY` is missing or is not 32 bytes base64 (log `crypto.bad_key`). Settings › Integrations shows the same warning before anyone types a token. |
 | Sprint planning shows "Page not found" | The organisation's feature switch is off (CA-14). |
 | A user sees "You don't have access" | Their role was mapped from v1.1 (`USER` → Viewer). Change it in Settings › Members and roles. |
 | An old v1.1 tab cannot save ("PMO Capacity Planner was updated. Reload the page.") | Reload the page. |
