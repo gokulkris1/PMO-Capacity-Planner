@@ -41,7 +41,8 @@ import type { Session } from '../../../netlify/functions/_lib/db';
 export type V11Variant = 'replayed' | 'drifted';
 
 /* eslint-disable security/detect-non-literal-fs-filename -- fixed fixture paths inside the repository */
-const ROOT = join(__dirname, '..', '..', '..');
+// CommonJS under Jest; the dev-only local API host (ESM via tsx) runs from the repository root.
+const ROOT = typeof __dirname !== 'undefined' ? join(__dirname, '..', '..', '..') : process.cwd();
 const fixture = (f: string) => readFileSync(join(ROOT, 'tests', 'backend', 'fixtures', 'v1.1', f), 'utf8');
 const legacy = (f: string) => readFileSync(join(ROOT, 'migrations', 'legacy', f), 'utf8');
 /* eslint-enable security/detect-non-literal-fs-filename */

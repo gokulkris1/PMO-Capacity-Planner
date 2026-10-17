@@ -98,6 +98,15 @@ export class HttpTransport implements Transport {
     return this.parse<T>(res);
   }
 
+  /**
+   * True when the browser may hold a session: the readable CSRF cookie is set and cleared together with the
+   * HttpOnly session cookie, so without it there is no session and the boot can skip `/api/v2/me` (no 401 noise
+   * in the console for signed-out visitors).
+   */
+  mayHaveSession(): boolean {
+    return readCookie(this.getCookies(), CSRF_COOKIE) !== null;
+  }
+
   /** AC-03#AC2: exchanges a v1.1 bearer token for the cookie session, once. */
   async exchangeLegacyToken(storage: StorageLike | null): Promise<LegacyExchangeResult> {
     if (!storage) return 'none';

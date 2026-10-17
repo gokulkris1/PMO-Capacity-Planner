@@ -214,6 +214,10 @@ export class DataRuntime {
       const r = await this.transport.exchangeLegacyToken(this.rawStorage);
       if (r === 'expired')
         this.set({ notice: { kind: 'legacy-session-expired', message: NOTICE_MESSAGE['legacy-session-expired'] } });
+      if (r !== 'exchanged' && !this.transport.mayHaveSession()) {
+        this.set({ me: null, status: 'anonymous' });
+        return;
+      }
     } else {
       this.storage.remove('pcp_user');
     }

@@ -63,7 +63,8 @@ describe('live boot (AC-03#AC2, AC-04#AC4)', () => {
       notice: { kind: 'legacy-session-expired', message: 'Please sign in again.' },
     });
     expect([...storage.data.keys()]).toEqual([]);
-    expect(urls).toEqual(['/api/auth/session', '/api/v2/me', '/api/auth/refresh']);
+    // No session cookie after the failed exchange: the boot does not call /me (no 401 noise for signed-out visitors).
+    expect(urls).toEqual(['/api/auth/session']);
   });
 
   it('a valid legacy token is exchanged and the user stays signed in', async () => {

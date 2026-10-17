@@ -45,7 +45,12 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     // `npm run dev` (netlify dev) serves functions itself; this proxy is for `npm run dev:vite` against a local API.
-    proxy: { '/api': { target: 'http://localhost:8888', changeOrigin: true } },
+    proxy: { '/api': { target: `http://localhost:${process.env.LOCAL_API_PORT ?? 8888}`, changeOrigin: false } },
+  },
+  // `vite preview` (e2e): same proxy, so a production build can run against the local API host
+  // (scripts/local-api.ts). Netlify serves /api/* itself; this block is never used in production.
+  preview: {
+    proxy: { '/api': { target: `http://localhost:${process.env.LOCAL_API_PORT ?? 8888}`, changeOrigin: false } },
   },
   plugins: [react()],
   define: {

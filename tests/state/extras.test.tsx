@@ -198,7 +198,7 @@ describe('hooks', () => {
   it('useWorkspaceData exposes a boot failure (503 migration_pending) and retries the boot', async () => {
     let calls = 0;
     const transport = new HttpTransport({
-      getCookies: () => '',
+      getCookies: () => 'pcp_csrf=c',
       fetchImpl: () => {
         calls++;
         return Promise.resolve({
