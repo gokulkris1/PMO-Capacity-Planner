@@ -130,6 +130,7 @@ export default function CraftsSettings() {
   };
 
   const activeIds = crafts.filter((c) => !c.archived).map((c) => c.id);
+  const reviewCount = crafts.filter((c) => c.needsReview && !c.archived).length;
   const columns: Column<CraftDTO>[] = [
     {
       id: 'name',
@@ -149,6 +150,14 @@ export default function CraftsSettings() {
           )}
           <span className="pcp-caption pcp-settings__muted">{c.family ?? 'No family'}</span>
           {c.archived ? <StatusPill tone="neutral">Archived</StatusPill> : null}
+          {c.needsReview && !c.archived ? (
+            <StatusPill
+              tone="warning"
+              title={`Created from the v1.1 craft id "${c.importedFrom ?? c.id}". Check the name and code, then save, or archive it.`}
+            >
+              Imported — review
+            </StatusPill>
+          ) : null}
         </span>
       ),
     },
@@ -232,6 +241,16 @@ export default function CraftsSettings() {
         {!editable ? (
           <Banner tone="info">You can view the catalogue. PMO Admins and Org Admins can change it.</Banner>
         ) : null}
+        {editable && reviewCount > 0 ? (
+          <Banner
+            tone="warning"
+            title={`${reviewCount} imported ${reviewCount === 1 ? 'craft needs' : 'crafts need'} a review.`}
+          >
+            The upgrade found v1.1 craft ids that were not in the catalogue and named them after the id. Check each name
+            and code and save it, or archive it if nobody should pick it. People and demand keep pointing at it either
+            way.
+          </Banner>
+        ) : null}
         <DataTable
           id="settings-crafts"
           caption="Craft catalogue"
@@ -263,7 +282,13 @@ export default function CraftsSettings() {
         open={dialog !== null}
         onClose={() => setDialog(null)}
         title={dialog?.craft ? `Edit ${dialog.craft.name}` : 'Add craft'}
-        subtitle={dialog?.craft ? 'Renaming keeps the craft id, so historic numbers do not change.' : undefined}
+        subtitle={
+          dialog?.craft?.needsReview
+            ? `Imported from the v1.1 craft id "${dialog.craft.importedFrom ?? dialog.craft.id}". Saving marks it reviewed; the id stays, so historic numbers do not change.`
+            : dialog?.craft
+              ? 'Renaming keeps the craft id, so historic numbers do not change.'
+              : undefined
+        }
         dismissible={!busy}
         footer={
           <>

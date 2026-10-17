@@ -118,6 +118,8 @@ export function craftDTO(r: R): CraftDTO {
     family: s(r.family),
     archived: !!r.archived,
     sortOrder: num(r.sort_order, 0),
+    needsReview: !!r.needs_review,
+    importedFrom: s(r.imported_from),
     ...versioned(r),
   };
 }
@@ -142,7 +144,7 @@ export function teamDTO(r: R): TeamDTO {
 
 export const PERSON_COLUMNS = `r.id, r.workspace_id, r.name, r.email, r.role, r.type, r.department, r.location, r.total_capacity,
   r.daily_rate_eur, r.team_id, r.chapter_id, r.home_tribe_id, r.linked_user_id, r.skills, r.craft_profile,
-  r.tribe_affinity_ids, r.version, r.updated_at, r.updated_by, ub.name AS updated_by_name`;
+  r.tribe_affinity_ids, r.target_util, r.version, r.updated_at, r.updated_by, ub.name AS updated_by_name`;
 
 const PERSON_TYPES: PersonType[] = ['Permanent', 'Contractor', 'Part-Time'];
 
@@ -155,6 +157,20 @@ export function secondaryCraftsOf(raw: unknown): SecondaryCraftDTO[] {
       proficiency: Math.min(3, Math.max(1, Math.round(num(x.proficiency, 1)))) as Proficiency,
       maxPct: num(x.maxPct, 40),
     }));
+}
+
+/**
+ * The person's target utilisation (A-4, QA-022). craft_profile.targetUtil when set (2.0 dual-writes it, and a
+ * rolled-back v1.1 writes only it); else `target_util`, filled by migration 0010 for v1.1 part-timers; else the
+ * same PO rule for a row written without a target since: capacity below 100 % is the target; else 100.
+ */
+export function targetUtilOf(r: R, cp: R): number {
+  const fromProfile = num(cp.targetUtil, 0);
+  if (fromProfile > 0) return fromProfile;
+  const migrated = num(r.target_util, 0);
+  if (migrated > 0) return migrated;
+  const capacity = num(r.total_capacity, 100);
+  return capacity > 0 && capacity < 100 ? capacity : 100;
 }
 
 export function personDTO(r: R): PersonDTO {
@@ -179,7 +195,7 @@ export function personDTO(r: R): PersonDTO {
     secondaryCrafts: secondaryCraftsOf(cp.secondaryCrafts),
     tribeAffinity: affinity,
     skills: Array.isArray(r.skills) ? (r.skills as unknown[]).map(String) : [],
-    targetUtil: num(cp.targetUtil, 100) || 100,
+    targetUtil: targetUtilOf(r, cp),
     ...versioned(r),
   };
 }

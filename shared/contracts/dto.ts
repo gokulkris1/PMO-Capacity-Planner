@@ -15,7 +15,13 @@ export type { Plan, Entitlements, Permission, FeatureFlags, UtilisationThreshold
 export interface UserRef { id: ID; name: string }
 export interface Versioned { version: number; updatedAt: ISODateTime; updatedBy: UserRef | null }
 
-export interface CraftDTO extends Versioned { id: ID; name: string; short: string; description: string | null; family: string | null; archived: boolean; sortOrder: number }
+export interface CraftDTO extends Versioned {
+  id: ID; name: string; short: string; description: string | null; family: string | null; archived: boolean; sortOrder: number;
+  /** QA-014: created from a v1.1 craft id the catalogue did not know; shown "Imported - review" until an admin saves it. */
+  needsReview?: boolean;
+  /** The v1.1 craft id it was created from (migration 0011). */
+  importedFrom?: string | null;
+}
 export interface TribeDTO extends Versioned { id: ID; name: string; leadName: string | null; archived: boolean }
 export interface ChapterDTO extends Versioned { id: ID; name: string; craftId: ID | null; leadPersonId: ID | null; archived: boolean }
 export interface TeamDTO extends Versioned { id: ID; name: string; archived: boolean }

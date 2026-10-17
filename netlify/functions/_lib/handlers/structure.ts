@@ -265,7 +265,8 @@ export async function patchStructure(ctx: Ctx, p: Params) {
     for (const [field, col] of Object.entries(k.cols)) if (data[field] !== undefined) values[col] = data[field];
     const set = buildSet(values, 5);
     const rows = await q.query(
-      `UPDATE ${k.table} SET ${set.sql ? `${set.sql}, ` : ''}version = version + 1, updated_at = now(), updated_by = $4
+      // QA-014: saving an imported craft (any field) is the admin's review of it.
+      `UPDATE ${k.table} SET ${set.sql ? `${set.sql}, ` : ''}${k.table === 'crafts' ? 'needs_review = false, ' : ''}version = version + 1, updated_at = now(), updated_by = $4
        WHERE org_id = $1 AND id = $2 AND version = $3 RETURNING id`,
       [p.orgId, p.id, version, actor.userId, ...set.params],
     );

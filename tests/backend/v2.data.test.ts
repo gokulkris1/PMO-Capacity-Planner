@@ -84,6 +84,30 @@ describe('people', () => {
     expect(row[0].avatar_initials).toBe('NO');
   });
 
+  it('QA-022 a part-timer created without a target gets their capacity as target; target_util is dual-written', async () => {
+    const r = await call(v2, 'POST', `${W()}/people`, {
+      token: planner.token,
+      body: { name: 'Part Timer', totalCapacity: 60 },
+    });
+    expect(r.status).toBe(201);
+    expect(r.json).toMatchObject({ totalCapacity: 60, targetUtil: 60 });
+    const explicit = await call(v2, 'POST', `${W()}/people`, {
+      token: planner.token,
+      body: { name: 'Explicit Target', totalCapacity: 60, targetUtil: 100 },
+    });
+    expect(explicit.json).toMatchObject({ totalCapacity: 60, targetUtil: 100 });
+    const patched = await call(v2, 'PATCH', `${W()}/people/${r.json.id}`, {
+      token: planner.token,
+      body: { version: 1, patch: { targetUtil: 50 } },
+    });
+    expect(patched.json).toMatchObject({ targetUtil: 50 });
+    const row = await db.query<{ cp: { targetUtil: number }; t: string }>(
+      `SELECT craft_profile AS cp, target_util::text AS t FROM resources WHERE id = $1`,
+      [r.json.id],
+    );
+    expect([row[0].cp.targetUtil, Number(row[0].t)]).toEqual([50, 50]);
+  });
+
   it('rejects a non-UUID id, an unknown craft and the primary craft as secondary', async () => {
     const badId = await call(v2, 'POST', `${W()}/people`, { token: planner.token, body: { name: 'X', id: 'r1' } });
     expect(badId.status).toBe(400);

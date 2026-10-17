@@ -148,18 +148,20 @@ async function personColumns(
     JSON.stringify(profile),
     d.tribeAffinity,
     initials(d.name),
+    d.targetUtil,
   ];
 }
 const PERSON_SET = `name = $4, email = $5, role = $6, type = $7, department = $8, location = $9, total_capacity = $10,
   daily_rate_eur = $11, team_id = $12, chapter_id = $13, home_tribe_id = $14, linked_user_id = $15, skills = $16::text[],
-  craft_profile = $17::jsonb, tribe_affinity_ids = $18::text[], avatar_initials = $19`;
+  craft_profile = $17::jsonb, tribe_affinity_ids = $18::text[], avatar_initials = $19, target_util = $20`;
 
 async function insertPerson(q: Queryable, access: WorkspaceAccess, id: string, d: PersonData, userId: string) {
   const cols = await personColumns(q, access.orgId, d);
   await q.query(
     `INSERT INTO resources (id, workspace_id, updated_by, name, email, role, type, department, location, total_capacity,
-       daily_rate_eur, team_id, chapter_id, home_tribe_id, linked_user_id, skills, craft_profile, tribe_affinity_ids, avatar_initials)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::text[], $17::jsonb, $18::text[], $19)`,
+       daily_rate_eur, team_id, chapter_id, home_tribe_id, linked_user_id, skills, craft_profile, tribe_affinity_ids, avatar_initials,
+       target_util)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::text[], $17::jsonb, $18::text[], $19, $20)`,
     [id, access.workspaceId, userId, ...cols],
   );
 }
@@ -179,7 +181,7 @@ async function updatePerson(
   );
   const cols = await personColumns(q, access.orgId, d, json<Record<string, unknown>>(existing?.craft_profile, {}));
   const rows = await q.query(
-    `UPDATE resources SET ${PERSON_SET}, version = version + 1, updated_at = now(), updated_by = $20
+    `UPDATE resources SET ${PERSON_SET}, version = version + 1, updated_at = now(), updated_by = $21
      WHERE id = $1 AND workspace_id = $2 AND version = $3 RETURNING id`,
     [id, access.workspaceId, version, ...cols, userId],
   );
@@ -203,6 +205,8 @@ export async function createPerson(ctx: Ctx, p: Params) {
   const id = newId(body.id);
   const { id: _ignored, ...rest } = body;
   const d: PersonData = { ...DEFAULT_PERSON, ...rest } as PersonData;
+  // QA-022 (PO rule): a part-timer added without a target gets their capacity as the target.
+  if (rest.targetUtil === undefined && d.totalCapacity > 0 && d.totalCapacity < 100) d.targetUtil = d.totalCapacity;
   const actor = requireActor(ctx);
   const person = await withTx(async (q) => {
     assertWithinLimit(access.org, 'maxPeople', (await countPeople(q, p.wsId)) + 1);

@@ -32,6 +32,11 @@ import {
 import { compareSnapshots, summarise, takeSnapshot, type ParitySnapshot } from '../../scripts/db/parity';
 import type { MeResponse, WorkspaceSnapshot } from '../../shared/contracts/dto';
 import { call, cookieValue, type CallResult } from './helpers/harness';
+import { DEFAULT_THRESHOLDS } from '../../shared/utilisation';
+import { formatFte, rollingQuarterViews } from '../../utils/quarters';
+import { buildCapacityOutlook, buildPeopleRows } from '../../utils/viewModels';
+import { utilisationByGroupCsv } from '../../utils/reportData';
+import { buildQbrPack, type TableSection } from '../../utils/qbrPack';
 import { PgliteDb } from './helpers/pglite';
 import { PgDb, startPostgres, type PgServer } from './helpers/pgServer';
 import { ACME_DATA, V11, buildV11Production, type V11User, type V11Variant } from './helpers/v11Production';
@@ -358,6 +363,61 @@ describe.each((['pglite', 'postgres'] as Backend[]).flatMap((b) => VARIANTS.map(
       });
       // Another org's data never leaks in.
       expect(snap.people.some((p) => p.id === 'r-beta')).toBe(false);
+    });
+
+    it('QA-022 a v1.1 part-timer gets their capacity as target; supply, denominator, Reports and QBR pack agree', async () => {
+      if (skip()) return;
+      const s = sessions.get('pat') as Session;
+      const res = await call(v2, 'GET', `/api/v2/workspaces/${V11.wsAcme}/snapshot`, browser({ cookies: s.cookies }));
+      const snap = res.json as unknown as WorkspaceSnapshot;
+      const target = Object.fromEntries(snap.people.map((p) => [p.id, [p.totalCapacity, p.targetUtil]]));
+      // Kerrie: capacity 80, no v1.1 target → 80. Noma: her v1.1 target 90 is kept. Everyone else stays at 100.
+      expect(target).toEqual({
+        'r-tom': [100, 100],
+        'r-noma': [100, 90],
+        'r-maria': [100, 100],
+        'r-kerrie': [80, 80],
+        'r-gokul': [100, 100],
+        'r-1700000000001': [100, 100],
+      });
+      // The v1.1 columns are untouched (the target lives in resources.target_util).
+      const kerrie = await db!.query<{ cp: Record<string, unknown> | null; t: string }>(
+        `SELECT craft_profile AS cp, target_util::text AS t FROM resources WHERE id = 'r-kerrie'`,
+      );
+      expect(kerrie[0].cp?.targetUtil).toBeUndefined();
+      expect(Number(kerrie[0].t)).toBe(80);
+
+      const quarters = rollingQuarterViews('2026-10-17', 1);
+      const t = DEFAULT_THRESHOLDS;
+      const people = buildPeopleRows(snap, quarters, t);
+      const denominatorFte = people.reduce((x, r) => x + r.person.targetUtil, 0) / 100;
+      const supplyFte = snap.people.reduce((x, p) => x + Math.min(p.totalCapacity, p.targetUtil), 0) / 100;
+      expect(supplyFte).toBeCloseTo(denominatorFte, 6); // 5.7 FTE both ways (was 5.8 vs 5.9)
+
+      for (const pivot of ['person', 'chapter', 'craft'] as const) {
+        const outlook = buildCapacityOutlook(snap, quarters, { pivot, thresholds: t });
+        outlook.squad.forEach((p) => {
+          expect(p.supplyFte).toBeCloseTo(denominatorFte, 2);
+          const load = p.aboveFte + p.belowFte + p.undeclaredFte;
+          // utilisation = Σload ÷ Σtarget, and Σtarget is the supply shown next to it
+          expect(p.utilisationPct).toBeCloseTo((100 * load) / p.supplyFte, 0);
+        });
+      }
+      // Reports › Utilisation by craft (CSV): the Squad rows carry the same supply.
+      const csv = utilisationByGroupCsv(snap, quarters, t, 'craft').split(/\r?\n/);
+      const header = csv[0].split(',');
+      const squadRows = csv.filter((l) => l.startsWith('Squad,')).map((l) => l.split(','));
+      expect(squadRows).toHaveLength(4);
+      for (const row of squadRows)
+        expect(Number(row[header.indexOf('supply_fte')])).toBeCloseTo(Math.round(denominatorFte * 10) / 10, 6);
+      // QBR pack: "Squad utilisation vs target" supply column and the chart's target line are the same figure.
+      const pack = buildQbrPack({ snapshot: snap, quarters, thresholds: t, generatedOn: '2026-10-17' });
+      const table = pack.sections.find(
+        (x): x is TableSection => x.kind === 'table' && x.title === 'Squad utilisation vs target',
+      );
+      expect(table?.rows.map((r) => r[1])).toEqual(Array(4).fill(formatFte(denominatorFte)));
+      const chart = pack.sections.find((x) => x.kind === 'chart') as { target: { values: number[] } } | undefined;
+      expect(chart?.target.values.every((v) => Math.abs(v - denominatorFte) < 0.01)).toBe(true);
     });
 
     it('keeps the v1.1 workspace read endpoint working for browsers still on the old bundle', async () => {

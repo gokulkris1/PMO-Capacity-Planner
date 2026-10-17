@@ -7,6 +7,9 @@ import { join } from 'node:path';
 import bcrypt from 'bcryptjs';
 import { PgliteDb } from './helpers/pglite';
 import { LEGACY, PRE_BASELINE_SQL, seedLegacyData } from './helpers/legacyFixture';
+import { V11, buildV11Production } from './helpers/v11Production';
+import { compareSnapshots, summarise, takeSnapshot } from '../../scripts/db/parity';
+import { personDTO, PERSON_COLUMNS } from '../../netlify/functions/_lib/dto';
 import {
   MIGRATIONS,
   REQUIRED_SCHEMA_VERSION,
@@ -38,9 +41,9 @@ describe('migration files', () => {
     }
   });
 
-  it('are numbered 0001..0009 and additive (no DROP TABLE / DROP COLUMN / legacy CHECK changes)', () => {
-    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(REQUIRED_SCHEMA_VERSION).toBe(9);
+  it('are numbered 0001..0012 and additive (no DROP TABLE / DROP COLUMN / legacy CHECK changes)', () => {
+    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(REQUIRED_SCHEMA_VERSION).toBe(12);
     for (const m of MIGRATIONS) {
       const sql = m.sql.replace(/--.*$/gm, '');
       expect(sql).not.toMatch(/DROP\s+TABLE/i);
@@ -70,8 +73,8 @@ describe('empty database', () => {
 
   it('applies every migration, records them, and a second run applies nothing', async () => {
     const first = await db.session((s) => applyPending(s));
-    expect(first.applied).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(await currentSchemaVersion(db)).toBe(9);
+    expect(first.applied).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(await currentSchemaVersion(db)).toBe(12);
     const second = await db.session((s) => applyPending(s));
     expect(second.applied).toEqual([]);
     expect(second.lockAcquired).toBe(true);
@@ -286,7 +289,7 @@ describe('v1.1 production-shaped database', () => {
 
   it('dry run reports the planned backfill and changes nothing', async () => {
     const report = await db.session((s) => dryRun(s));
-    expect(report.pending.map((p) => p.version)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(report.pending.map((p) => p.version)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(report.counts['org_memberships'].after).toBe(6);
     expect(report.counts['users.is_platform_admin'].after).toBe(1);
     expect(report.counts['workspace_members.access_role'].after).toBe(5);
@@ -432,5 +435,122 @@ describe('v1.1 production-shaped database', () => {
     for (const m of MIGRATIONS) await db.session((s) => s.exec(m.sql));
     expect(await counts()).toEqual(before);
     for (const [k, q] of Object.entries(legacyQueries)) expect([k, await db.query(q)]).toEqual([k, legacySnapshot[k]]);
+  });
+});
+
+/**
+ * QA-014, QA-015, QA-022: the 2.0 data repairs on the v1.1 production replay, plus a few rows that exercise the edge
+ * cases (an explicit v1.1 target on a part-timer, a craft id whose code collides, ALL CAPS client names).
+ */
+describe('v1.1 data repairs 0010-0012 (QA-014, QA-015, QA-022)', () => {
+  let db: PgliteDb;
+  let before: Awaited<ReturnType<typeof takeSnapshot>>;
+  const A = V11.orgAcme;
+  const ws = V11.wsAcme;
+
+  beforeAll(async () => {
+    db = new PgliteDb();
+    await db.session((s) => buildV11Production(s, 'replayed'));
+    await db.pg.exec(`
+      INSERT INTO resources (id, name, type, workspace_id, team_id, capacity, total_capacity, role, skills, craft_profile) VALUES
+        ('r-part', 'Paula Part', 'Part-Time', '${ws}', 't1', 50, 50, 'Analyst', '{}', '{"primaryCraft":"service_design","secondaryCrafts":[{"craftId":"dl","proficiency":1}]}'),
+        ('r-explicit', 'Eve Explicit', 'Part-Time', '${ws}', 't1', 60, 60, 'Analyst', '{}', '{"primaryCraft":"project-mgmt","targetUtil":100}'),
+        ('r-nullprofile', 'Ned Null', 'Contractor', '${ws}', 't1', 40, 40, 'Analyst', '{}', NULL);
+      INSERT INTO projects (id, name, status, workspace_id, priority, client_name) VALUES
+        ('p-caps-1', 'Caps One', 'Active', '${ws}', 'Low', 'LENDING'),
+        ('p-caps-2', 'Caps Two', 'Active', '${ws}', 'Low', 'Lending');
+    `);
+    before = await takeSnapshot(db);
+    await db.session((s) => applyPending(s));
+  });
+  afterAll(() => db.close());
+
+  const crafts = async () =>
+    Object.fromEntries(
+      (
+        await db.query<{
+          id: string;
+          name: string;
+          short: string;
+          needs_review: boolean;
+          imported_from: string | null;
+        }>(`SELECT id, name, short, needs_review, imported_from FROM crafts WHERE org_id = $1`, [A])
+      ).map((c) => [c.id, [c.name, c.short, c.needs_review, c.imported_from]]),
+    );
+
+  it('QA-014 names unknown v1.1 craft ids in words with a code from the name, flagged for review', async () => {
+    const c = await crafts();
+    expect(c['delivery-lead']).toEqual(['Delivery Lead', 'DL', true, 'delivery-lead']);
+    expect(c['service_design']).toEqual(['Service Design', 'SD', true, 'service_design']);
+    expect(c['dl']).toEqual(['Dl', 'DL2', true, 'dl']); // DL is taken: the next free code
+    expect(c['x']).toEqual(['X', 'XX', true, 'x']);
+    // Known v1.1 ids keep their 2.0 catalogue entry, unflagged.
+    expect(c['project-mgmt']).toEqual(['Project Management', 'PM', false, null]);
+    expect(c['programme-mgmt']).toEqual(['Programme Management', 'PGM', false, null]);
+    // Nothing is left with the raw id as its name and a generated X code.
+    const junk = await db.query(`SELECT id FROM crafts WHERE name = id AND short ~ '^X[0-9A-F]{3}$'`);
+    expect(junk).toEqual([]);
+    for (const [, short] of Object.values(c)) expect(short).toMatch(/^[A-Z0-9]{2,4}$/);
+  });
+
+  it('QA-014 a known v1.1 id that 0004 had named after its raw id gets its catalogue name back', async () => {
+    const d = new PgliteDb();
+    await d.session((s) => applyPending(s, { migrations: MIGRATIONS.slice(0, 10) }));
+    await d.pg.exec(`
+      INSERT INTO organizations (id, name, slug) VALUES ('${A}', 'Acme', 'acme');
+      INSERT INTO crafts (org_id, id, name, short, sort_order)
+        VALUES ('${A}', 'release-coord', 'release-coord', 'X' || upper(substr(md5('release-coord'), 1, 3)), 100);
+    `);
+    await d.session((s) => applyPending(s));
+    const row = await d.query(`SELECT name, short, needs_review, sort_order FROM crafts WHERE id = 'release-coord'`);
+    expect(row).toEqual([
+      { name: 'Release & Delivery Coordination', short: 'RC', needs_review: false, sort_order: 11 },
+    ]);
+    await d.close();
+  });
+
+  it('QA-015 keeps the v1.1 QBR tribe name and lead, else the most common client-name casing', async () => {
+    const tribes = Object.fromEntries(
+      (
+        await db.query<{ name: string; lead_name: string | null }>(
+          `SELECT name, lead_name FROM tribes WHERE org_id = $1`,
+          [A],
+        )
+      ).map((t) => [t.name, t.lead_name]),
+    );
+    expect(tribes).toEqual({
+      'Digital Experience': 'Tom Hayes', // QBR tribe lead copied
+      Payments: null, // the QBR tribe has no lead
+      Lending: null, // "Lending" twice (plus an affinity) beats "LENDING" once; 0004 had taken "LENDING"
+      Digital: null,
+    });
+  });
+
+  it('QA-022 a part-timer without a v1.1 target gets their capacity as target; explicit targets are kept', async () => {
+    const rows = await db.query(`SELECT ${PERSON_COLUMNS} FROM resources r LEFT JOIN users ub ON ub.id = r.updated_by`);
+    const target = Object.fromEntries(rows.map((r) => personDTO(r)).map((p) => [p.id, p.targetUtil]));
+    expect(target).toMatchObject({
+      'r-kerrie': 80,
+      'r-part': 50,
+      'r-nullprofile': 40,
+      'r-explicit': 100,
+      'r-noma': 90,
+      'r-tom': 100,
+    });
+    const filled = await db.query(`SELECT id FROM resources WHERE target_util IS NOT NULL ORDER BY id`);
+    expect(filled.map((r) => r.id)).toEqual(['r-kerrie', 'r-nullprofile', 'r-part']);
+  });
+
+  it('touches no v1.1 column (parity "0 rows lost, 0 credential changes") and a second run changes nothing', async () => {
+    const report = compareSnapshots(before, await takeSnapshot(db));
+    expect(summarise(report).text).toMatch(/^0 rows lost, 0 credential changes/);
+    const state = async () => ({
+      crafts: await db.query(`SELECT org_id, id, name, short, needs_review, version FROM crafts ORDER BY org_id, id`),
+      tribes: await db.query(`SELECT id, name, lead_name, version FROM tribes ORDER BY id`),
+      targets: await db.query(`SELECT id, target_util, version FROM resources ORDER BY id`),
+    });
+    const once = await state();
+    for (const m of MIGRATIONS.filter((x) => x.version >= 10)) await db.session((s) => s.exec(m.sql));
+    expect(await state()).toEqual(once);
   });
 });
