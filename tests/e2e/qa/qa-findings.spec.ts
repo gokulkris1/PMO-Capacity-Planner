@@ -24,7 +24,7 @@ test.describe('QA findings (demo workspace)', () => {
     expect(line).toMatch(/^"'=HYPERLINK/);
   });
 
-  test.fixme('QA-002 Allocations person row shows the same % of target as People for a 80 % target', async ({
+  test('QA-002 People, Allocations and Capacity Outlook show the same % of target for an 80 % target', async ({
     page,
   }) => {
     await openDemo(page, 'org/people', 'person=r1');
@@ -40,12 +40,13 @@ test.describe('QA findings (demo workspace)', () => {
     const peopleQ1 = /QBR1, (\d+)%/.exec(peopleLabel ?? '')?.[1];
     expect(peopleQ1).toBeDefined();
     // Client-side navigation keeps the demo edit (no reload).
-    await page
-      .getByRole('navigation', { name: /primary/i })
-      .getByRole('link', { name: 'Allocations' })
-      .click();
+    const nav = page.getByRole('navigation', { name: /primary/i });
+    await nav.getByRole('link', { name: 'Allocations' }).click();
     const gridCell = page.getByRole('gridcell', { name: new RegExp(`^${name}, QBR1, `) }).first();
     await expect(gridCell).toHaveAccessibleName(new RegExp(`, ${peopleQ1}%`));
+    await nav.getByRole('link', { name: 'Capacity Outlook' }).click();
+    await page.getByRole('radiogroup', { name: 'Pivot' }).getByRole('radio', { name: 'Person' }).click();
+    await expect(page.getByRole('img', { name: new RegExp(`^${name} QBR1, ${peopleQ1}%`) }).first()).toBeVisible();
   });
 
   test.fixme('QA-006 at 768 px every person name in the People table is readable (not collapsed under the chips)', async ({

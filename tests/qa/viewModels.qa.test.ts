@@ -69,7 +69,7 @@ describe('QA: same-number guarantee with a non-100 % target', () => {
 
   // QA-002 (Major): the Allocations grid person row displays cells[].pct = raw load (100 %) under the legend
   // "Person rows: total load as % of target", so People/Home/Outlook say 111 % and the grid says 100 %.
-  it.skip('QA-002 Allocations grid person row shows the same number as People (load as % of target)', () => {
+  it('QA-002 Allocations grid person row shows the same number as People (load as % of target)', () => {
     const s = nomaSnapshot();
     const people = buildPeopleRows(s, QUARTERS, t).find((r) => r.person.id === 'noma')!;
     const grid = buildAllocationGrid(s, QUARTERS, {

@@ -296,8 +296,9 @@ export function buildAllocationGrid(
         cells: quarters.map((_, qi) => {
           const c = cellFor(allocs, qi);
           const pq = toPersonQuarter(quarters[qi].key, loads[qi], o.thresholds);
-          // The person total is the load index value (same number as People and Outlook).
-          return { ...c, pct: pq.loadPct, band: pq.band };
+          // The person total is utilisation: load as a % of the person's target, from the load index (the same
+          // number People, Home and the Outlook show, shared/utilisation.ts; QA-002). Booking rows stay raw %.
+          return { ...c, pct: pq.relativePct, band: pq.band };
         }),
       });
       const bookings = groupBy(allocs, (a) => `${a.projectId}|${effectiveCraft(a, p) ?? ''}`);

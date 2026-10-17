@@ -51,10 +51,48 @@ describe('same-number guarantee (RP-03#AC3)', () => {
         const u = utilisationFor(s, row.person.id, basis, QUARTERS);
         expect(row.quarters[i].relativePct).toBe(u);
         expect(outlookRows.get(row.person.id)!.points[i].utilisationPct).toBe(u);
-        expect(gridRows.get(row.person.id)!.cells[i].pct).toBe(row.quarters[i].loadPct);
+        expect(gridRows.get(row.person.id)!.cells[i].pct).toBe(row.quarters[i].relativePct);
         expect(gridRows.get(row.person.id)!.cells[i].band).toBe(row.quarters[i].band);
         expect(outlookRows.get(row.person.id)!.points[i].band).toBe(row.quarters[i].band);
       });
+    }
+  });
+
+  it('QA-002: with targets other than 100 % every view shows load as a % of target', () => {
+    const odd = { ...s, people: s.people.map((p, i) => ({ ...p, targetUtil: [80, 90, 60, 120][i % 4] })) };
+    const people = buildPeopleRows(odd, QUARTERS, t);
+    const grid = buildAllocationGrid(odd, QUARTERS, {
+      groupBy: 'none',
+      pivot: 'person',
+      includeTentative: true,
+      thresholds: t,
+    });
+    const gridRows = new Map(
+      grid.groups
+        .flatMap((g) => g.rows)
+        .filter((r) => r.kind === 'person')
+        .map((r) => [r.personId, r]),
+    );
+    const outlook = new Map(
+      buildCapacityOutlook(odd, QUARTERS, { pivot: 'person', thresholds: t }).rows.map((r) => [r.id, r]),
+    );
+    let differs = 0;
+    for (const row of people) {
+      QUARTERS.forEach((q, i) => {
+        const u = utilisationFor(odd, row.person.id, { kind: 'quarter', key: q.key }, QUARTERS);
+        if (row.quarters[i].loadPct !== row.quarters[i].relativePct) differs++;
+        expect(row.quarters[i].relativePct).toBe(u);
+        expect(gridRows.get(row.person.id)!.cells[i].pct).toBe(u);
+        expect(gridRows.get(row.person.id)!.cells[i].band).toBe(bandFor(u, t));
+        expect(outlook.get(row.person.id)!.points[i].utilisationPct).toBe(u);
+      });
+    }
+    expect(differs).toBeGreaterThan(0); // the check is meaningful: raw load and % of target differ
+    for (const q of QUARTERS) {
+      const basis: TimeBasis = { kind: 'quarter', key: q.key };
+      const home = buildHome(odd, QUARTERS, basis, t, null);
+      const over = odd.people.filter((p) => bandFor(utilisationFor(odd, p.id, basis, QUARTERS), t) === 'over');
+      expect(home.kpis.overCount).toBe(over.length);
     }
   });
 
