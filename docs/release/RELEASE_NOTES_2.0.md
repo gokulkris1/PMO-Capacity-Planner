@@ -116,3 +116,7 @@ staff). Every export is recorded in the audit log.
   (NT-01 partly, NT-02), tribe intake (IN-01/02), audit log page (AU-01), setup checklist (OB-01), scheduled
   Planview import (PV-04), XLSX export (RP-05), and drag-and-drop in the grid (AL-08, Could).
 - The dark theme tokens exist, but there is no theme switch yet. Lighthouse has not been run; axe runs on every page.
+- QA items deferred to 2.0.x with a PO decision pending (docs/qa/QA_REPORT.md §4, "Resolution"): how v1.1 data maps
+  for unknown craft ids, tribe leads and part-time capacity (QA-014, QA-015, QA-022), Today/Window on the
+  quarter-shaped pages (QA-020), the v1.1 email sender fallback until `FROM_EMAIL` is set (QA-024), table
+  virtualisation (QA-017) and the Available band tint (QA-033).
