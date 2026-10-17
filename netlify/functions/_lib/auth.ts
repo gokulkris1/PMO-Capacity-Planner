@@ -6,6 +6,7 @@
  *
  * `requireUser` sits behind an `AuthAdapter` so Release 3.0 can add a Forge-context adapter.
  */
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { Queryable } from './db';
 import { one } from './db';
@@ -86,6 +87,8 @@ export interface SessionClaims {
   sub?: string;
   id?: string;
   tv?: number;
+  /** Session id (2.0 sessions issued after QA-019); revoked on plain sign-out. */
+  jti?: string;
   iat?: number;
   exp?: number;
 }
@@ -105,7 +108,7 @@ export function signSession(u: UserRow): string {
   return jwt.sign(
     { sub: u.id, id: u.id, tv: Number(u.token_version ?? 0), email: u.email, role: u.role, org_id: u.org_id },
     requireEnv('JWT_SECRET'),
-    { algorithm: 'HS256', expiresIn: SESSION_MAX_AGE_SEC },
+    { algorithm: 'HS256', expiresIn: SESSION_MAX_AGE_SEC, jwtid: randomUUID() },
   );
 }
 
@@ -155,8 +158,26 @@ export class SessionJwtAuth implements AuthAdapter {
     if (!user) throw unauthorized(SESSION_ENDED);
     const tv = typeof claims.tv === 'number' ? claims.tv : 0;
     if (tv !== Number(user.token_version ?? 0)) throw unauthorized(SESSION_ENDED);
+    if (claims.jti && (await isSessionRevoked(q, claims.jti))) throw unauthorized(SESSION_ENDED);
     return actorFromUser(user, found.method);
   }
+}
+
+/** QA-019: a session signed out with plain "Sign out" is refused even if someone kept a copy of its cookie. */
+export async function isSessionRevoked(q: Queryable, jti: string): Promise<boolean> {
+  const rows = await q.query(`SELECT 1 AS x FROM revoked_sessions WHERE jti = $1`, [jti]);
+  return rows.length > 0;
+}
+
+/** Records the session's jti until the token would have expired (and prunes rows that have). */
+export async function revokeSession(q: Queryable, claims: SessionClaims, userId: string | null): Promise<void> {
+  if (!claims.jti) return;
+  const expires = new Date(((claims.exp ?? Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SEC) as number) * 1000);
+  await q.query(`DELETE FROM revoked_sessions WHERE expires_at < now()`);
+  await q.query(
+    `INSERT INTO revoked_sessions (jti, user_id, expires_at) VALUES ($1, $2, $3) ON CONFLICT (jti) DO NOTHING`,
+    [claims.jti, userId, expires.toISOString()],
+  );
 }
 
 export function actorFromUser(user: UserRow, method: 'cookie' | 'bearer'): Actor {

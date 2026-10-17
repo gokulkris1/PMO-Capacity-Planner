@@ -127,7 +127,7 @@ describe('QA: sessions and CSRF', () => {
   });
 
   // QA-019 (Minor): sign-out only clears cookies; a copied pcp_session keeps working until it expires (7 days).
-  it.skip('QA-019 a session cookie value stops working after plain sign-out', async () => {
+  it('QA-019 a session cookie value stops working after plain sign-out', async () => {
     const s = await login(planner.email);
     await call(auth, 'POST', '/api/auth/logout', { cookies: s.cookies });
     expect((await call(v2, 'GET', '/api/v2/me', { cookies: s.cookies })).status).toBe(401);
@@ -183,7 +183,7 @@ describe('QA: tenant isolation and privilege escalation', () => {
 
   // QA-008 (Minor): AC-06#AC2 says a role change bumps the target's token_version. Authorisation is read from the
   // database on every request, so the demotion itself takes effect immediately, but the AC is not met.
-  it.skip("QA-008 changing a member's workspace role bumps their token_version (AC-06#AC2)", async () => {
+  it("QA-008 changing a member's workspace role bumps their token_version (AC-06#AC2)", async () => {
     const before = await db.query<{ token_version: number }>(`SELECT token_version FROM users WHERE id = $1`, [
       viewer.id,
     ]);
@@ -196,6 +196,31 @@ describe('QA: tenant isolation and privilege escalation', () => {
       viewer.id,
     ]);
     expect(after[0].token_version).toBe(before[0].token_version + 1);
+  });
+});
+
+describe('QA-008 / QA-019 session revocation', () => {
+  it('a member who changes their own role keeps working with the fresh cookie the response sets', async () => {
+    const self = await createUser(db, { orgId: orgA, orgRole: 'ORG_ADMIN', email: 'self-demote@qa.test' });
+    const s = await login(self.email);
+    const res = await call(v2, 'PATCH', `/api/v2/workspaces/${wsA}/members/${self.id}`, {
+      cookies: s.cookies,
+      headers: { 'x-csrf-token': s.csrf },
+      body: { role: 'PLANNER' },
+    });
+    expect(res.status).toBe(200);
+    const fresh = cookieValue(res.cookies, 'pcp_session');
+    expect(fresh).toBeTruthy();
+    expect((await call(v2, 'GET', '/api/v2/me', { cookies: s.cookies })).status).toBe(401);
+    expect((await call(v2, 'GET', '/api/v2/me', { cookies: { ...s.cookies, pcp_session: fresh! } })).status).toBe(200);
+  });
+
+  it('plain sign-out revokes only that session; another browser stays signed in', async () => {
+    const a = await login(viewer.email);
+    const b = await login(viewer.email);
+    await call(auth, 'POST', '/api/auth/logout', { cookies: a.cookies });
+    expect((await call(v2, 'GET', '/api/v2/me', { cookies: a.cookies })).status).toBe(401);
+    expect((await call(v2, 'GET', '/api/v2/me', { cookies: b.cookies })).status).toBe(200);
   });
 });
 

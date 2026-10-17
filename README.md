@@ -73,7 +73,7 @@ Nothing falls back to a built-in secret. No server key is ever exposed to the br
 
 ## Database and migrations
 
-- The schema lives in `migrations/0001…0007_*.sql`. The files are additive and idempotent: they never drop or
+- The schema lives in `migrations/0001…0008_*.sql`. The files are additive and idempotent: they never drop or
   rename a v1.1 column, and v1.1 role and plan columns are still written. `scripts/db/embed-migrations.mjs` embeds
   them into the functions bundle (`netlify/functions/_lib/migrations.generated.ts`; CI fails when it is stale).
 - **Nobody runs SQL by hand, and `db:migrate` is optional.** The first API requests after a deploy apply pending
@@ -87,7 +87,7 @@ Nothing falls back to a built-in secret. No server key is ever exposed to the br
   prints row counts and the role mapping, then rolls back. `npm run db:migrate` applies for real.
 - `npm run db:parity -- --snapshot before.json` before the deploy, then `npm run db:parity -- --before before.json`
   after it, prints "0 rows lost, 0 credential changes" or the differences (ids only).
-- New migration: add `migrations/0008_<name>.sql` (additive, idempotent), run `node scripts/db/embed-migrations.mjs`
+- New migration: add `migrations/0009_<name>.sql` (additive, idempotent), run `node scripts/db/embed-migrations.mjs`
   and extend `tests/backend/migrations.test.ts`.
 
 Operations scripts (each prints counts or ids only, never secrets):

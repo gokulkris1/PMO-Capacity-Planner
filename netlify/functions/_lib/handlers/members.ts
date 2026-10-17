@@ -17,6 +17,24 @@ import { iso, one, withTx } from '../db';
 import { badRequest, conflict, forbidden, notFound } from '../errors';
 import { bestEffort } from '../entity';
 import type { Params } from '../router';
+import type { UserRow } from '../auth';
+import { issueSession } from '../session';
+
+const rolesOf = (m: MemberDTO) =>
+  JSON.stringify([m.orgRole, [...m.workspaces].sort((a, b) => a.workspaceId.localeCompare(b.workspaceId))]);
+
+/**
+ * AC-06#AC2 (QA-008): a role change bumps the member's token_version, so every session they hold ends and they sign
+ * in again with the new role. When they changed their own role, this request carries on with a fresh cookie.
+ */
+async function endSessionsAfterRoleChange(ctx: Ctx, q: Queryable, userId: string): Promise<void> {
+  const rows = await q.query<UserRow & Record<string, unknown>>(
+    `UPDATE users SET token_version = token_version + 1 WHERE id = $1
+     RETURNING id, email, name, role, plan, org_id, is_platform_admin, token_version, email_verified_at, two_factor_enabled`,
+    [userId],
+  );
+  if (rows[0] && ctx.actor?.userId === userId && ctx.actor.authMethod === 'cookie') issueSession(ctx, rows[0]);
+}
 
 const ORG_MEMBERS_SQL = `
   SELECT u.id, u.name, u.email, u.last_sign_in_at,
@@ -163,6 +181,7 @@ export async function patchOrgMember(ctx: Ctx, p: Params): Promise<MemberDTO> {
       }
     }
     const [after] = await loadMembers(q, p.orgId, p.userId);
+    if (rolesOf(before) !== rolesOf(after)) await endSessionsAfterRoleChange(ctx, q, p.userId);
     await audit(q, auditCtx(ctx), {
       action: 'role.change',
       orgId: p.orgId,
@@ -237,6 +256,7 @@ export async function patchWorkspaceMember(ctx: Ctx, p: Params): Promise<MemberD
     if (!before) throw notFound('Member not found');
     await upsertWorkspaceRole(q, p.userId, p.wsId, access.orgId, role, actor.userId);
     const [after] = await loadMembers(q, access.orgId, p.userId);
+    if (rolesOf(before) !== rolesOf(after)) await endSessionsAfterRoleChange(ctx, q, p.userId);
     await audit(q, auditCtx(ctx), {
       action: 'role.change',
       orgId: access.orgId,

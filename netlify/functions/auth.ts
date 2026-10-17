@@ -11,7 +11,15 @@ import { z } from 'zod';
 import type { Ctx } from './_lib/api';
 import { assertCsrf, auditCtx, noContent, parseWith, reply, requireActor, withApi } from './_lib/api';
 import { audit, auditBestEffort } from './_lib/audit';
-import { loadUser, loadUserByEmail, normaliseEmail, type UserRow } from './_lib/auth';
+import {
+  loadUser,
+  loadUserByEmail,
+  normaliseEmail,
+  revokeSession,
+  tokenFrom,
+  verifyToken,
+  type UserRow,
+} from './_lib/auth';
 import { getDb, withTx } from './_lib/db';
 import { publicSignupAllowed } from './_lib/env';
 import { GONE_MESSAGE, badRequest, forbidden, gone, notFound, unauthorized } from './_lib/errors';
@@ -158,6 +166,11 @@ async function logout(ctx: Ctx, everywhere = false) {
       await q.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [actor.userId]);
       await audit(q, auditCtx(ctx), { action: 'auth.logout_all', targetType: 'user', targetId: actor.userId });
     });
+  } else {
+    // QA-019: plain sign-out revokes this session on the server, so a copied cookie stops working too.
+    const found = tokenFrom({ headers: ctx.headers, cookies: ctx.cookies });
+    const claims = found ? verifyToken(found.token) : null;
+    if (claims?.jti) await revokeSession(ctx.db, claims, ctx.actor?.userId ?? null);
   }
   ctx.setCookies.push(...clearSessionCookies());
   return noContent();

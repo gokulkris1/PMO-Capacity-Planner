@@ -464,7 +464,7 @@ describe('GET /api/health (PL-13)', () => {
   it('reports schema and env presence as booleans only', async () => {
     const r = await call(health, 'GET', '/api/health');
     expect(r.status).toBe(200);
-    expect(r.json).toMatchObject({ ok: true, schemaVersion: 7, requiredSchemaVersion: 7 });
+    expect(r.json).toMatchObject({ ok: true, schemaVersion: 8, requiredSchemaVersion: 8 });
     const env = r.json.env as Record<string, unknown>;
     expect(env.JWT_SECRET).toBe(true);
     expect(Object.values(env).every((v) => typeof v === 'boolean')).toBe(true);

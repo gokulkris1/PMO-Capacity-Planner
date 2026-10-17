@@ -11,7 +11,7 @@ release commit, after `npm ci`.
 
 - Netlify builds `main` and publishes the SPA and the functions together. Nobody runs SQL, and nobody has to run
   `db:migrate`: the deploy brings the schema up by itself.
-- The first API requests after the publish apply the pending migrations (0001–0007) under a PostgreSQL advisory
+- The first API requests after the publish apply the pending migrations (0001–0008) under a PostgreSQL advisory
   lock. Each file is its own transaction and is recorded in `schema_migrations` as soon as it commits, so progress
   survives from one request to the next. One function invocation applies files for at most about 4 s (the first
   file always runs), and each file runs under a `statement_timeout` that keeps the invocation inside Netlify's
@@ -45,9 +45,9 @@ release commit, after `npm ci`.
 | 2.1 | PMO lead | Tell users: "2.0 goes live at HH:MM. Save your work. After the update, reload the page. Your login does not change." | |
 | 2.2 | Operator | Neon → Branches → create **`pre-2-0-<yyyymmdd>`** from production at the current time (instant backup). | Branch listed |
 | 2.3 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --snapshot before-prod.json` | File written; counts printed |
-| 2.4 | Operator | **Recommended, not required.** Takes the migration off the first user requests, so nobody sees the update notice: `DATABASE_URL=$PROD_URL npm run db:migrate`. If it is skipped (or forgotten), the first requests after the publish migrate the database by themselves (§0). Required only when step 1.4 showed a single file slower than about 8 s. | "Applied 1, …, 7" or "0 pending" |
+| 2.4 | Operator | **Recommended, not required.** Takes the migration off the first user requests, so nobody sees the update notice: `DATABASE_URL=$PROD_URL npm run db:migrate`. If it is skipped (or forgotten), the first requests after the publish migrate the database by themselves (§0). Required only when step 1.4 showed a single file slower than about 8 s. | "Applied 1, …, 8" or "0 pending" |
 | 2.5 | Operator | Merge the release PR into `main`. Netlify builds and publishes (Deploys tab). | Deploy "Published" |
-| 2.6 | Operator | `curl -s <site>/api/health` (repeat until 200) | `{"ok":true,"schemaVersion":7,"requiredSchemaVersion":7,…}`; `env.JWT_SECRET` and the database true |
+| 2.6 | Operator | `curl -s <site>/api/health` (repeat until 200) | `{"ok":true,"schemaVersion":8,"requiredSchemaVersion":8,…}`; `env.JWT_SECRET` and the database true |
 | 2.7 | Operator | `DATABASE_URL=$PROD_URL npm run db:parity -- --before before-prod.json` | "0 rows lost, 0 credential changes" |
 | 2.8 | Two testers | Smoke test (§3) | All pass |
 | 2.9 | Org Admins | CA-14: switch on Sprint planning where it is used (Settings › Features). CA-15: review roles. | |
@@ -56,7 +56,7 @@ release commit, after `npm ci`.
 
 ## 3. Checks after go-live
 
-1. `GET <site>/api/health` returns 200 with `schemaVersion` 7. Add it to the uptime monitor (CA-13).
+1. `GET <site>/api/health` returns 200 with `schemaVersion` 8. Add it to the uptime monitor (CA-13).
 2. Sign in with a v1.1 account (password and, for one account, 2FA). Home loads with the organisation's data, and
    there is no demo banner.
 3. Open a browser that was signed in to v1.1 before the deploy: it is still signed in, with no new sign-in prompt.
