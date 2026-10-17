@@ -104,6 +104,33 @@ export interface RuntimeOptions {
 
 export const UNDO_LIMIT = 20;
 
+/** Sign-in during a deploy's migration (QA-039). */
+export interface LoginWaiting {
+  /** 1 for the first wait. */
+  attempt: number;
+  /** How long until the next attempt. */
+  retryInMs: number;
+}
+export interface LoginOptions {
+  /** Retry a 503 `migration_pending` with backoff instead of failing; called before each wait. */
+  onWaiting?: (w: LoginWaiting) => void;
+  /** Stop retrying (the form was left). */
+  isCancelled?: () => boolean;
+  /** Give up after this long (default 5 minutes) and reject with the 503. */
+  maxWaitMs?: number;
+}
+export const LOGIN_MAX_WAIT_MS = 5 * 60_000;
+const LOGIN_BACKOFF_MS = [2000, 3000, 5000, 8000];
+/** 2 s, 3 s, 5 s, 8 s, then every 10 s. */
+export function loginRetryDelay(attempt: number): number {
+  return LOGIN_BACKOFF_MS[attempt - 1] ?? 10_000;
+}
+
+/** The error the boot shows while the token exchange or sign-in waits for a deploy's migration. */
+export function migrationPendingError(): ApiRequestError {
+  return new ApiRequestError(503, 'migration_pending', 'PMO Capacity Planner is being updated.');
+}
+
 function asApiError(e: unknown): ApiRequestError {
   return e instanceof ApiRequestError ? e : new ApiRequestError(0, 'server_error', 'Something went wrong.');
 }
@@ -254,7 +281,15 @@ export class DataRuntime {
     for (const k of LEGACY_STORAGE_KEYS) this.storage.remove(k);
     if (this.transport instanceof HttpTransport) {
       const r = await this.transport.exchangeLegacyToken(this.rawStorage);
-      if (r === 'expired')
+      if (r === 'pending') {
+        // QA-039: a deploy is migrating the database. The v1.1 token is kept; show "being updated" and retry the
+        // exchange on the maintenance schedule until the API is ready, then the boot carries on signed in.
+        this.set({ status: 'loading', dataStatus: 'error', dataError: migrationPendingError() });
+        this.scheduleMaintenanceRetry();
+        return;
+      }
+      // Another tab exchanged the same token a moment earlier (its session cookie is already here): no notice.
+      if (r === 'expired' && !this.transport.mayHaveSession())
         this.set({ notice: { kind: 'legacy-session-expired', message: NOTICE_MESSAGE['legacy-session-expired'] } });
       if (r !== 'exchanged' && !this.transport.mayHaveSession()) {
         this.set({ me: null, status: 'anonymous' });
@@ -336,11 +371,45 @@ export class DataRuntime {
     }
   }
 
-  async login(email: string, password: string, otp?: string): Promise<{ require2FA: boolean }> {
-    const res = await this.api.auth.login({ email, password, ...(otp ? { otp } : {}) });
+  /**
+   * Signs in. With `onWaiting` (the sign-in form), a 503 `migration_pending` (a deploy is migrating the database,
+   * QA-039) is not an error: the same request is retried with backoff (`loginRetryDelay`) for up to `maxWaitMs`,
+   * `onWaiting` is told before each wait, and the user is signed in as soon as the API is ready.
+   */
+  async login(
+    email: string,
+    password: string,
+    otp?: string,
+    opts: LoginOptions = {},
+  ): Promise<{ require2FA: boolean }> {
+    const started = this.nowMs();
+    let res: Awaited<ReturnType<ApiClient['auth']['login']>>;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        res = await this.api.auth.login({ email, password, ...(otp ? { otp } : {}) });
+        break;
+      } catch (e) {
+        if (!opts.onWaiting || !isMaintenanceError(e) || opts.isCancelled?.()) throw e;
+        if (this.nowMs() - started >= (opts.maxWaitMs ?? LOGIN_MAX_WAIT_MS)) throw e;
+        const delay = loginRetryDelay(attempt);
+        opts.onWaiting({ attempt, retryInMs: delay });
+        await new Promise<void>((resolve) => this.timers.set(resolve, delay));
+        if (opts.isCancelled?.()) throw e;
+      }
+    }
     if ('require2FA' in res && res.require2FA) return { require2FA: true };
     this.set({ notice: null });
-    await this.loadMe();
+    try {
+      await this.loadMe();
+    } catch (e) {
+      if (!isMaintenanceError(e)) throw e;
+      // Signed in (the cookie is set) but /me hit an instance still migrating: wait in maintenance and boot from
+      // the cookie session as soon as the API answers.
+      this.started = Promise.resolve();
+      this.set({ status: 'loading', dataStatus: 'error', dataError: asApiError(e) });
+      this.scheduleMaintenanceRetry();
+      return { require2FA: false };
+    }
     await this.selectWorkspace(this.getState().activeWorkspaceId);
     return { require2FA: false };
   }

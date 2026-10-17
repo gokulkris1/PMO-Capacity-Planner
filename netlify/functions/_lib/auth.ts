@@ -6,7 +6,7 @@
  *
  * `requireUser` sits behind an `AuthAdapter` so Release 3.0 can add a Forge-context adapter.
  */
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { Queryable } from './db';
 import { one } from './db';
@@ -159,14 +159,41 @@ export class SessionJwtAuth implements AuthAdapter {
     const tv = typeof claims.tv === 'number' ? claims.tv : 0;
     if (tv !== Number(user.token_version ?? 0)) throw unauthorized(SESSION_ENDED);
     if (claims.jti && (await isSessionRevoked(q, claims.jti))) throw unauthorized(SESSION_ENDED);
+    // A v1.1 token has no jti: it is refused once it has been exchanged for a cookie session (QA-039), after a
+    // grace period so other tabs booting with the same token in that moment still get through.
+    if (!claims.jti && (await isSessionRevoked(q, legacyTokenJti(found.token)))) throw unauthorized(SESSION_ENDED);
     return actorFromUser(user, found.method);
   }
 }
 
 /** QA-019: a session signed out with plain "Sign out" is refused even if someone kept a copy of its cookie. */
 export async function isSessionRevoked(q: Queryable, jti: string): Promise<boolean> {
-  const rows = await q.query(`SELECT 1 AS x FROM revoked_sessions WHERE jti = $1`, [jti]);
+  const rows = await q.query(`SELECT 1 AS x FROM revoked_sessions WHERE jti = $1 AND revoked_at <= now()`, [jti]);
   return rows.length > 0;
+}
+
+/** The revocation key of a v1.1 token (it carries no jti): a hash, so the token itself is never stored. */
+export function legacyTokenJti(token: string): string {
+  return `v11:${createHash('sha256').update(token).digest('hex')}`;
+}
+
+/** How long a v1.1 token keeps working after it was exchanged (other tabs, old bundles still loading). */
+export const LEGACY_EXCHANGE_GRACE_SEC = 10 * 60;
+
+/**
+ * QA-039 (optional hardening): once a v1.1 bearer token has been exchanged for a cookie session it stops working
+ * after LEGACY_EXCHANGE_GRACE_SEC, so a copy left in another browser profile or a log cannot be replayed for the
+ * rest of its 7 days. Recorded until the token would have expired anyway; "Sign out of all devices" still bumps
+ * users.token_version as before.
+ */
+export async function revokeLegacyToken(q: Queryable, token: string, claims: SessionClaims, userId: string) {
+  if (claims.jti) return;
+  const exp = claims.exp ?? Math.floor(Date.now() / 1000) + 365 * 24 * 3600;
+  await q.query(
+    `INSERT INTO revoked_sessions (jti, user_id, revoked_at, expires_at)
+     VALUES ($1, $2, now() + make_interval(secs => $3), $4) ON CONFLICT (jti) DO NOTHING`,
+    [legacyTokenJti(token), userId, LEGACY_EXCHANGE_GRACE_SEC, new Date(exp * 1000).toISOString()],
+  );
 }
 
 /** Records the session's jti until the token would have expired (and prunes rows that have). */

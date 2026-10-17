@@ -27,7 +27,8 @@ export {
   useBootState,
 } from './hooks';
 export { DataProvider, type DataProviderProps } from './session';
-export type { MaintenanceState, SessionNotice, SessionNoticeKind } from './runtime';
+export type { LoginOptions, LoginWaiting, MaintenanceState, SessionNotice, SessionNoticeKind } from './runtime';
+export { loginRetryDelay } from './runtime';
 export {
   useAccountActions,
   useOrgAdmin,

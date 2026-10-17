@@ -15,6 +15,7 @@ import {
   loadUser,
   loadUserByEmail,
   normaliseEmail,
+  revokeLegacyToken,
   revokeSession,
   tokenFrom,
   verifyToken,
@@ -137,6 +138,11 @@ async function sessionExchange(ctx: Ctx) {
   const actor = requireActor(ctx);
   const user = await loadUser(ctx.db, actor.userId);
   if (!user) throw unauthorized();
+  if (actor.authMethod === 'bearer') {
+    const found = tokenFrom({ headers: ctx.headers, cookies: ctx.cookies });
+    const claims = found ? verifyToken(found.token) : null;
+    if (found && claims && !claims.jti) await revokeLegacyToken(ctx.db, found.token, claims, user.id);
+  }
   issueSession(ctx, user);
   return { user: await sessionUserPayload(ctx.db, user) };
 }

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { ApiRequestError, useSession } from '../../state';
+import { ApiRequestError, useSession, type LoginOptions } from '../../state';
 import { Banner, Button, CodeInput, FormField, PasswordField, TextField } from '../../components/ui';
 import { SIGNUP_ENABLED } from '../../components/shell/env';
 import { safeNext } from '../../components/shell/workspacePath';
@@ -28,6 +28,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [resendIn, setResendIn] = useState(0);
+  /** QA-039: set while the API answers 503 during a deploy; the sign-in is retried on its own. */
+  const [updating, setUpdating] = useState<string | null>(null);
+  const left = useRef(false);
+  useEffect(
+    () => () => {
+      left.current = true;
+    },
+    [],
+  );
+  const waitOpts: LoginOptions = {
+    onWaiting: ({ retryInMs }) =>
+      setUpdating(`Signing you in as soon as it is ready. Retrying in ${Math.max(1, Math.round(retryInMs / 1000))} s…`),
+    isCancelled: () => left.current,
+  };
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -54,8 +68,9 @@ export default function LoginPage() {
     if (errs.email || errs.password) return;
     setBusy(true);
     setError(null);
+    setUpdating(null);
     try {
-      const res = await login(email.trim(), password);
+      const res = await login(email.trim(), password, undefined, waitOpts);
       if (res.require2FA) {
         setStep('otp');
         setOtp('');
@@ -64,6 +79,7 @@ export default function LoginPage() {
     } catch (e) {
       setError(authErrorMessage(e, 'login'));
     } finally {
+      setUpdating(null);
       setBusy(false);
     }
   };
@@ -75,13 +91,15 @@ export default function LoginPage() {
     }
     setBusy(true);
     setError(null);
+    setUpdating(null);
     try {
-      await login(email.trim(), password, code);
+      await login(email.trim(), password, code, waitOpts);
       finish();
     } catch (e) {
       const invalid = e instanceof ApiRequestError && (e.status === 400 || e.status === 401);
       setError(invalid ? 'That code is not valid or has expired.' : authErrorMessage(e));
     } finally {
+      setUpdating(null);
       setBusy(false);
     }
   };
@@ -119,6 +137,11 @@ export default function LoginPage() {
       >
         <AuthForm onSubmit={() => void submitOtp()}>
           {error ? <Banner tone="danger">{error}</Banner> : null}
+          {updating && !error ? (
+            <Banner tone="info" title="PMO Capacity Planner is being updated.">
+              {updating}
+            </Banner>
+          ) : null}
           <div className="pcp-auth__code">
             <CodeInput
               label="Verification code"
@@ -167,8 +190,13 @@ export default function LoginPage() {
       }
     >
       <AuthForm onSubmit={() => void submitCredentials()}>
-        {notice && !error ? <Banner tone="info">{notice}</Banner> : null}
+        {notice && !error && !updating ? <Banner tone="info">{notice}</Banner> : null}
         {error ? <Banner tone="danger">{error}</Banner> : null}
+        {updating && !error ? (
+          <Banner tone="info" title="PMO Capacity Planner is being updated.">
+            {updating}
+          </Banner>
+        ) : null}
         <FormField label="Email" error={fieldErrors.email}>
           <TextField
             size="lg"

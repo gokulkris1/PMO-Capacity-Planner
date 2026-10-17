@@ -14,7 +14,7 @@ import { today } from '../utils/clock';
 import { rollingQuarterViews } from '../utils/quarters';
 import type { QuarterView } from '../utils/viewModels/types';
 import { buildMutations, type Mutations } from './mutations';
-import type { ConflictInfo, DataRuntime, MaintenanceState, RuntimeState, SessionNotice } from './runtime';
+import type { ConflictInfo, DataRuntime, LoginOptions, MaintenanceState, RuntimeState, SessionNotice } from './runtime';
 import { useRuntime } from './session';
 
 function useRuntimeState(): [RuntimeState, DataRuntime] {
@@ -27,7 +27,7 @@ export function useSession(): {
   status: 'loading' | 'anonymous' | 'authenticated';
   me: D.MeResponse | null;
   mode: 'live' | 'demo';
-  login(email: string, password: string, otp?: string): Promise<{ require2FA: boolean }>;
+  login(email: string, password: string, otp?: string, opts?: LoginOptions): Promise<{ require2FA: boolean }>;
   logout(opts?: { everywhere?: boolean }): Promise<void>;
   refreshMe(): Promise<void>;
 } {
@@ -37,7 +37,8 @@ export function useSession(): {
       status: s.status,
       me: s.me,
       mode: s.mode,
-      login: (email: string, password: string, otp?: string) => rt.login(email, password, otp),
+      login: (email: string, password: string, otp?: string, opts?: LoginOptions) =>
+        rt.login(email, password, otp, opts),
       logout: (opts?: { everywhere?: boolean }) => rt.logout(opts),
       refreshMe: () => rt.refreshMe(),
     }),

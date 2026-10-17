@@ -54,7 +54,7 @@ describe('QA: v1.1 token holder during a deploy migration (AC-03#AC2, SH-07#AC4)
     expect(rt.getState().status).toBe('anonymous');
   });
 
-  it.skip('QA-039 a v1.1 token exchange answered 503 migration_pending waits in maintenance and then signs in', async () => {
+  it('QA-039 a v1.1 token exchange answered 503 migration_pending waits in maintenance and then signs in', async () => {
     let migrating = true;
     const calls: string[] = [];
     const transport = new HttpTransport({

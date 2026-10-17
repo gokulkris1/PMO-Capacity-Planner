@@ -56,7 +56,15 @@ export interface HttpTransportOptions {
   getCookies?: () => string;
 }
 
-export type LegacyExchangeResult = 'none' | 'exchanged' | 'expired' | 'failed';
+/**
+ * - `exchanged`: the cookie session is set and the v1.1 token removed.
+ * - `expired`: the API refused the token (401); it is removed. With a session cookie already present (another tab
+ *   exchanged the same token a moment earlier) the boot carries on with that session.
+ * - `pending`: the API answered 503 (a deploy is migrating the database, QA-039). The token is KEPT so the
+ *   automatic retry can exchange it once the API is ready.
+ * - `failed`: anything else (network error, 5xx); the token is kept for the next page load.
+ */
+export type LegacyExchangeResult = 'none' | 'exchanged' | 'expired' | 'pending' | 'failed';
 
 export function readCookie(cookies: string, name: string): string | null {
   for (const part of cookies.split(';')) {
@@ -107,7 +115,7 @@ export class HttpTransport implements Transport {
     return readCookie(this.getCookies(), CSRF_COOKIE) !== null;
   }
 
-  /** AC-03#AC2: exchanges a v1.1 bearer token for the cookie session, once. */
+  /** AC-03#AC2: exchanges a v1.1 bearer token for the cookie session, once (QA-039: kept while the API answers 503). */
   async exchangeLegacyToken(storage: StorageLike | null): Promise<LegacyExchangeResult> {
     if (!storage) return 'none';
     let token: string | null = null;
@@ -127,7 +135,9 @@ export class HttpTransport implements Transport {
     } catch {
       return 'failed';
     }
+    if (res.status === 503) return 'pending';
     if (res.ok || res.status === 401) {
+      // Only now: until the exchange has an answer the token is the user's only way back in (QA-039).
       try {
         storage.removeItem(LEGACY_TOKEN_KEY);
         storage.removeItem(LEGACY_USER_KEY);

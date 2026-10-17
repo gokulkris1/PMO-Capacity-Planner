@@ -77,6 +77,9 @@ export function authErrorMessage(err: unknown, context: 'login' | 'generic' = 'g
         ? err.message
         : 'Too many attempts. Wait a few minutes and try again.';
     if (context === 'login' && (err.status === 401 || err.status === 400)) return 'Email or password is incorrect.';
+    // QA-039: still migrating after the sign-in form's automatic retries.
+    if (err.code === 'migration_pending' || err.status === 503)
+      return 'PMO Capacity Planner is still being updated. Try again in a minute; your password is unchanged.';
     if (err.status === 501) return "This isn't available yet. Try again later.";
     if (err.status === 400 && err.message && !/sql|stack|exception/i.test(err.message)) return err.message;
     if (err.status === 403 && err.message && !/sql|stack|exception/i.test(err.message)) return err.message;

@@ -6,6 +6,8 @@
  * as soon as the API is ready, with no user action.
  */
 import type { Handler, HandlerEvent, HandlerResponse } from '@netlify/functions';
+import jwt from 'jsonwebtoken';
+import { setDb, type Db } from '../../netlify/functions/_lib/db';
 import { handler as auth } from '../../netlify/functions/auth';
 import { handler as v2 } from '../../netlify/functions/v2';
 import {
@@ -19,6 +21,7 @@ import { HttpTransport } from '../../services/api/httpTransport';
 import { DataRuntime, type Timers } from '../../state/runtime';
 import type { PgliteDb } from './helpers/pglite';
 import {
+  JWT_SECRET,
   PASSWORD,
   addMember,
   createOrg,
@@ -91,6 +94,7 @@ const settle = async () => {
 let db: PgliteDb;
 let wsId: string;
 let email: string;
+let userId: string;
 
 beforeAll(async () => {
   db = await setupDb();
@@ -98,6 +102,7 @@ beforeAll(async () => {
   wsId = await createWorkspace(db, org, 'Main');
   const user = await createUser(db, { orgId: org, orgRole: 'MEMBER' });
   email = user.email;
+  userId = user.id;
   await addMember(db, user.id, wsId, 'PLANNER');
   await createPerson(db, wsId, { name: 'Noma Odigie' });
 });
@@ -200,5 +205,141 @@ describe('QA-011 deploy with pending migrations and nobody running db:migrate', 
       await settle();
     }
     expect(rt.getState()).toMatchObject({ dataStatus: 'ready', maintenance: null });
+  });
+});
+
+/**
+ * QA-039: go-live day. Every browser holds a v1.1 token (`localStorage.pcp_token`), and the first requests find the
+ * migration advisory lock held by another invocation that is still migrating. The token exchange and a sign-in
+ * typed during that time must wait in the "being updated" state and finish on their own once the lock is free.
+ */
+/** Waits (real time) until `cond` holds: a held lock makes each request wait a little in acquireLock. */
+async function until(cond: () => boolean, ms = 10_000): Promise<void> {
+  const end = Date.now() + ms;
+  while (!cond()) {
+    if (Date.now() > end) throw new Error('timed out waiting');
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
+describe('QA-039 v1.1 token holders and sign-ins while another invocation holds the migration lock', () => {
+  /** The real database, except that the migration advisory lock is "held elsewhere" while `held` is true. */
+  function lockHeldDb(real: PgliteDb, state: { held: boolean; attempts: number }): Db {
+    return {
+      query: (text, params) => real.query(text, params),
+      tx: (fn) => real.tx(fn),
+      session: (fn) =>
+        real.session((s) =>
+          fn({
+            ...s,
+            query: async (text: string, params?: unknown[]) => {
+              if (text.includes('pg_try_advisory_lock')) {
+                state.attempts++;
+                if (state.held) return [{ ok: false }] as never;
+              }
+              return s.query(text, params);
+            },
+          }),
+        ),
+    } as Db;
+  }
+  const deploy = () =>
+    parseMigrations([
+      ...MIGRATIONS.map((m) => ({ file: `${String(m.version).padStart(4, '0')}_${m.name}.sql`, sql: m.sql })),
+      { file: '0201_go_live.sql', sql: 'CREATE TABLE IF NOT EXISTS qa039_go_live (id int);' },
+    ]);
+
+  afterEach(() => {
+    setDb(db);
+    configureAutoMigration(null);
+    resetSchemaCheck();
+  });
+
+  it('the v1.1 token is kept, the app waits in maintenance and signs in by itself when the lock is free', async () => {
+    const lock = { held: true, attempts: 0 };
+    setDb(lockHeldDb(db, lock));
+    configureAutoMigration({ migrations: deploy(), lockWaitMs: 10 });
+    resetSchemaCheck();
+    const jar = new Map<string, string>();
+    const log: Array<{ path: string; status: number }> = [];
+    const fetchImpl = functionsFetch(jar, log);
+    // Exactly what v1.1 signed at sign-in and kept in localStorage.
+    const legacy = jwt.sign({ id: userId, email, role: 'USER' }, JWT_SECRET, { expiresIn: '7d' });
+    const data = new Map([
+      ['pcp_token', legacy],
+      ['pcp_user', '{}'],
+    ]);
+    const storage = {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+    };
+    const { timers, queue } = manualTimers();
+    const rt = new DataRuntime({
+      transport: new HttpTransport({ fetchImpl, getCookies: () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ') }),
+      storage,
+      timers,
+    });
+    await rt.start();
+    // Two automatic retries while the lock is still held: never the sign-in page, token kept.
+    for (let i = 0; i < 3; i++) {
+      await until(() => queue.length === 1);
+      expect(rt.getState()).toMatchObject({ status: 'loading', dataStatus: 'error' });
+      expect(rt.getState().dataError).toMatchObject({ status: 503, code: 'migration_pending' });
+      expect(rt.getState().maintenance).not.toBeNull();
+      expect(data.get('pcp_token')).toBe(legacy);
+      expect(queue).toHaveLength(1);
+      if (i < 2) queue.shift()!.fn();
+    }
+    expect(log.map((r) => `${r.path} ${r.status}`)).toEqual(Array(3).fill('/api/auth/session 503'));
+    // The other invocation finishes; the next automatic retry migrates, exchanges the token and boots.
+    lock.held = false;
+    queue.shift()!.fn();
+    await until(() => rt.getState().dataStatus === 'ready');
+    expect(rt.getState()).toMatchObject({ status: 'authenticated', dataStatus: 'ready', maintenance: null });
+    expect(rt.getState().notice).toBeNull();
+    expect(rt.getState().snapshot?.people.map((p) => p.name)).toEqual(['Noma Odigie']);
+    expect(data.has('pcp_token')).toBe(false);
+    expect(jar.get('pcp_session')).toBeTruthy();
+    expect([...(await appliedMigrations(db)).keys()].pop()).toBe(201);
+    expect(queue).toHaveLength(0);
+  });
+
+  it('a sign-in typed during the migration says it is being updated, retries and signs in', async () => {
+    const lock = { held: true, attempts: 0 };
+    setDb(lockHeldDb(db, lock));
+    configureAutoMigration({
+      migrations: parseMigrations([
+        ...deploy().map((m) => ({ file: `${String(m.version).padStart(4, '0')}_${m.name}.sql`, sql: m.sql })),
+        { file: '0202_go_live_b.sql', sql: 'CREATE TABLE IF NOT EXISTS qa039_go_live_b (id int);' },
+      ]),
+      lockWaitMs: 10,
+    });
+    resetSchemaCheck();
+    const jar = new Map<string, string>();
+    const log: Array<{ path: string; status: number }> = [];
+    const { timers, queue } = manualTimers();
+    const rt = new DataRuntime({
+      transport: new HttpTransport({
+        fetchImpl: functionsFetch(jar, log),
+        getCookies: () => [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
+      }),
+      timers,
+    });
+    await rt.start();
+    expect(rt.getState().status).toBe('anonymous'); // no token, no cookie: the sign-in form
+    const waits: number[] = [];
+    const signedIn = rt.login(email, PASSWORD, undefined, { onWaiting: (w) => waits.push(w.retryInMs) });
+    await until(() => queue.length === 1);
+    queue.shift()!.fn(); // still held
+    await until(() => queue.length === 1);
+    lock.held = false;
+    queue.shift()!.fn();
+    await expect(signedIn).resolves.toEqual({ require2FA: false });
+    await until(() => rt.getState().dataStatus === 'ready');
+    expect(waits).toEqual([2000, 3000]);
+    expect(log.filter((r) => r.path === '/api/auth/login').map((r) => r.status)).toEqual([503, 503, 200]);
+    expect(rt.getState()).toMatchObject({ status: 'authenticated', dataStatus: 'ready' });
+    expect([...(await appliedMigrations(db)).keys()].pop()).toBe(202);
   });
 });

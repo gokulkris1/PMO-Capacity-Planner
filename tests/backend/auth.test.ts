@@ -155,7 +155,7 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
     expect(r.status).toBe(429);
     expect(r.json.code).toBe('rate_limited');
     expect(Number(r.headers['Retry-After'])).toBeGreaterThan(0);
-    expect(r.json.error).toMatch(/Too many attempts. Try again in \d+ minutes\./);
+    expect(r.json.error).toMatch(/^Too many attempts\. Try again in \d+ minutes?\.$/);
   });
 
   it('rate limits 30 attempts per IP', async () => {
@@ -182,6 +182,32 @@ describe('sessions (AC-02, AC-03)', () => {
     expect((r.json.user as { id: string }).id).toBe(u.id);
     expect(cookieValue(r.cookies, 'pcp_session')).toBeTruthy();
     expect(cookieValue(r.cookies, 'pcp_csrf')).toHaveLength(43);
+  });
+
+  it('QA-039 an exchanged v1.1 token keeps working for the grace period, then is refused; the cookie stays', async () => {
+    const u = await createUser(db, { email: 'legacy-revoke@x.test' });
+    const legacy = jwt.sign({ id: u.id, email: u.email, role: 'USER' }, JWT_SECRET, { expiresIn: '7d' });
+    const r = await call(auth, 'POST', '/api/auth/session', { token: legacy });
+    expect(r.status).toBe(200);
+    const cookie = cookieValue(r.cookies, 'pcp_session')!;
+    // Another tab booting with the same token in this moment still gets through (exchange is repeatable).
+    expect((await call(v2, 'GET', '/api/v2/me', { token: legacy })).status).toBe(200);
+    const again = await call(auth, 'POST', '/api/auth/session', { token: legacy });
+    expect(again.status).toBe(200);
+    const rows = await db.query<{ jti: string; revoked_at: string; expires_at: string }>(
+      `SELECT jti, revoked_at::text, expires_at::text FROM revoked_sessions WHERE user_id = $1`,
+      [u.id],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].jti).toMatch(/^v11:[0-9a-f]{64}$/); // a hash, never the token
+    // The grace period is over: the token is refused, the exchanged cookie session is not.
+    await db.query(`UPDATE revoked_sessions SET revoked_at = now() - interval '1 second' WHERE user_id = $1`, [u.id]);
+    expect((await call(v2, 'GET', '/api/v2/me', { token: legacy })).status).toBe(401);
+    expect((await call(auth, 'POST', '/api/auth/session', { token: legacy })).status).toBe(401);
+    expect((await call(v2, 'GET', '/api/v2/me', { cookies: { pcp_session: cookie } })).status).toBe(200);
+    // A v1.1 token that was never exchanged is unaffected.
+    const other = jwt.sign({ id: u.id, email: u.email, role: 'USER', n: 2 }, JWT_SECRET, { expiresIn: '7d' });
+    expect((await call(v2, 'GET', '/api/v2/me', { token: other })).status).toBe(200);
   });
 
   it('rejects tokens with alg none, another algorithm or another secret (AC-02#AC2)', async () => {

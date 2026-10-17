@@ -171,8 +171,15 @@ describe('HttpTransport', () => {
       expect(s.data.size).toBe(0);
     });
 
-    it('keeps the token for the next load when the server is unavailable', async () => {
+    it('QA-039 keeps the token and reports pending while the API is migrating (503)', async () => {
       const { t } = setup(() => json(503, { error: 'x', code: 'migration_pending' }));
+      const s = storage({ pcp_token: 'old' });
+      await expect(t.exchangeLegacyToken(s)).resolves.toBe('pending');
+      expect(s.data.get('pcp_token')).toBe('old');
+    });
+
+    it('keeps the token for the next load when the server fails otherwise', async () => {
+      const { t } = setup(() => json(500, { error: 'x', code: 'server_error' }));
       const s = storage({ pcp_token: 'old' });
       await expect(t.exchangeLegacyToken(s)).resolves.toBe('failed');
       expect(s.data.get('pcp_token')).toBe('old');
