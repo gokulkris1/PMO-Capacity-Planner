@@ -165,6 +165,7 @@ export function StackedBarChart({
             const total = c.segments.reduce((s, x) => s + Math.max(0, x.value), 0);
             const summary = [
               `${c.label}${c.sublabel ? ` (${c.sublabel})` : ''}`,
+              ...(showTotals ? [`total ${format(total)} ${unit}`] : []),
               ...c.segments.map((s) => `${s.label} ${format(s.value)} ${unit}`),
               ...(c.marker ? [`${c.marker.label} ${format(c.marker.value)} ${unit}`] : []),
               ...(c.target ? [`${c.target.label} ${format(c.target.value)} ${unit}`] : []),

@@ -136,7 +136,7 @@ export function IconButton({
     <button
       ref={ref}
       type={type}
-      aria-label={badge ? `${label} (${badge > 99 ? '99+' : badge})` : label}
+      aria-label={badge ? `${label}, ${badge > 99 ? '99+' : badge} new` : label}
       className={cx('pcp-button', `pcp-button--${variant}`, `pcp-button--${size}`, 'pcp-button--icon', className)}
       {...rest}
     >

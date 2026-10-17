@@ -26,7 +26,7 @@ import {
   useToast,
   type Column,
 } from '../../components/ui';
-import { rememberDemoInvitation, useClientGaps, type PendingInvitation } from '../../state';
+import { useClientGaps, type PendingInvitation } from '../../state';
 import { SectionBody, SectionHeader, errorText } from './common';
 
 const WS_ROLES: WorkspaceRole[] = ['WORKSPACE_ADMIN', 'PLANNER', 'CONTRIBUTOR', 'VIEWER'];
@@ -455,7 +455,7 @@ function InviteDialog({
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState<PendingInvitation[] | null>(null);
+  const [results, setResults] = useState<Array<PendingInvitation & { emailSent: boolean }> | null>(null);
 
   const list = emails
     .split(/[\s,;]+/)
@@ -482,7 +482,7 @@ function InviteDialog({
     setBusy(true);
     setError(null);
     try {
-      const created: PendingInvitation[] = [];
+      const created: Array<PendingInvitation & { emailSent: boolean }> = [];
       for (const email of list) {
         const res = await m.admin.invite({ email, orgRole, workspaces: wsList });
         const inv: PendingInvitation = {
@@ -494,8 +494,8 @@ function InviteDialog({
           expiresAt: res.invitation.expiresAt,
           inviteUrl: res.inviteUrl,
         };
-        if (mode === 'demo') rememberDemoInvitation(inv);
-        created.push(inv);
+        // A-§6: the API says whether the email went out; without it (or in demo) the link must be shared by hand.
+        created.push({ ...inv, emailSent: mode !== 'demo' && res.emailSent === true });
       }
       onInvited(created);
       setResults(created);
@@ -520,15 +520,22 @@ function InviteDialog({
         }
       >
         <div className="pcp-settings__form">
-          <Banner tone="neutral">
-            {mode === 'demo'
-              ? "Email isn't set up. Send this link yourself; it works once and expires in 7 days."
-              : "If email isn't set up, send each link yourself; it works once and expires in 7 days."}
-          </Banner>
+          {results.some((r) => !r.emailSent) ? (
+            <Banner tone="neutral">
+              {results.every((r) => !r.emailSent)
+                ? "Email isn't set up. Copy each link and send it yourself; it works once and expires in 7 days."
+                : 'Some emails could not be sent. Copy those links and send them yourself; each works once and expires in 7 days.'}
+            </Banner>
+          ) : (
+            <Banner tone="success">Invitations were emailed. Each link works once and expires in 7 days.</Banner>
+          )}
           <ul className="pcp-settings__invite-links">
             {results.map((r) => (
               <li key={r.id} className="pcp-settings__invite-link">
-                <span className="pcp-settings__invite-email">{r.email}</span>
+                <span className="pcp-settings__invite-email">
+                  {r.email}
+                  {r.emailSent ? <span className="pcp-text-tertiary"> · emailed</span> : null}
+                </span>
                 {r.inviteUrl ? (
                   <Button size="sm" iconBefore={Copy} onClick={() => void copyText(r.inviteUrl ?? '', toast)}>
                     Copy link

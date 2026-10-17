@@ -3,6 +3,24 @@ import { useSearchParams } from 'react-router-dom';
 
 export const PRODUCT_NAME = 'PMO Capacity Planner';
 
+/**
+ * React Router hands every functional `setSearchParams` update the params of the last render, so two updates in
+ * the same event (e.g. closing a dialog clears `?edit=` and `?project=`) overwrite each other. Chain them: an
+ * update that starts from the same stale params as the previous one in this tick builds on its result instead.
+ */
+let pendingParams: { from: string; next: URLSearchParams } | null = null;
+function chainParams(prev: URLSearchParams, apply: (p: URLSearchParams) => void): URLSearchParams {
+  const from = prev.toString();
+  const base = pendingParams && pendingParams.from === from ? pendingParams.next : prev;
+  const next = new URLSearchParams(base);
+  apply(next);
+  pendingParams = { from, next };
+  setTimeout(() => {
+    if (pendingParams?.next === next) pendingParams = null;
+  }, 0);
+  return next;
+}
+
 /** Sets `document.title` to "{title} · PMO Capacity Planner" (SH-01#AC1). */
 export function useDocumentTitle(title: string | null | undefined): void {
   useEffect(() => {
@@ -24,12 +42,11 @@ export function useUrlParam(
   const set = useCallback(
     (v: string | null) => {
       setParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (v === null || v === '') next.delete(name);
-          else next.set(name, v);
-          return next;
-        },
+        (prev) =>
+          chainParams(prev, (next) => {
+            if (v === null || v === '') next.delete(name);
+            else next.set(name, v);
+          }),
         { replace },
       );
     },
@@ -48,12 +65,11 @@ export function useQueryParam(name: string, fallback = ''): [string, (v: string 
   const set = useCallback(
     (v: string | null) => {
       setParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (v === null || v === '' || v === fallback) next.delete(name);
-          else next.set(name, v);
-          return next;
-        },
+        (prev) =>
+          chainParams(prev, (next) => {
+            if (v === null || v === '' || v === fallback) next.delete(name);
+            else next.set(name, v);
+          }),
         { replace: true },
       );
     },

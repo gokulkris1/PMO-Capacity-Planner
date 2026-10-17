@@ -90,7 +90,7 @@ export function SearchTrigger({ onOpen }: { onOpen: () => void }) {
         type="button"
         className="pcp-search-trigger"
         onClick={onOpen}
-        aria-label="Search people, projects, crafts"
+        aria-keyshortcuts={mac ? 'Meta+K' : 'Control+K'}
       >
         <Icon icon={Search} size={16} className="pcp-search-trigger__icon" />
         <span className="pcp-search-trigger__placeholder">Search people, projects, crafts</span>

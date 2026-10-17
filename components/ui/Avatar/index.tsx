@@ -39,7 +39,8 @@ export function Avatar({ name, src, size = 32, linked, decorative = true, classN
       {showImage ? (
         <img src={src ?? undefined} alt="" className="pcp-avatar__img" onError={() => setFailed(true)} />
       ) : (
-        <span className="pcp-avatar__initials">{initials(name)}</span>
+        // Initials are drawn with CSS so they never become part of a control's text (axe label-in-name).
+        <span className="pcp-avatar__initials" data-initials={initials(name)} />
       )}
       {linked ? <span className="pcp-avatar__dot" /> : null}
     </span>

@@ -388,8 +388,6 @@ export function AllocationGrid({
               key={r.key}
               role="row"
               aria-rowindex={rowIndex}
-              aria-level={parent ? 1 : 2}
-              aria-expanded={parent ? !isCollapsed : undefined}
               className={cx(
                 parent ? 'al-row--parent' : 'al-row--booking',
                 tentative && 'is-tentative',
@@ -412,6 +410,7 @@ export function AllocationGrid({
                       className="al-toggle"
                       tabIndex={-1}
                       aria-label={isCollapsed ? `Expand ${r.label}` : `Collapse ${r.label}`}
+                      aria-expanded={!isCollapsed}
                       onClick={() => onToggle(r.key)}
                     >
                       {isCollapsed ? (

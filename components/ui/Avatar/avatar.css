@@ -81,3 +81,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.pcp-avatar__initials::before {
+  content: attr(data-initials);
+}

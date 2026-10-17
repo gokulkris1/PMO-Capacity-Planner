@@ -327,13 +327,14 @@ function ByProject({
                               <button
                                 type="button"
                                 className="dm-cellbtn"
-                                aria-label={`Edit demand. ${label}`}
                                 onClick={() => setCell({ projectId: d.project.id, quarterKey: c.quarterKey })}
                               >
+                                <span className="pcp-sr-only">Edit demand. {label}. </span>
                                 {content}
                               </button>
                             ) : (
-                              <div className="dm-cellbtn dm-cellbtn--ro" aria-label={label}>
+                              <div className="dm-cellbtn dm-cellbtn--ro">
+                                <span className="pcp-sr-only">{label}. </span>
                                 {content}
                               </div>
                             )}
