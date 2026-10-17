@@ -122,6 +122,25 @@ export function quarterView(key: QuarterKey, index: number, fiscalYearStartMonth
   };
 }
 
+/**
+ * UAT-08: the name the rest of the app uses for a quarter of the v1.1 sprint module (which stores its own labels,
+ * e.g. "QBR1 FY27"): "QBR1 · Q4 2026" when it is in the rolling QBR1–QBR4 window, else its calendar name "Q2 2026".
+ * The stored label is added in brackets when it says something else, so long-time users still recognise it.
+ */
+export function sprintQuarterLabel(
+  q: { start_date: string; label?: string | null },
+  views: ReadonlyArray<Pick<QuarterView, 'key' | 'label' | 'calendarLabel'>>,
+): string {
+  const day = String(q.start_date ?? '').slice(0, 10);
+  if (!isIsoDate(day)) return q.label ?? '';
+  const key = quarterKeyOf(day);
+  const v = views.find((x) => x.key === key);
+  const p = parseQuarterKey(key);
+  const name = v ? `${v.label} · ${v.calendarLabel}` : p ? `Q${p.q} ${p.year}` : key;
+  const stored = (q.label ?? '').trim();
+  return stored && !name.toLowerCase().includes(stored.toLowerCase()) ? `${name} (${stored})` : name;
+}
+
 /** Four rolling quarters starting with the quarter that contains `today` (QBR1 … QBR4). */
 export function rollingQuarterViews(today: ISODate, fiscalYearStartMonth: FiscalStartMonth = 1): QuarterView[] {
   const first = quarterKeyOf(today);

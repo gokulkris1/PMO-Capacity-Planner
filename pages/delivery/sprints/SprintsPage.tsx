@@ -5,7 +5,8 @@
  */
 import { useState } from 'react';
 import { CalendarDays, FlaskConical, RefreshCw, Sprout } from 'lucide-react';
-import { useFeature, useSession, useWorkspace } from '../../../state';
+import { useFeature, useQuarters, useSession, useWorkspace } from '../../../state';
+import { sprintQuarterLabel } from '../../../utils/quarters';
 import type { QBRMember } from '../../../types';
 import {
   Banner,
@@ -81,6 +82,7 @@ function SprintPlanner({ wsId }: { wsId: string }) {
   const toast = useToast();
   const confirm = useConfirm();
   const sp = useSprintData(wsId);
+  const views = useQuarters();
   const [viewRaw, setView] = useQueryParam('view', 'capacity');
   const view: View = VIEWS.some((v) => v.id === viewRaw) ? (viewRaw as View) : 'capacity';
   const [tribeFilter, setTribeFilter] = useState('');
@@ -161,7 +163,11 @@ function SprintPlanner({ wsId }: { wsId: string }) {
             size="sm"
             value={sp.quarterId}
             onValueChange={sp.setQuarterId}
-            options={o.quarters.map((q) => ({ value: q.id, label: `${q.label}${q.is_active ? ' (active)' : ''}` }))}
+            // UAT-08: the same quarter names as the rest of the app ("QBR1 · Q4 2026"), the v1.1 label in brackets.
+            options={o.quarters.map((q) => ({
+              value: q.id,
+              label: `${sprintQuarterLabel(q, views)}${q.is_active ? ', active' : ''}`,
+            }))}
           />
         </FormField>
         <span className="pcp-spacer" />
