@@ -8,7 +8,7 @@ import { Network } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useQuarters } from '../../../state';
 import { buildTribeView } from '../../../utils/viewModels';
-import { Card, EmptyState, fmt, PageHeader, StatusPill } from '../../../components/ui';
+import { Card, EmptyState, fmt, PageHeader, StatusPill, TableScroll } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
@@ -52,7 +52,7 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     );
   return (
     <Card flush>
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl tr-table">
           <caption className="pcp-sr-only">Tribes</caption>
           <thead>
@@ -153,7 +153,7 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             })}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       <div className="pcp-card__footer">
         <span className="pcp-caption pcp-text-tertiary">
           Staffed = confirmed bookings on the tribe&apos;s projects. Delivery signal compares planned with Jira-implied

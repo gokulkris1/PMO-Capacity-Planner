@@ -18,6 +18,7 @@ import {
   PageHeader,
   SegmentedControl,
   useToast,
+  TableScroll,
 } from '../../components/ui';
 import { PageBody } from '../../components/shell/PageBody';
 import { useDelivery } from '../../state';
@@ -203,7 +204,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           />
         }
       >
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl pcp-tbl--compact">
             <caption className="pcp-sr-only">Utilisation by {pivot}</caption>
             <thead>
@@ -240,11 +241,11 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
 
       <Card title="Demand report" subtitle="Captured demand against confirmed staffing, all projects" flush>
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl pcp-tbl--compact">
             <caption className="pcp-sr-only">Demand summary by quarter</caption>
             <thead>
@@ -292,7 +293,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         <div className="pcp-card__footer">
           <span className="pcp-caption pcp-text-tertiary">
             Time to staff:{' '}

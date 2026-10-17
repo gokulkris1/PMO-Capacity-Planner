@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pencil, Sparkles } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, fmt, StatusPill } from '../../../components/ui';
+import { Button, Card, fmt, StatusPill, TableScroll } from '../../../components/ui';
 import { CalibrationDialog } from '../_parts/CalibrationDialog';
 import type { DeliverySource } from '../../../state';
 
@@ -21,7 +21,7 @@ export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.Workspac
         title="Story points per sprint per FTE"
         subtitle="How to calibrate: take a tribe's last three closed sprints and divide the completed points by the full-time people on its boards. Re-check every QBR."
       >
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl">
             <caption className="pcp-sr-only">Calibration by tribe</caption>
             <thead>
@@ -90,7 +90,7 @@ export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.Workspac
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         <div className="pcp-card__footer">
           <span className="pcp-caption pcp-text-tertiary">
             Tribes without calibration use the workspace default: 10 points per 14-day sprint per FTE. Changes are

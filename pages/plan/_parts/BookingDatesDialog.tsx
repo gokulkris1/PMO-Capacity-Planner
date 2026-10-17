@@ -19,6 +19,7 @@ import {
   useAction,
   numOrNull,
   numText,
+  TableScroll,
 } from '../../../components/ui';
 
 interface Slice {
@@ -188,7 +189,7 @@ function Editor({
             <CraftChip craft={craft} via={craft?.id === person?.primaryCraft ? 'above' : 'below'} />
           </dd>
         </dl>
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl pcp-tbl--compact al-slices">
             <caption className="pcp-sr-only">Booking slices</caption>
             <thead>
@@ -271,7 +272,7 @@ function Editor({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         {slices.length === 0 && <p className="pcp-text-secondary">No slices. Saving removes this booking.</p>}
         {tried &&
           errors.map((e, i) =>

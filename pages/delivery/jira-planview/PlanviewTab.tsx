@@ -20,6 +20,7 @@ import {
   Select,
   StatusPill,
   useToast,
+  TableScroll,
 } from '../../../components/ui';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import type { DeliverySource, PlanviewApplyResult, PlanviewFieldTest } from '../../../state';
@@ -247,7 +248,7 @@ export function PlanviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
               title="Unmatched people"
               subtitle="Choose the squad member for each Planview person; your choice is remembered for the next import."
             >
-              <div className="pcp-tbl-wrap">
+              <TableScroll>
                 <table className="pcp-tbl">
                   <caption className="pcp-sr-only">Unmatched Planview people</caption>
                   <thead>
@@ -276,7 +277,7 @@ export function PlanviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </Card>
           )}
         </>
@@ -319,7 +320,7 @@ function DiffSection({
       title={`${title} · ${items.length}`}
       subtitle={removed ? 'Not selected by default. Removing a project in the planner keeps its history.' : undefined}
     >
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl">
           <caption className="pcp-sr-only">{title}</caption>
           <thead>
@@ -377,7 +378,7 @@ function DiffSection({
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </Card>
   );
 }

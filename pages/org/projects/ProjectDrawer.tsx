@@ -26,6 +26,7 @@ import {
   useConfirm,
   Textarea,
   LinkButton,
+  TableScroll,
 } from '../../../components/ui';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { DemandCellDialog } from '../../plan/demand/DemandCellDialog';
@@ -361,7 +362,7 @@ function DemandTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.ProjectD
   if (!row) return null;
   return (
     <>
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl">
           <caption className="pcp-sr-only">Demand by quarter</caption>
           <thead>
@@ -428,7 +429,7 @@ function DemandTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.ProjectD
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {edit && <DemandCellDialog snapshot={s} projectId={project.id} quarterKey={edit} onClose={() => setEdit(null)} />}
     </>
   );
@@ -456,7 +457,7 @@ function StaffingTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
       />
     );
   return (
-    <div className="pcp-tbl-wrap">
+    <TableScroll>
       <table className="pcp-tbl pcp-tbl--compact">
         <caption className="pcp-sr-only">People booked per quarter</caption>
         <thead>
@@ -511,7 +512,7 @@ function StaffingTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

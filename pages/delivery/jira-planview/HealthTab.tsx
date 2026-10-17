@@ -1,7 +1,7 @@
 /** Sync health (JI-07): last success, last run status, duration, pages, issues, the last 10 jobs and errors. */
 import { CircleAlert, CircleCheck, CircleDashed, CircleX, Hourglass, LoaderCircle, TriangleAlert } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { Banner, Card, EmptyState, fmt, KpiTile, StatusPill } from '../../../components/ui';
+import { Banner, Card, EmptyState, fmt, KpiTile, StatusPill, TableScroll } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 export function syncStatePill(state: D.SyncHealthDTO['state']) {
@@ -127,7 +127,7 @@ export function HealthTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnap
         </div>
       </div>
       <Card title="Recent runs" subtitle="The last 10 sync jobs" flush>
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl pcp-tbl--compact">
             <caption className="pcp-sr-only">Recent sync jobs</caption>
             <thead>
@@ -171,7 +171,7 @@ export function HealthTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnap
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
     </div>
   );

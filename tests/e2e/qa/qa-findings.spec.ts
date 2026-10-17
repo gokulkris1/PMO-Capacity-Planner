@@ -49,7 +49,7 @@ test.describe('QA findings (demo workspace)', () => {
     await expect(page.getByRole('img', { name: new RegExp(`^${name} QBR1, ${peopleQ1}%`) }).first()).toBeVisible();
   });
 
-  test.fixme('QA-006 at 768 px every person name in the People table is readable (not collapsed under the chips)', async ({
+  test('QA-006 at 768 px every person name in the People table is readable (not collapsed under the chips)', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
@@ -66,7 +66,52 @@ test.describe('QA findings (demo workspace)', () => {
     ).toBeVisible();
   });
 
-  test.fixme('QA-007 Allocations › By project has no serious axe violations (label-content-name-mismatch)', async ({
+  test('QA-006 at 768 px project names are readable and booking chips never overlap the names', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await openDemo(page, 'org/projects');
+    const name = page.getByRole('rowheader').first();
+    expect((await name.boundingBox())?.width ?? 0).toBeGreaterThan(180);
+    await expect(page.getByRole('button', { name: /Telephony Cloud Migration/ })).toBeVisible();
+    await openDemo(page, 'plan/allocations');
+    const subRows = page.locator('.al-name--sub');
+    const n = await subRows.count();
+    expect(n).toBeGreaterThan(5);
+    for (let i = 0; i < n; i++) {
+      const boxes = await subRows.nth(i).evaluate((el) => {
+        const cell = el.closest('th')!.getBoundingClientRect();
+        const kids = [...el.children].map((c) => c.getBoundingClientRect());
+        return {
+          cell: { left: cell.left, right: cell.right },
+          kids: kids.map((k) => ({ left: k.left, right: k.right })),
+        };
+      });
+      // Every chip sits after the previous one and inside the name cell: nothing overlaps, nothing spills over.
+      boxes.kids.forEach((k, j) => {
+        if (j > 0) expect(k.left).toBeGreaterThanOrEqual(boxes.kids[j - 1].right - 0.5);
+        expect(k.right).toBeLessThanOrEqual(boxes.cell.right + 0.5);
+      });
+    }
+  });
+
+  for (const route of ['org/people', 'org/projects', 'plan/allocations', 'plan/demand', 'plan/capacity']) {
+    test(`QA-007 ${route} at 768 px: every scrollable table is a named, keyboard-reachable region`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await openDemo(page, route);
+      const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      expect(res.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual(
+        [],
+      );
+      const regions = page.locator('.pcp-tbl-wrap[role="region"]');
+      for (let i = 0; i < (await regions.count()); i++) {
+        await expect(regions.nth(i)).toHaveAttribute('tabindex', '0');
+        await expect(regions.nth(i)).toHaveAttribute('aria-label', /\S/);
+      }
+    });
+  }
+
+  test('QA-007 Allocations › By project has no serious axe violations (label-content-name-mismatch)', async ({
     page,
   }) => {
     await openDemo(page, 'plan/allocations', 'pivot=project');
@@ -76,7 +121,7 @@ test.describe('QA findings (demo workspace)', () => {
     );
   });
 
-  test.fixme('QA-007 Capacity Outlook at 768 px has no serious axe violations (scrollable-region-focusable)', async ({
+  test('QA-007 Capacity Outlook at 768 px has no serious axe violations (scrollable-region-focusable)', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 768, height: 1024 });

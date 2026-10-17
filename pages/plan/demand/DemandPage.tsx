@@ -31,6 +31,7 @@ import {
   Tabs,
   TextField,
   useQueryParam,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { type BasisKey, useTimeBasis } from '../../../components/shell/TimeBasis';
@@ -240,7 +241,7 @@ function ByProject({
           />
         )
       ) : (
-        <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+        <TableScroll className="pcp-tbl-wrap--tall">
           <table className="pcp-tbl dm-table">
             <caption className="pcp-sr-only">Demand by project and quarter</caption>
             <thead>
@@ -358,7 +359,7 @@ function ByProject({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       <div className="pcp-card__footer">
         <span className="pcp-caption pcp-text-tertiary">
@@ -478,7 +479,7 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         />
       }
     >
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl pcp-tbl--compact dm-craft">
           <caption className="pcp-sr-only">Supply and demand by craft</caption>
           <thead>
@@ -565,7 +566,7 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             })}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       <div className="pcp-card__footer">
         <span className="pcp-caption pcp-text-tertiary">
           Unstaffed demand is counted per project and craft, as on the Marketplace, and links to it filtered to that

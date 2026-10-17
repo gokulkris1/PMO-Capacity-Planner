@@ -25,6 +25,7 @@ import {
   useQueryParam,
   useSort,
   IconButton,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { ProjectDrawer } from './ProjectDrawer';
@@ -243,7 +244,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
             <EmptyState icon={Funnel} title="No projects match these filters." />
           )
         ) : (
-          <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+          <TableScroll className="pcp-tbl-wrap--tall">
             <table className="pcp-tbl pj-table">
               <caption className="pcp-sr-only">Projects</caption>
               <thead>
@@ -317,11 +318,14 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                           </span>
                           <span className="pcp-caption pcp-text-tertiary pj-name__sub">
                             {p.source === 'planview' && <ProvenanceTag source="planview" />}
+                            {p.jiraKey && <span className="pj-name__jira pcp-tnum">{p.jiraKey} ·</span>}
                             {p.initiatedOn ? `Initiated ${fmt.date(p.initiatedOn)}` : p.priority}
                           </span>
                         </button>
                       </th>
-                      <td className="pcp-tnum">{p.jiraKey ?? <span className="pcp-text-tertiary">—</span>}</td>
+                      <td className="pcp-tnum pj-col-jira">
+                        {p.jiraKey ?? <span className="pcp-text-tertiary">—</span>}
+                      </td>
                       <td className="pcp-truncate">
                         {r.tribe?.name ?? <span className="pcp-text-tertiary">No tribe</span>}
                       </td>
@@ -339,7 +343,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                           <span className="pcp-text-tertiary">0.0</span>
                         )}
                       </td>
-                      <td className="pcp-truncate">
+                      <td className="pcp-truncate pj-col-owner">
                         {p.ownerUserId ? (
                           p.ownerUserId === me?.user.id ? (
                             'You'
@@ -355,7 +359,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
         <div className="pcp-card__footer">
           <span className="pcp-caption pcp-text-tertiary">

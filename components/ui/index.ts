@@ -135,7 +135,7 @@ export {
   PRODUCT_NAME,
 } from './hooks';
 export { useAction, type ActionOptions } from './useAction';
-export { useSort, SortTh, type TableSort } from './Table';
+export { useSort, SortTh, TableScroll, type TableSort } from './Table';
 export * as fmt from './format';
 export { indexSnapshot, toCsv, downloadText, errorMessage, numOrNull, numText, type SnapshotIndex } from './format';
 /** Lightweight charts (no Recharts). The Recharts kit stays in 'components/ui/charts'. */

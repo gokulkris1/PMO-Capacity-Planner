@@ -19,6 +19,25 @@
 }
 .pp-table {
   table-layout: fixed;
+  /* Person keeps at least 220 px next to the fixed columns (712 px with Chapter and Team folded in): narrower than
+     that the table scrolls inside its card with the check box and person columns sticky (QA-006). */
+  min-width: 932px;
+}
+.pp-table .pcp-tbl-check,
+.pp-table .pp-col-person {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.pp-table .pcp-tbl-check ~ .pp-col-person {
+  left: 40px;
+}
+.pp-table .pp-col-person {
+  border-right: 1px solid var(--color-border);
+}
+.pp-table thead .pcp-tbl-check,
+.pp-table thead .pp-col-person {
+  z-index: var(--z-sticky-corner);
 }
 .pp-table .pcp-tbl-check {
   width: 40px;
@@ -83,6 +102,11 @@
   font-weight: 600;
 }
 /* Below 1440 px Chapter and Team fold into the name cell so QBR1–QBR4 stay visible (PPL-01#AC2). */
+@media (min-width: 1440px) {
+  .pp-table {
+    min-width: 1176px;
+  }
+}
 @media (max-width: 1439px) {
   .pp-table .pp-col-wide {
     display: none;

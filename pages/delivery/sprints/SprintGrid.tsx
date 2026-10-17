@@ -21,6 +21,7 @@ import {
   fmt,
   numOrNull,
   numText,
+  TableScroll,
 } from '../../../components/ui';
 import { averageUtil, type BookingInput } from './useSprintData';
 
@@ -128,7 +129,7 @@ export function SprintGrid({
         {groups.length === 0 ? (
           <EmptyState compact title="No members match these filters" />
         ) : (
-          <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+          <TableScroll className="pcp-tbl-wrap--tall">
             <table className="pcp-tbl pcp-tbl--compact sp-grid">
               <caption className="pcp-sr-only">Booked percentage per member and sprint</caption>
               <thead>
@@ -217,7 +218,7 @@ export function SprintGrid({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
       </Card>
       <ProjectSummary projects={projects} bookings={bookings} />
@@ -239,7 +240,7 @@ function ProjectSummary({ projects, bookings }: { projects: QBRProject[]; bookin
   if (!projects.length) return null;
   return (
     <Card title="Projects this quarter" subtitle="Members booked and sprint points (sum of booked % per sprint)" flush>
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl pcp-tbl--compact">
           <caption className="pcp-sr-only">Projects this quarter</caption>
           <thead>
@@ -274,7 +275,7 @@ function ProjectSummary({ projects, bookings }: { projects: QBRProject[]; bookin
             })}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </Card>
   );
 }

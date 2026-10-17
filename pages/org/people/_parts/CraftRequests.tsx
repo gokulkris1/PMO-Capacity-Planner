@@ -16,6 +16,7 @@ import {
   StatusPill,
   useAction,
   Textarea,
+  TableScroll,
 } from '../../../../components/ui';
 
 export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
@@ -69,7 +70,7 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
             description="Squad members' craft suggestions will appear here."
           />
         ) : (
-          <div className="pcp-tbl-wrap">
+          <TableScroll>
             <table className="pcp-tbl">
               <caption className="pcp-sr-only">Pending craft change requests</caption>
               <thead>
@@ -167,7 +168,7 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
       </Card>
       {decided.length > 0 && (

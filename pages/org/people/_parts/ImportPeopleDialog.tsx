@@ -4,7 +4,16 @@ import { CircleAlert, CircleCheck, Download, FileUp } from 'lucide-react';
 import type * as D from '../../../../shared/contracts/dto';
 import type { PeopleImportResponse } from '../../../../shared/contracts/api';
 import { useMutations } from '../../../../state';
-import { Banner, Button, Checkbox, Dialog, downloadText, errorMessage, StatusPill } from '../../../../components/ui';
+import {
+  Banner,
+  Button,
+  Checkbox,
+  Dialog,
+  downloadText,
+  errorMessage,
+  StatusPill,
+  TableScroll,
+} from '../../../../components/ui';
 import { peopleTemplateCsv, validatePeopleCsv } from '../../../../utils/csvPeople';
 
 export function ImportPeopleDialog({
@@ -150,7 +159,7 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
                 </StatusPill>
               )}
             </div>
-            <div className="pcp-tbl-wrap ip-preview">
+            <TableScroll className="ip-preview">
               <table className="pcp-tbl pcp-tbl--compact">
                 <caption className="pcp-sr-only">Import preview</caption>
                 <thead>
@@ -185,7 +194,7 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             <Checkbox
               checked={createMissing}
               onChange={setCreateMissing}

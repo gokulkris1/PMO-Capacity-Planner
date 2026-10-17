@@ -36,10 +36,11 @@ import {
   useToast,
   numOrNull,
   numText,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { BookingDatesDialog } from '../_parts/BookingDatesDialog';
-import { AllocationGrid, type CellAddress, type FlatRow } from './AllocationGrid';
+import { AllocationGrid, type CellAddress, type FlatRow, type ProjectDemand } from './AllocationGrid';
 import { AddBookingDialog } from './AddBookingDialog';
 import './allocations.css';
 
@@ -153,12 +154,13 @@ function AllocationsBody({
     },
     [peopleRows],
   );
+  // Demand and unstaffed demand per project and quarter (the shared definition, QA-004).
   const demandByProject = useMemo(() => {
-    const map = new Map<D.ID, number[]>();
+    const map = new Map<D.ID, ProjectDemand[]>();
     for (const d of buildDemandGrid(s, quarters))
       map.set(
         d.project.id,
-        d.cells.map((c) => c.demandFte),
+        d.cells.map((c) => ({ demand: c.demandFte, gap: c.gapFte })),
       );
     return map;
   }, [s, quarters]);
@@ -454,7 +456,7 @@ function AllocationsBody({
             description={q ? undefined : 'Add a booking to start planning the next four quarters.'}
           />
         ) : (
-          <div className="pcp-tbl-wrap pcp-tbl-wrap--tall al-wrap">
+          <TableScroll className="pcp-tbl-wrap--tall al-wrap">
             <AllocationGrid
               model={model}
               pivot={pv}
@@ -486,7 +488,7 @@ function AllocationsBody({
               demandByProject={demandByProject}
               overInfo={overInfo}
             />
-          </div>
+          </TableScroll>
         )}
         <div className="pcp-card__footer al-foot">
           <span className="pcp-caption pcp-text-tertiary">

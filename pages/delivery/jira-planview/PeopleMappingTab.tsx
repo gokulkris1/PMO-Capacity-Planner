@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, cx, fmt, PersonLabel, Select, StatusPill, useAction } from '../../../components/ui';
+import { Button, Card, cx, fmt, PersonLabel, Select, StatusPill, useAction, TableScroll } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<D.IdentityMappingDTO['matchMethod'], string> = {
@@ -80,7 +80,7 @@ export function PeopleMappingTab({
         )
       }
     >
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl dl-map">
           <caption className="pcp-sr-only">Jira assignee mapping</caption>
           <thead>
@@ -128,7 +128,7 @@ export function PeopleMappingTab({
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </Card>
   );
 }

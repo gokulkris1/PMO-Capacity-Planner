@@ -12,6 +12,7 @@ import {
   StatusPill,
   TrendChart,
   useQueryParam,
+  TableScroll,
 } from '../../../components/ui';
 import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
@@ -112,7 +113,7 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
 
 function SprintTable({ rows }: { rows: D.DeliveryRowDTO[] }) {
   return (
-    <div className="pcp-tbl-wrap">
+    <TableScroll>
       <table className="pcp-tbl pcp-tbl--compact">
         <caption className="pcp-sr-only">Sprints</caption>
         <thead>
@@ -161,6 +162,6 @@ function SprintTable({ rows }: { rows: D.DeliveryRowDTO[] }) {
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

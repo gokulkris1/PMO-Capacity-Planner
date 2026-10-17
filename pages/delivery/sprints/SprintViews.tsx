@@ -12,7 +12,17 @@ import type {
   QBRSquad,
   QBRTribe,
 } from '../../../types';
-import { Avatar, BandCell, Button, Card, Drawer, EmptyState, PersonLabel, StatusPill } from '../../../components/ui';
+import {
+  Avatar,
+  BandCell,
+  Button,
+  Card,
+  Drawer,
+  EmptyState,
+  PersonLabel,
+  StatusPill,
+  TableScroll,
+} from '../../../components/ui';
 import { priorityTone } from './SprintGrid';
 import { averageUtil } from './useSprintData';
 
@@ -283,7 +293,7 @@ export function MemberDrawer({
           {byProject.size === 0 ? (
             <EmptyState compact title="No bookings this quarter" />
           ) : (
-            <div className="pcp-tbl-wrap">
+            <TableScroll>
               <table className="pcp-tbl pcp-tbl--compact">
                 <caption className="pcp-sr-only">Bookings by project and sprint</caption>
                 <thead>
@@ -312,7 +322,7 @@ export function MemberDrawer({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </div>
       ) : null}

@@ -32,6 +32,7 @@ import {
   LinkButton,
   numOrNull,
   numText,
+  TableScroll,
 } from '../../../components/ui';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { BookingDatesDialog } from '../../plan/_parts/BookingDatesDialog';
@@ -558,7 +559,7 @@ function PersonDrawerInner({
                   </li>
                 ))}
               </ul>
-              <div className="pcp-tbl-wrap">
+              <TableScroll>
                 <table className="pcp-tbl pcp-tbl--compact">
                   <caption className="pcp-caption pcp-text-tertiary">
                     Load by kind of work (% of a full-time week, FTE in brackets)
@@ -608,7 +609,7 @@ function PersonDrawerInner({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </div>
           )}
 
@@ -647,7 +648,7 @@ function BookingsTab({
       />
     );
   return (
-    <div className="pcp-tbl-wrap">
+    <TableScroll>
       <table className="pcp-tbl pcp-tbl--compact">
         <caption className="pcp-sr-only">Bookings for {person.name}</caption>
         <thead>
@@ -738,7 +739,7 @@ function BookingsTab({
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 
@@ -775,7 +776,7 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
           )}
         </dd>
       </dl>
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl pcp-tbl--compact">
           <caption className="pcp-caption pcp-text-tertiary">Jira and Planview identities</caption>
           <thead>
@@ -819,7 +820,7 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {can('integrations.run') && (
         <div>
           <LinkButton variant="secondary" size="sm" to={`${wsPath('delivery/jira-planview')}?tab=people`}>

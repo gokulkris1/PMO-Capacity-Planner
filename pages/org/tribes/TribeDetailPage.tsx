@@ -23,6 +23,7 @@ import {
   PersonLabel,
   StatusPill,
   LinkButton,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
@@ -169,7 +170,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                 { swatch: '1', label: 'Staffed (confirmed)' },
               ]}
               table={
-                <div className="pcp-tbl-wrap">
+                <TableScroll>
                   <table className="pcp-tbl pcp-tbl--compact">
                     <caption className="pcp-sr-only">Demand and staffed by craft</caption>
                     <thead>
@@ -216,7 +217,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                       </tr>
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               }
             >
               <GroupedBarChart
@@ -289,7 +290,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
           {grid.length === 0 ? (
             <EmptyState compact icon={Network} title="No projects in this tribe" />
           ) : (
-            <div className="pcp-tbl-wrap">
+            <TableScroll>
               <table className="pcp-tbl">
                 <caption className="pcp-sr-only">Projects in {tribe.name}</caption>
                 <thead>
@@ -355,7 +356,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </Card>
 
@@ -363,7 +364,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
           {view.people.length === 0 ? (
             <EmptyState compact icon={Network} title="Nobody is booked on this tribe's projects" />
           ) : (
-            <div className="pcp-tbl-wrap">
+            <TableScroll>
               <table className="pcp-tbl pcp-tbl--compact">
                 <caption className="pcp-sr-only">People serving {tribe.name}</caption>
                 <thead>
@@ -399,7 +400,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                     ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </Card>
       </div>

@@ -12,11 +12,12 @@
 }
 .al-grid {
   table-layout: fixed;
-  min-width: 720px;
+  /* The name column keeps at least 340 px (4 × 112 quarters + 48 menu + 340): below that the grid scrolls inside
+     its card with the name column sticky, instead of squeezing names under their chips (QA-006). */
+  min-width: 836px;
 }
 .al-grid .al-col-name {
   width: auto;
-  min-width: 280px;
 }
 .al-grid .al-col-q {
   width: 112px;
@@ -67,10 +68,14 @@
 }
 .al-name--sub {
   gap: var(--space-100);
+  overflow: hidden;
 }
-.al-name__label {
+.al-name--sub > * {
+  flex: 0 0 auto;
+}
+.al-name--sub > .al-name__label {
   flex: 0 1 auto;
-  max-width: 55%;
+  min-width: 4ch;
   color: var(--color-text);
 }
 .al-toggle {

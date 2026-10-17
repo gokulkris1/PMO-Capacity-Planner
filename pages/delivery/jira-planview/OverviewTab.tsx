@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useQuarters } from '../../../state';
 import { Activity } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { Card, ChartPanel, EmptyState, fmt, GroupedBarChart, StatusPill } from '../../../components/ui';
+import { Card, ChartPanel, EmptyState, fmt, GroupedBarChart, StatusPill, TableScroll } from '../../../components/ui';
 import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
 export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
@@ -59,7 +59,7 @@ export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
 
 function QuarterTable({ rows, tribes }: { rows: D.DeliveryRowDTO[]; tribes: Map<string, string> }) {
   return (
-    <div className="pcp-tbl-wrap">
+    <TableScroll>
       <table className="pcp-tbl pcp-tbl--compact">
         <caption className="pcp-sr-only">Story points and implied FTE by tribe and quarter</caption>
         <thead>
@@ -106,7 +106,7 @@ function QuarterTable({ rows, tribes }: { rows: D.DeliveryRowDTO[]; tribes: Map<
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

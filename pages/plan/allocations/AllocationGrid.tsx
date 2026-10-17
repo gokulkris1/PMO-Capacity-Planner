@@ -68,7 +68,7 @@ export function AllocationGrid({
   onUndo(): void;
   onPaste(start: { rowKey: string; col: number }, block: string[][], rows: FlatRow[]): void;
   rowMenu(row: GridRow): MenuItem[];
-  demandByProject: Map<D.ID, number[]>;
+  demandByProject: Map<D.ID, ProjectDemand[]>;
   overInfo(personId: D.ID, qi: number): { pct: number; band: UtilBand } | null;
 }) {
   const quarters = model.quarters;
@@ -474,7 +474,14 @@ export function AllocationGrid({
                       })
                       .join('; ')
                   : '';
-                const label = `${r.label}${craft ? `, ${craft.name}` : ''}, ${quarters[i].label}, ${pivot === 'project' && r.kind !== 'person' ? `${fmt.fte(c.pct / 100)} FTE` : fmt.pct(c.pct)}${c.band ? `, ${BAND_LABEL[c.band]}` : ''}${c.locked ? ', locked: imported from Planview' : ''}${tentative ? ', tentative' : ''}${partialText ? `, partial quarter ${partialText}` : ''}`;
+                // Project rows: the name starts with exactly the text the cell shows (WCAG 2.5.3, QA-007).
+                const value =
+                  r.kind === 'project'
+                    ? `${projectCellText(c.pct, demand?.[i])}, ${projectCellTitle(c.pct, demand?.[i])}`
+                    : pivot === 'project' && r.kind !== 'person'
+                      ? `${fmt.fte(c.pct / 100)} FTE`
+                      : fmt.pct(c.pct);
+                const label = `${r.label}${craft ? `, ${craft.name}` : ''}, ${quarters[i].label}, ${value}${c.band ? `, ${BAND_LABEL[c.band]}` : ''}${c.locked ? ', locked: imported from Planview' : ''}${tentative ? ', tentative' : ''}${partialText ? `, partial quarter ${partialText}` : ''}`;
                 return (
                   <td
                     key={c.quarterKey}
@@ -571,7 +578,7 @@ export function AllocationGrid({
                         )}
                       </span>
                     ) : r.kind === 'project' ? (
-                      <ProjectCell pct={c.pct} demand={demand?.[i] ?? 0} />
+                      <ProjectCell pct={c.pct} demand={demand?.[i]} />
                     ) : (
                       <ValueCell cell={c} pivot={pivot} label={label} />
                     )}
@@ -620,17 +627,35 @@ function ValueCell({
   return <BandCell value={cell.pct} band={cell.band} label={label} />;
 }
 
-function ProjectCell({ pct, demand }: { pct: number; demand: number }) {
-  const staffed = pct / 100;
-  const gap = Math.round((demand - staffed) * 10) / 10;
+/** Demand and unstaffed demand (per project × craft, `utils/viewModels/unstaffed.ts`) of a project in a quarter. */
+export interface ProjectDemand {
+  demand: number;
+  gap: number;
+}
+
+/** What a project cell shows: booked FTE / demand FTE, then the unstaffed FTE when there is any. */
+function projectCellText(pct: number, d: ProjectDemand | undefined): string {
+  const gap = d?.gap ?? 0;
+  return `${fmt.fte(pct / 100)} / ${fmt.fte(d?.demand ?? 0)}${gap > 0.04 ? ` −${fmt.fte(gap)}` : ''}`;
+}
+
+function projectCellTitle(pct: number, d: ProjectDemand | undefined): string {
+  const gap = d?.gap ?? 0;
+  return `booked ${fmt.fte(pct / 100)} FTE against ${fmt.fte(d?.demand ?? 0)} FTE demand${gap > 0.04 ? `, ${fmt.fte(gap)} FTE unstaffed` : ''}`;
+}
+
+function ProjectCell({ pct, demand }: { pct: number; demand: ProjectDemand | undefined }) {
+  const gap = demand?.gap ?? 0;
+  const title = projectCellTitle(pct, demand);
   return (
-    <span className="al-proj" title={`Staffed ${fmt.fte(staffed)} of ${fmt.fte(demand)} FTE demand`}>
-      <span className="pcp-strong">{fmt.fte(staffed)}</span>
-      <span className="pcp-caption pcp-text-tertiary"> / {fmt.fte(demand)}</span>
+    <span className="al-proj" title={title[0].toUpperCase() + title.slice(1)}>
+      <span className="pcp-strong">{fmt.fte(pct / 100)}</span>
+      <span className="pcp-caption pcp-text-tertiary"> / {fmt.fte(demand?.demand ?? 0)}</span>
       {gap > 0.04 && (
-        <span className="al-gap" aria-label={`Gap ${fmt.fte(gap)} FTE`}>
-          −{fmt.fte(gap)}
-        </span>
+        <>
+          {' '}
+          <span className="al-gap">−{fmt.fte(gap)}</span>
+        </>
       )}
     </span>
   );

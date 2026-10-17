@@ -29,6 +29,7 @@ import {
   StatusPill,
   useAction,
   Textarea,
+  TableScroll,
 } from '../../components/ui';
 import { PageBody } from '../../components/shell/PageBody';
 import { PersonDrawer } from '../org/people/PersonDrawer';
@@ -133,7 +134,7 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   description="Accepted proposals and planned work will show here."
                 />
               ) : (
-                <div className="pcp-tbl-wrap">
+                <TableScroll>
                   <table className="pcp-tbl pcp-tbl--compact">
                     <caption className="pcp-sr-only">My confirmed bookings</caption>
                     <thead>
@@ -179,7 +180,7 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               )}
             </Card>
           </div>

@@ -48,6 +48,7 @@ import {
   useQueryParam,
   useSort,
   IconButton,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
@@ -415,7 +416,7 @@ function PeopleBody({
                 />
               )
             ) : (
-              <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+              <TableScroll className="pcp-tbl-wrap--tall">
                 <table className="pcp-tbl pp-table">
                   <caption className="pcp-sr-only">People with crafts and quarterly load ({b.caption})</caption>
                   <thead>
@@ -637,7 +638,7 @@ function PeopleBody({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             )}
             <div className="pcp-card__footer">
               <span className="pcp-caption pcp-text-tertiary">

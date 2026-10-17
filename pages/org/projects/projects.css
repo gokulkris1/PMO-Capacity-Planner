@@ -7,8 +7,12 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-100);
 }
+.pj-pipeline > li {
+  display: flex;
+}
 .pj-stage {
   position: relative;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-025);
@@ -56,7 +60,24 @@
 }
 .pj-table {
   table-layout: fixed;
-  min-width: 960px;
+  /* Project keeps at least 220 px next to the fixed columns (908 px, or 760 px below 1440 px where Jira and Owner fold
+     into the name cell): narrower than that the table scrolls with the name column sticky (QA-006). */
+  min-width: 1128px;
+}
+.pj-name__jira {
+  display: none;
+}
+@media (max-width: 1439px) {
+  .pj-table {
+    min-width: 980px;
+  }
+  .pj-table .pj-col-jira,
+  .pj-table .pj-col-owner {
+    display: none;
+  }
+  .pj-name__jira {
+    display: inline;
+  }
 }
 .pj-table .pj-col-name {
   width: auto;
@@ -65,7 +86,7 @@
   width: 72px;
 }
 .pj-col-tribe {
-  width: 100px;
+  width: 96px;
 }
 .pj-col-stage {
   width: 112px;
@@ -74,7 +95,7 @@
   width: 88px;
 }
 .pj-col-dates {
-  width: 204px;
+  width: 200px;
 }
 .pj-table .pj-col-num {
   width: 88px;

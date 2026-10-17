@@ -31,6 +31,7 @@ import {
   TrendChart,
   useQueryParam,
   LinkButton,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
@@ -225,7 +226,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             description={filters ? undefined : 'Add people and bookings to see the outlook.'}
           />
         ) : (
-          <div className="pcp-tbl-wrap">
+          <TableScroll>
             <table className="pcp-tbl pcp-tbl--compact co-table">
               <caption className="pcp-sr-only">Capacity by {pivot} and quarter</caption>
               <thead>
@@ -333,7 +334,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
       </Card>
     </div>

@@ -38,6 +38,7 @@ import {
   useToast,
   numOrNull,
   numText,
+  TableScroll,
 } from '../../../components/ui';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useWsPath } from '../../../components/shell/workspacePath';
@@ -542,7 +543,7 @@ function UnderTarget({
           description={`Nobody is under target in ${quarter.label}.`}
         />
       ) : (
-        <div className="pcp-tbl-wrap">
+        <TableScroll>
           <table className="pcp-tbl">
             <caption className="pcp-sr-only">People under target in {quarter.label}</caption>
             <thead>
@@ -628,7 +629,7 @@ function UnderTarget({
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       <OfferDialog
         snapshot={s}
@@ -808,7 +809,7 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             description="Propose people from Open demand to see them here."
           />
         ) : (
-          <div className="pcp-tbl-wrap">
+          <TableScroll>
             <table className="pcp-tbl">
               <caption className="pcp-sr-only">Proposals waiting for a response</caption>
               <thead>
@@ -889,7 +890,7 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         )}
       </Card>
       {responded.length > 0 && (

@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import type { OutlookPoint } from '../../../utils/viewModels';
 import type { QuarterView } from '../../../state';
-import { BandCell, ChartPanel, fmt, StackedBarChart } from '../../../components/ui';
+import { BandCell, ChartPanel, fmt, StackedBarChart, TableScroll } from '../../../components/ui';
 
 export function CapacityOutlookChart({
   title,
@@ -36,7 +36,7 @@ export function CapacityOutlookChart({
     };
   });
   const table = (
-    <div className="pcp-tbl-wrap">
+    <TableScroll>
       <table className="pcp-tbl pcp-tbl--compact">
         <caption className="pcp-sr-only">{title}</caption>
         <thead>
@@ -88,7 +88,7 @@ export function CapacityOutlookChart({
         </tbody>
       </table>
       <p className="pcp-caption pcp-text-tertiary">All values in FTE except utilisation (load as a % of target).</p>
-    </div>
+    </TableScroll>
   );
   return (
     <ChartPanel

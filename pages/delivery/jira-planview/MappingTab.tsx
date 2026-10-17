@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Check, WandSparkles } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, Checkbox, cx, Select, StatusPill, useAction } from '../../../components/ui';
+import { Button, Card, Checkbox, cx, Select, StatusPill, useAction, TableScroll } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<
@@ -79,7 +79,7 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
         )
       }
     >
-      <div className="pcp-tbl-wrap">
+      <TableScroll>
         <table className="pcp-tbl dl-map">
           <caption className="pcp-sr-only">Jira project mapping</caption>
           <thead>
@@ -169,7 +169,7 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </Card>
   );
 }
