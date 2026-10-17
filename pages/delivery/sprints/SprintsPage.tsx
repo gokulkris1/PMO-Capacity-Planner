@@ -181,7 +181,9 @@ function SprintPlanner({ wsId }: { wsId: string }) {
                     body: 'Its bookings replace the live sprint plan for this quarter.',
                     confirmLabel: 'Commit scenario',
                     tone: 'primary',
-                  }).then((ok) => ok && act(() => sp.actions.commitScenario(scenario.id), 'Scenario committed'))
+                  }).then((ok) => {
+                    if (ok) void act(() => sp.actions.commitScenario(scenario.id), 'Scenario committed');
+                  })
                 }
               >
                 Commit
@@ -197,7 +199,9 @@ function SprintPlanner({ wsId }: { wsId: string }) {
                     body: 'The scenario and its bookings are deleted. The live plan is not changed.',
                     confirmLabel: 'Discard',
                     tone: 'danger',
-                  }).then((ok) => ok && act(() => sp.actions.discardScenario(scenario.id), 'Scenario discarded'))
+                  }).then((ok) => {
+                    if (ok) void act(() => sp.actions.discardScenario(scenario.id), 'Scenario discarded');
+                  })
                 }
               >
                 Discard

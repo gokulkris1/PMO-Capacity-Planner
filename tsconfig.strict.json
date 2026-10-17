@@ -1,5 +1,5 @@
 {
-  "//": "PL-11#AC2: strict type-checking for the 2.0 core modules. Run by `npm run typecheck` and CI. Add a directory here when its code is new or cleaned up; never relax it.",
+  "//": "PL-11#AC2 / PL-16: tsconfig.json is strict for the whole code base since 2.0; this file keeps the core-module set as an explicit, never-relaxed gate (run by `npm run typecheck` and CI).",
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "strict": true,
