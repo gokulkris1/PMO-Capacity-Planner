@@ -435,6 +435,19 @@ describe('batch application and undo', () => {
     });
   });
 
+  it('inverseOps never patches provenance on update, which the API refuses (QA-003)', () => {
+    const before = [
+      alloc('pv', { resourceId: 'r1', projectId: 'p1', percentage: 50, source: 'planview', externalRef: 'PV-1' }),
+    ];
+    const after = { ...before[0], percentage: 10, source: 'manual' as const, version: 2 };
+    const inv = inverseOps(before, { upserted: [after], deleted: [], dataVersion: 2 });
+    expect(inv).toHaveLength(1);
+    const op = inv[0] as Extract<AllocationOp, { op: 'update' }>;
+    expect(op.patch).toMatchObject({ percentage: 50 });
+    expect(op.patch).not.toHaveProperty('source');
+    expect(op.patch).not.toHaveProperty('externalRef');
+  });
+
   it('setBookingRange never chains temporary ids and keeps provenance on split copies', () => {
     const s = base([
       alloc('pv', {

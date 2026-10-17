@@ -273,6 +273,19 @@ describe('DemoTransport: allocations', () => {
     expect(r.upserted[0]).toMatchObject({ percentage: 10, source: 'manual', externalRef: 'PVA-9' });
   });
 
+  it('provenance is read-only, and a locked Planview booking refuses every change (QA-003, same rule as the API)', async () => {
+    const { api } = client('PLANNER');
+    for (const patch of [{ source: 'manual' as const }, { notes: 'x' }, { state: 'tentative' as const }]) {
+      const e = await err(api.allocations.batch(WS, [{ op: 'update', id: 'a9', version: 1, patch }]));
+      expect(e).toMatchObject({ status: 409, message: 'Locked: sourced from Planview' });
+    }
+    const manual = await api.workspace.snapshot(WS).then((x) => x.allocations.find((a) => a.source === 'manual')!);
+    for (const patch of [{ source: 'jira' as const }, { externalRef: 'PV-FAKE' }]) {
+      const e = await err(api.allocations.batch(WS, [{ op: 'update', id: manual.id, version: manual.version, patch }]));
+      expect(e).toMatchObject({ status: 400 });
+    }
+  });
+
   it('rejects batches over 500 operations with 413', async () => {
     const ops = Array.from({ length: 501 }, () => ({ op: 'delete' as const, id: 'a1', version: 1 }));
     expect(await err(client('PLANNER').api.allocations.batch(WS, ops))).toMatchObject({

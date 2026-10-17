@@ -214,7 +214,7 @@ describe('QA: Planview ownership rule (AL-05#AC2)', () => {
 
   // QA-003 (Major): the same Planner can PATCH { source: 'manual' } (200), which unlocks the booking for any later edit
   // or delete, although the org rule says Planview bookings are locked.
-  it.skip('QA-003 a Planner cannot unlock a Planview booking by patching its source to manual', async () => {
+  it('QA-003 a Planner cannot unlock a Planview booking by patching its source to manual', async () => {
     const res = await call(v2, 'PATCH', `${W()}/allocations/al-pv`, {
       token: planner.token,
       body: { version: await versionOf('al-pv'), patch: { source: 'manual' } },
@@ -222,6 +222,64 @@ describe('QA: Planview ownership rule (AL-05#AC2)', () => {
     expect(res.status).toBe(409);
     const row = await db.query(`SELECT source FROM allocations WHERE id = 'al-pv'`);
     expect(row[0].source).toBe('planview');
+  });
+
+  it('QA-003 every field of a locked Planview booking is refused, provenance included', async () => {
+    for (const patch of [{ externalRef: null }, { notes: 'mine now' }, { state: 'tentative' }, { source: 'jira' }]) {
+      const res = await call(v2, 'PATCH', `${W()}/allocations/al-pv`, {
+        token: planner.token,
+        body: { version: await versionOf('al-pv'), patch },
+      });
+      expect([res.status, res.json.error]).toEqual([409, 'Locked: sourced from Planview']);
+    }
+    const row = await db.query(`SELECT source, external_ref FROM allocations WHERE id = 'al-pv'`);
+    expect(row[0]).toMatchObject({ source: 'planview', external_ref: 'PV-ASSIGN-1' });
+  });
+
+  it('QA-003 provenance is read-only on any booking for every role; an override still makes it manual', async () => {
+    const id = randomUUID();
+    await db.query(
+      `INSERT INTO allocations (id, workspace_id, resource_id, project_id, percentage, source, state, external_ref)
+       VALUES ($1, $2, 'p-a', 'pr-a', 30, 'marketplace', 'confirmed', NULL)`,
+      [id, wsA],
+    );
+    for (const [who, patch] of [
+      [planner, { source: 'manual' }],
+      [wsAdmin, { source: 'planview' }],
+      [orgAdmin, { externalRef: 'PV-FAKE' }],
+    ] as const) {
+      const res = await call(v2, 'PATCH', `${W()}/allocations/${id}`, {
+        token: who.token,
+        body: { version: await versionOf(id), patch },
+      });
+      expect(res.status).toBe(400);
+    }
+    // Unchanged provenance in a patch (e.g. an undo that restores the whole row) is fine.
+    const same = await call(v2, 'PATCH', `${W()}/allocations/${id}`, {
+      token: planner.token,
+      body: { version: await versionOf(id), patch: { percentage: 35, source: 'marketplace', externalRef: null } },
+    });
+    expect(same.status).toBe(200);
+    // Under "Overridable" a Planner may edit a Planview booking: it becomes manual and keeps its external_ref.
+    await db.query(`UPDATE organizations SET planning = '{"planviewOwnership":"overridable"}' WHERE id = $1`, [orgA]);
+    const pvId = randomUUID();
+    await db.query(
+      `INSERT INTO allocations (id, workspace_id, resource_id, project_id, percentage, source, state, external_ref)
+       VALUES ($1, $2, 'p-a', 'pr-a', 30, 'planview', 'confirmed', 'PV-ASSIGN-3')`,
+      [pvId, wsA],
+    );
+    const sourceOnly = await call(v2, 'PATCH', `${W()}/allocations/${pvId}`, {
+      token: planner.token,
+      body: { version: await versionOf(pvId), patch: { source: 'manual' } },
+    });
+    expect(sourceOnly.status).toBe(400);
+    const edit = await call(v2, 'PATCH', `${W()}/allocations/${pvId}`, {
+      token: planner.token,
+      body: { version: await versionOf(pvId), patch: { percentage: 40 } },
+    });
+    expect(edit.status).toBe(200);
+    expect(edit.json).toMatchObject({ source: 'manual', externalRef: 'PV-ASSIGN-3', percentage: 40 });
+    await db.query(`UPDATE organizations SET planning = '{}' WHERE id = $1`, [orgA]);
   });
 
   it('a Planner cannot delete a locked Planview booking', async () => {

@@ -286,8 +286,11 @@ export function inverseOps(before: D.AllocationDTO[], r: AllocationBatchResponse
   const ops: AllocationOp[] = [];
   for (const a of r.upserted) {
     const old = prev.get(a.id);
-    if (old) ops.push({ op: 'update', id: a.id, version: a.version, patch: restorable(old) });
-    else ops.push({ op: 'delete', id: a.id, version: a.version });
+    if (old) {
+      // Provenance is read-only on update (QA-003): an undo restores what the booking says, not where it came from.
+      const { source: _source, externalRef: _externalRef, ...patch } = restorable(old);
+      ops.push({ op: 'update', id: a.id, version: a.version, patch });
+    } else ops.push({ op: 'delete', id: a.id, version: a.version });
   }
   for (const id of r.deleted) {
     const old = prev.get(id);

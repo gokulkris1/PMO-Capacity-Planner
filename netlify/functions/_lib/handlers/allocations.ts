@@ -37,6 +37,10 @@ const allocationFields = {
   externalRef: z.string().max(200).nullable(),
   demandLineId: z.string().nullable(),
 };
+/** Fields that record where a booking came from: set on create or by the system, read-only afterwards (QA-003). */
+export const PROVENANCE_FIELDS = ['source', 'externalRef'] as const;
+export const PROVENANCE_READ_ONLY = 'Where a booking came from is recorded by the system and cannot be changed.';
+
 const allocationPatchSchema = z
   .object({ ...allocationFields, source: z.enum(['manual', 'marketplace', 'planview', 'jira']) })
   .partial();
@@ -149,16 +153,24 @@ async function updateAllocationRow(
   const patch = parseWith(allocationPatchSchema, raw ?? {});
   const before = await loadAllocation(q, access.workspaceId, id);
   if (!before) throw notFound('This booking no longer exists.');
-  if (patch.source === 'planview' && before.source !== 'planview')
-    throw badRequest('Only the Planview import sets this source', { source: 'Not allowed' });
+  const changed = (k: keyof typeof patch) => patch[k] !== undefined && patch[k] !== before[k as keyof AllocationDTO];
+  // AL-05#AC2 (QA-003): under the "locked" rule a Planview booking is read-only for every role, whatever the field,
+  // provenance included. Only the Planview import writes it; a PMO Admin can switch the rule to "Overridable".
+  if (
+    before.source === 'planview' &&
+    planviewLocked(access) &&
+    (Object.keys(patch) as Array<keyof typeof patch>).some(changed)
+  )
+    throw conflict(PLANVIEW_LOCKED);
+  // Provenance (where the booking came from) is recorded by the system, never set through the API.
+  for (const k of PROVENANCE_FIELDS) {
+    if (changed(k)) throw badRequest(PROVENANCE_READ_ONLY, { [k]: 'Not allowed' });
+  }
   const d: AllocData = { ...before, ...patch } as AllocData;
-  const changesBooking = ['resourceId', 'projectId', 'percentage', 'startDate', 'endDate', 'craftId'].some(
-    (k) =>
-      patch[k as keyof typeof patch] !== undefined &&
-      patch[k as keyof typeof patch] !== before[k as keyof AllocationDTO],
+  const changesBooking = (['resourceId', 'projectId', 'percentage', 'startDate', 'endDate', 'craftId'] as const).some(
+    changed,
   );
   if (before.source === 'planview' && changesBooking) {
-    if (planviewLocked(access)) throw conflict(PLANVIEW_LOCKED);
     d.source = 'manual'; // AL-05#AC2: overriding a Planview booking makes it manual; external_ref is kept
   }
   if (d.percentage <= 0) throw badRequest('Enter 0–200', { percentage: 'Use DELETE to remove a booking' });

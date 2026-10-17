@@ -1613,12 +1613,27 @@ function allocationBatch(c: Ctx, a: WsAccess, single: boolean): unknown {
       }
       const cur = a.ws.allocations[findIn(a.ws.allocations, op.id, 'Booking')];
       checkVersion(cur, op.version);
-      if (lockedByPlanview(c, cur)) fail(409, 'conflict', 'Locked: sourced from Planview');
-      if (op.op === 'delete') return op;
+      if (op.op === 'delete') {
+        if (lockedByPlanview(c, cur)) fail(409, 'conflict', 'Locked: sourced from Planview');
+        return op;
+      }
       const patch = cleanPatch(op.patch) as Partial<NewAllocation>;
+      const changes = (Object.keys(patch) as Array<keyof NewAllocation>).some(
+        (k) => patch[k] !== undefined && patch[k] !== cur[k as keyof D.AllocationDTO],
+      );
+      if (lockedByPlanview(c, cur) && changes) fail(409, 'conflict', 'Locked: sourced from Planview');
+      // Same rule as the API (QA-003): provenance is recorded by the system and read-only on update.
+      for (const k of ['source', 'externalRef'] as const)
+        if (patch[k] !== undefined && patch[k] !== cur[k])
+          fail(400, 'bad_request', 'Where a booking came from is recorded by the system and cannot be changed.', {
+            fields: { [k]: 'Not allowed' },
+          });
       const f = validateAllocation(c, a.ws, { ...cur, ...patch, id: undefined }, false);
       if (Object.keys(f).length) badRequest(f);
-      if (cur.source === 'planview' && overridable && patch.source === undefined) patch.source = 'manual';
+      const changesBooking = (
+        ['resourceId', 'projectId', 'percentage', 'startDate', 'endDate', 'craftId'] as const
+      ).some((k) => patch[k] !== undefined && patch[k] !== cur[k]);
+      if (cur.source === 'planview' && overridable && changesBooking) patch.source = 'manual';
       return { ...op, patch };
     } catch (e) {
       throw single ? e : withOpIndex(e, i);
