@@ -173,6 +173,38 @@ describe('DemoTransport: versioned writes', () => {
     expect((await err(api.people.import(WS, { rows: [], createMissingStructure: false }))).code).toBe('entitlement');
   });
 
+  it('CSV import validates crafts against the catalogue exactly like the API (QA-005)', async () => {
+    const { api } = client('PLANNER');
+    const res = await api.people.import(WS, {
+      rows: [
+        {
+          name: 'Long Craft Id',
+          aboveCraft: 'business-analysis',
+          belowCrafts: [{ craftId: 'SM', proficiency: 2, maxPct: 30 }],
+        },
+        { name: 'Lower Short', aboveCraft: 'pm' },
+        { name: 'Unknown Above', aboveCraft: 'not-a-craft-in-this-org' },
+        { name: 'Unknown Below', belowCrafts: [{ craftId: 'nope', proficiency: 1, maxPct: 10 }] },
+      ],
+      createMissingStructure: false,
+    });
+    expect(res).toEqual({
+      created: 2,
+      updated: 0,
+      skipped: 2,
+      errors: [
+        { row: 3, message: "Unknown craft 'not-a-craft-in-this-org'" },
+        { row: 4, message: "Unknown craft 'nope'" },
+      ],
+    });
+    const snap = await api.workspace.snapshot(WS);
+    expect(snap.people.find((p) => p.name === 'Long Craft Id')).toMatchObject({
+      primaryCraft: 'business-analysis',
+      secondaryCrafts: [{ craftId: 'scrum-master', proficiency: 2, maxPct: 30 }],
+    });
+    expect(snap.people.find((p) => p.name === 'Lower Short')?.primaryCraft).toBe('project-mgmt');
+  });
+
   it('demand: validates, rejects duplicates, batches atomically', async () => {
     const { api } = client('PLANNER');
     const line = {

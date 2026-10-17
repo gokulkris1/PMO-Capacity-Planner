@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { PeopleBulkRequest, PeopleImportResponse } from '../../../../shared/contracts/api';
 import type { PersonDTO, SecondaryCraftDTO } from '../../../../shared/contracts/dto';
+import { resolveCraftRef, unknownCraftMessage } from '../../../../shared/peopleImport';
 import type { Ctx } from '../api';
 import { auditCtx, noContent, parseWith, reply, requireActor } from '../api';
 import { audit } from '../audit';
@@ -359,7 +360,8 @@ const importRow = z.object({
   team: z.string().trim().max(120).optional(),
   homeTribe: z.string().trim().max(120).optional(),
   targetPct: z.number().min(0).max(150).optional(),
-  aboveCraft: z.string().trim().max(10).optional(),
+  // Validated against the organisation's craft catalogue below (resolveCraftRef), never by length (QA-005).
+  aboveCraft: z.string().trim().optional(),
   belowCrafts: z.array(secondary).max(20).optional(),
   skills: z.array(z.string().trim().min(1).max(60)).max(100).optional(),
 });
@@ -376,10 +378,7 @@ export async function importPeople(ctx: Ctx, p: Params) {
     const crafts = await q.query<{ id: string; short: string }>(`SELECT id, short FROM crafts WHERE org_id = $1`, [
       access.orgId,
     ]);
-    const craftByShort = new Map(crafts.map((c) => [c.short.toUpperCase(), c.id]));
-    const craftIds = new Set(crafts.map((c) => c.id));
-    const resolveCraft = (v: string | undefined) =>
-      v ? (craftByShort.get(v.toUpperCase()) ?? (craftIds.has(v) ? v : null)) : null;
+    const resolveCraft = (v: string | undefined) => resolveCraftRef(crafts, v);
     const structure = async (
       table: 'tribes' | 'chapters' | 'org_teams',
       label: string,
@@ -416,11 +415,11 @@ export async function importPeople(ctx: Ctx, p: Params) {
       try {
         await q.query('SAVEPOINT import_row');
         const above = resolveCraft(r.aboveCraft);
-        if (r.aboveCraft && !above) throw new Error(`Unknown craft '${r.aboveCraft}'`);
+        if (r.aboveCraft && !above) throw new Error(unknownCraftMessage(r.aboveCraft));
         const below: SecondaryCraftDTO[] = [];
         for (const b of r.belowCrafts ?? []) {
           const id = resolveCraft(b.craftId);
-          if (!id) throw new Error(`Unknown craft '${b.craftId}'`);
+          if (!id) throw new Error(unknownCraftMessage(b.craftId));
           below.push({ ...b, craftId: id });
         }
         const existing = r.email

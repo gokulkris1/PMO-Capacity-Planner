@@ -65,7 +65,7 @@ describe('QA: CSV people import, client parser to real handler', () => {
     expect(r.json).toMatchObject({ created: 1, skipped: 0 });
   });
 
-  it.skip('QA-005 rows produced by the client parser import without being skipped', async () => {
+  it('QA-005 rows produced by the client parser import without being skipped', async () => {
     const report = parsePeopleCsv(CSV, await snapshot());
     const r = await call(v2, 'POST', `/api/v2/workspaces/${ws}/people/import`, {
       token: planner.token,
@@ -75,5 +75,24 @@ describe('QA: CSV people import, client parser to real handler', () => {
     expect(r.json).toMatchObject({ created: 1, updated: 0, skipped: 0, errors: [] });
     const zoe = (await snapshot()).people.find((p) => p.name === 'Zoë Quinn');
     expect(zoe).toMatchObject({ primaryCraft: 'project-mgmt', targetUtil: 90 });
+  });
+
+  it('QA-005 a craft that is not in the catalogue is skipped with the same message as the demo', async () => {
+    const r = await call(v2, 'POST', `/api/v2/workspaces/${ws}/people/import`, {
+      token: planner.token,
+      body: {
+        rows: [
+          { name: 'Long Id', aboveCraft: 'business-analysis' },
+          { name: 'Lower Short', aboveCraft: 'sm' },
+          { name: 'Nope', aboveCraft: 'not-a-craft-in-this-org' },
+        ],
+        createMissingStructure: false,
+      },
+    });
+    expect(r.json).toMatchObject({
+      created: 2,
+      skipped: 1,
+      errors: [{ row: 3, message: "Unknown craft 'not-a-craft-in-this-org'" }],
+    });
   });
 });

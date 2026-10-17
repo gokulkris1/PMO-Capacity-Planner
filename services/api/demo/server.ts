@@ -30,6 +30,7 @@ import type {
 import { entitlementsFor, entitled, withinLimit } from '../../../shared/entitlements';
 import { resolveFeatures } from '../../../shared/features';
 import { permissionsFor, type Permission } from '../../../shared/permissions';
+import { resolveCraftRef, unknownCraftMessage } from '../../../shared/peopleImport';
 import { validateThresholds } from '../../../shared/utilisation';
 import { toCsv } from '../../../utils/csv';
 import { isIsoDate, quarterKeyOf, rollingQuarterViews } from '../../../utils/quarters';
@@ -1261,6 +1262,17 @@ const people: Record<string, Handler> = {
         res.skipped++;
         return;
       }
+      // The same catalogue rule as the API (shared/peopleImport, QA-005): id or short code, any case.
+      const aboveRef = str(row.aboveCraft);
+      const craftId = resolveCraftRef(c.db.crafts, aboveRef);
+      const badBelow = (row.belowCrafts ?? []).find((b) => !resolveCraftRef(c.db.crafts, b?.craftId));
+      if ((aboveRef && !craftId) || badBelow) {
+        res.errors.push({ row: n, message: unknownCraftMessage(aboveRef && !craftId ? aboveRef : badBelow!.craftId) });
+        res.skipped++;
+        return;
+      }
+      const belowCrafts = row.belowCrafts?.map((b) => ({ ...b, craftId: resolveCraftRef(c.db.crafts, b.craftId)! }));
+      const craft = craftId ? { id: craftId } : undefined;
       const chapterId = ensure('chapters', row.chapter);
       const teamId = ensure('teams', row.team);
       const homeTribeId = ensure('tribes', row.homeTribe);
@@ -1269,14 +1281,8 @@ const people: Record<string, Handler> = {
         teamId === null && `team '${row.team}'`,
         homeTribeId === null && `tribe '${row.homeTribe}'`,
       ].filter(Boolean);
-      const craft = row.aboveCraft
-        ? c.db.crafts.find((x) => x.id === row.aboveCraft || x.short === row.aboveCraft)
-        : undefined;
-      if (missing.length || (row.aboveCraft && !craft)) {
-        res.errors.push({
-          row: n,
-          message: missing.length ? `Unknown ${missing.join(', ')}` : `Unknown craft '${row.aboveCraft}'`,
-        });
+      if (missing.length) {
+        res.errors.push({ row: n, message: `Unknown ${missing.join(', ')}` });
         res.skipped++;
         return;
       }
@@ -1291,7 +1297,7 @@ const people: Record<string, Handler> = {
         ...(homeTribeId && { homeTribeId }),
         ...(row.targetPct !== undefined && { targetUtil: row.targetPct }),
         ...(craft && { primaryCraft: craft.id }),
-        ...(row.belowCrafts !== undefined && { secondaryCrafts: row.belowCrafts }),
+        ...(belowCrafts !== undefined && { secondaryCrafts: belowCrafts }),
         ...(row.skills !== undefined && { skills: row.skills }),
       };
       try {
