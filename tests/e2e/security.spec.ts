@@ -11,10 +11,13 @@ test('pages are served with the enforced CSP and the security headers', async ({
   const h = res!.headers();
   expect(h['content-security-policy']).toContain("script-src 'self'");
   expect(h['content-security-policy']).toContain("object-src 'none'");
-  if (process.env.E2E_BASE_URL) {
-    expect(h['x-content-type-options']).toBe('nosniff');
-    expect(h['strict-transport-security']).toContain('max-age=');
-  }
+  // HS-12 (QA-037): the headers netlify.toml sets on every page, served by Netlify on a deploy and by `vite preview`
+  // (vite.config.ts reads them from netlify.toml) locally.
+  expect(h['x-content-type-options']).toBe('nosniff');
+  expect(h['strict-transport-security']).toMatch(/max-age=\d{8,}/);
+  expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  expect(h['permissions-policy']).toContain('camera=()');
+  expect(h['x-frame-options']).toBe('SAMEORIGIN');
   await expect(page.locator('main h1')).toHaveText('Home');
 });
 

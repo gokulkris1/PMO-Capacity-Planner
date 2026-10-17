@@ -40,12 +40,24 @@ function manualChunks(id: string): string | undefined {
   return undefined;
 }
 
-/** The Content-Security-Policy value from netlify.toml's `/*` headers (single source of truth). */
-function netlifyCsp(): string {
-  const toml = readFileSync(path.join(root, 'netlify.toml'), 'utf8');
-  const m = /^\s*Content-Security-Policy(?:-Report-Only)?\s*=\s*"([^"]+)"/m.exec(toml);
-  if (!m) throw new Error('netlify.toml: no Content-Security-Policy header');
-  return m[1];
+/**
+ * Every header netlify.toml sets on `/*` (single source of truth), so `vite preview` serves what Netlify serves and
+ * the e2e checks the HS-12 headers, not only the CSP (QA-037). The CSP is always served ENFORCED.
+ */
+function netlifyPageHeaders(): Record<string, string> {
+  const lines = readFileSync(path.join(root, 'netlify.toml'), 'utf8').split(/\r?\n/);
+  const at = lines.findIndex(
+    (l, i) => /^\s*for\s*=\s*"\/\*"\s*$/.test(l) && /^\s*\[\[headers\]\]/.test(lines[i - 1] ?? ''),
+  );
+  if (at < 0) throw new Error('netlify.toml: no [[headers]] block for "/*"');
+  const out: Record<string, string> = {};
+  for (const line of lines.slice(at + 2)) {
+    const m = /^\s*([\w-]+)\s*=\s*"([^"]*)"\s*$/.exec(line);
+    if (!m) break;
+    out[m[1] === 'Content-Security-Policy-Report-Only' ? 'Content-Security-Policy' : m[1]] = m[2];
+  }
+  if (!out['Content-Security-Policy']) throw new Error('netlify.toml: no Content-Security-Policy header');
+  return out;
 }
 
 export default defineConfig({
@@ -57,10 +69,11 @@ export default defineConfig({
   },
   // `vite preview` (e2e): same proxy, so a production build can run against the local API host
   // (scripts/local-api.ts). Netlify serves /api/* itself; this block is never used in production.
-  // The preview also serves netlify.toml's CSP, ENFORCED (whichever header name netlify.toml uses), so every e2e run
-  // proves the production policy breaks nothing: a violation is a console error, which fails the test (HS-12#AC2).
+  // The preview also serves netlify.toml's page headers, with the CSP ENFORCED (whichever header name netlify.toml
+  // uses), so every e2e run proves the production policy breaks nothing: a violation is a console error, which fails
+  // the test (HS-12#AC2), and tests/e2e/security.spec.ts checks HSTS, nosniff and the rest (QA-037).
   preview: {
-    headers: { 'Content-Security-Policy': netlifyCsp() },
+    headers: netlifyPageHeaders(),
     proxy: { '/api': { target: `http://localhost:${process.env.LOCAL_API_PORT ?? 8888}`, changeOrigin: false } },
   },
   plugins: [react()],
