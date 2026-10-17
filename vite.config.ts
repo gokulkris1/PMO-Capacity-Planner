@@ -40,6 +40,14 @@ function manualChunks(id: string): string | undefined {
   return undefined;
 }
 
+/** The Content-Security-Policy value from netlify.toml's `/*` headers (single source of truth). */
+function netlifyCsp(): string {
+  const toml = readFileSync(path.join(root, 'netlify.toml'), 'utf8');
+  const m = /^\s*Content-Security-Policy(?:-Report-Only)?\s*=\s*"([^"]+)"/m.exec(toml);
+  if (!m) throw new Error('netlify.toml: no Content-Security-Policy header');
+  return m[1];
+}
+
 export default defineConfig({
   server: {
     port: 3000,
@@ -49,7 +57,10 @@ export default defineConfig({
   },
   // `vite preview` (e2e): same proxy, so a production build can run against the local API host
   // (scripts/local-api.ts). Netlify serves /api/* itself; this block is never used in production.
+  // The preview also serves netlify.toml's CSP, ENFORCED (whichever header name netlify.toml uses), so every e2e run
+  // proves the production policy breaks nothing: a violation is a console error, which fails the test (HS-12#AC2).
   preview: {
+    headers: { 'Content-Security-Policy': netlifyCsp() },
     proxy: { '/api': { target: `http://localhost:${process.env.LOCAL_API_PORT ?? 8888}`, changeOrigin: false } },
   },
   plugins: [react()],

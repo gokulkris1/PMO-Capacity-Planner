@@ -9,6 +9,8 @@ import { expect, test } from '../fixtures';
 
 const ORG = 'acme-bank';
 const WS = 'a1000000-0000-4000-8000-0000000000a1';
+// v1.0 'PMO' user (stored with a mixed-case email), Org Admin in 2.0; no 2FA, so the API login is one step.
+const ORG_ADMIN = { email: 'tom.hayes@acme.example', password: 'Pmo-Planner-2024' };
 const PAT = { email: 'pat.pmo@acme.example', password: 'Pat-PMO-Admin-1' };
 const base = `/o/${ORG}/w/${WS}`;
 
@@ -71,6 +73,12 @@ test.describe('signed in as the PMO Admin', () => {
       ['delivery/jira-planview', 'Jira & Planview'],
       ['reports', 'Reports'],
       ['settings/profile', 'Settings'],
+      ['settings/organisation', 'Settings'],
+      ['settings/structure', 'Settings'],
+      ['settings/crafts', 'Settings'],
+      ['settings/planning', 'Settings'],
+      ['settings/integrations', 'Settings'],
+      ['settings/features', 'Settings'],
       ['settings/members', 'Settings'],
     ] as const) {
       await page.goto(`${base}/${route}`);
@@ -105,6 +113,35 @@ test.describe('signed in as the PMO Admin', () => {
     await page.goto(`${base}/home`);
     await expect(page).toHaveURL(/\/login/);
   });
+});
+
+test('Sprint planning comes back with the v1.1 QBR data once an Org Admin switches it on (SH-05, CA)', async ({
+  page,
+}) => {
+  expect((await page.request.post('/api/auth/login', { data: ORG_ADMIN })).status()).toBe(200);
+  // Off for migrated orgs (D-5): the route is not there and the sidebar has no item.
+  await page.goto(`${base}/delivery/sprints`);
+  await expect(page.locator('main h1').first()).toHaveText('Page not found');
+  await page.goto(`${base}/settings/features`);
+  const toggle = page.getByRole('switch', { name: /Sprint planning/ });
+  await expect(toggle).not.toBeChecked();
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await page
+    .getByRole('navigation', { name: /main|primary/i })
+    .getByRole('link', { name: 'Sprint planning' })
+    .click();
+  await expect(page.locator('main h1').first()).toHaveText('Sprint planning');
+  await expect(page.getByText(/couldn't load/i)).toHaveCount(0);
+  // The v1.1 QBR quarter, tribes and sprint bookings are there.
+  await expect(page.getByRole('combobox').filter({ hasText: 'QBR1 FY27' }).first()).toBeVisible();
+  await expect(page.getByText('Fraud Engine 50%').first()).toBeVisible();
+  await expect(
+    page
+      .getByRole('rowheader', { name: /Digital Experience/ })
+      .or(page.getByRole('cell', { name: /^Digital Experience/ }))
+      .first(),
+  ).toBeVisible();
 });
 
 test('a browser holding a v1.1 token stays signed in and the token is removed (AC-03#AC2)', async ({
