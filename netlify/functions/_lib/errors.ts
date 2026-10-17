@@ -53,5 +53,8 @@ export const migrationPending = () =>
   });
 export const upstreamError = (message: string, logMessage?: string) =>
   new HttpError(502, 'server_error', message, { logMessage });
+/** 504: an outbound service (Jira, Planview, OpenAI) did not answer in time (QA-009). */
+export const gatewayTimeout = (message: string, logMessage?: string) =>
+  new HttpError(504, 'server_error', message, { logMessage });
 export const serviceUnavailable = (message: string, logMessage?: string) =>
   new HttpError(503, 'server_error', message, { logMessage });

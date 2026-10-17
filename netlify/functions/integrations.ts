@@ -13,7 +13,7 @@ import { audit } from './_lib/audit';
 import type { WorkspaceAccess } from './_lib/authz';
 import { requireWorkspace, UUID_RE } from './_lib/authz';
 import { withTx } from './_lib/db';
-import { badRequest, notFound, upstreamError } from './_lib/errors';
+import { badRequest, notFound } from './_lib/errors';
 import {
   configResponse,
   jiraCreds,
@@ -22,7 +22,7 @@ import {
   saveConfig,
   upsertProvider,
 } from './_lib/integrationsStore';
-import { TimeoutError, UpstreamError } from './_lib/net';
+import { outboundHttpError } from './_lib/net';
 import { aggregateUsage } from './_lib/jira/aggregate';
 import { boardSprints, jiraFetch, jiraFields, searchPage } from './_lib/jira/client';
 import { detectJiraFields, jqlString } from './_lib/jira/fields';
@@ -242,14 +242,6 @@ export const handler = withApi({ fn: 'integrations' }, async (ctx) => {
   try {
     return await route(ctx);
   } catch (e) {
-    if (e instanceof UpstreamError) {
-      throw upstreamError(
-        e.message.startsWith('Unexpected redirect')
-          ? e.message
-          : `${e.provider} ${e.status}: ${e.message}`.slice(0, 200),
-      );
-    }
-    if (e instanceof TimeoutError) throw upstreamError(e.message);
-    throw e;
+    throw outboundHttpError(e) ?? e;
   }
 });

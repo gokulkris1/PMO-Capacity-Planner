@@ -4,7 +4,7 @@
  */
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { badRequest } from './errors';
+import { HttpError, badRequest, gatewayTimeout, upstreamError } from './errors';
 
 export const JIRA_HOST_RE = /^[a-z0-9-]+\.(atlassian\.net|jira\.com)$/;
 export const JIRA_DOMAIN_MESSAGE = 'Enter your Jira Cloud site, e.g. acme.atlassian.net';
@@ -27,6 +27,52 @@ export class TimeoutError extends Error {
     super(message);
     this.name = 'TimeoutError';
   }
+}
+/** The remote host could not be reached at all: DNS failure, connection refused or reset, TLS failure (QA-009). */
+export class UnreachableError extends Error {
+  constructor(
+    readonly provider: string,
+    readonly host: string,
+    readonly causeCode: string | null,
+  ) {
+    super(`Could not reach ${provider} at ${host}. Check the address and try again in a minute.`);
+    this.name = 'UnreachableError';
+  }
+}
+
+/**
+ * QA-009: what the API answers when an outbound call fails, so a Jira or Planview outage is never a 500. A timeout is
+ * 504 and an unreachable host or a failed upstream answer is 502, each with a message a person can act on
+ * (`code: server_error`, per the ApiError contract). Returns null for anything that is not an outbound failure.
+ */
+export function outboundHttpError(e: unknown): HttpError | null {
+  if (e instanceof TimeoutError) return gatewayTimeout(`${e.message}. Try again in a minute.`, e.message);
+  if (e instanceof UnreachableError)
+    return upstreamError(e.message, `${e.provider} unreachable: ${e.causeCode ?? 'network'}`);
+  if (e instanceof UpstreamError) {
+    if (e.message.startsWith('Unexpected redirect')) return upstreamError(e.message);
+    if (e.status === 401 || e.status === 403)
+      return upstreamError(
+        `${e.provider} rejected the credentials (${e.status}). Check the email and API token in Settings › Integrations.`,
+      );
+    return upstreamError(`${e.provider} ${e.status}: ${e.message}`.slice(0, 200));
+  }
+  return null;
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** The low-level code of a fetch failure (undici puts it on `cause`), e.g. ENOTFOUND or ECONNREFUSED. */
+function networkCode(e: unknown): string | null {
+  const err = e as { code?: unknown; cause?: { code?: unknown; errno?: unknown } };
+  const code = err?.cause?.code ?? err?.code;
+  return typeof code === 'string' ? code : null;
 }
 
 export function normaliseJiraDomain(raw: unknown): string | null {
@@ -114,27 +160,24 @@ export async function safeFetch(
   const timeoutMs = Math.min(opts.timeoutMs ?? MAX_OUTBOUND_MS, MAX_OUTBOUND_MS);
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = () => new TimeoutError(`${opts.label} did not respond within ${Math.round(timeoutMs / 100) / 10}s`);
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
+      reject(timedOut());
       controller.abort();
-      reject(new TimeoutError(`${opts.label} did not respond within ${Math.round(timeoutMs / 100) / 10}s`));
     }, timeoutMs);
   });
   try {
     const res = await Promise.race([fetch(url, { ...init, redirect: 'manual', signal: controller.signal }), timeout]);
     if ((res.status >= 300 && res.status < 400) || res.type === 'opaqueredirect') {
-      let host = url;
-      try {
-        host = new URL(url).host;
-      } catch {
-        // keep url
-      }
-      throw new UpstreamError(opts.label, 502, `Unexpected redirect from ${host}`);
+      throw new UpstreamError(opts.label, 502, `Unexpected redirect from ${hostOf(url)}`);
     }
     return res;
   } catch (e) {
-    if ((e as Error)?.name === 'AbortError') throw new TimeoutError(`${opts.label} did not respond in time`);
-    throw e;
+    if (e instanceof TimeoutError || e instanceof UpstreamError) throw e;
+    if ((e as Error)?.name === 'AbortError') throw timedOut();
+    // fetch() rejects (TypeError "fetch failed", DNS, refused, reset, TLS): the host is unreachable, not a server bug.
+    throw new UnreachableError(opts.label, hostOf(url), networkCode(e));
   } finally {
     if (timer) clearTimeout(timer);
   }

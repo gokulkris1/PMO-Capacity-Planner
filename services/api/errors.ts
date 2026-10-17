@@ -95,6 +95,9 @@ export function userMessage(e: unknown): string {
   if (e instanceof ApiRequestError) {
     if (e.status >= 400 && e.status < 500 && e.status !== 401) return e.message;
     if (e.code === 'migration_pending' || e.code === NETWORK_ERROR_CODE) return MESSAGE_BY_CODE[e.code];
+    // QA-009: an outbound integration failed (502) or timed out (504); the API's message is written for people.
+    if ((e.status === 502 || e.status === 504) && e.message && e.message !== MESSAGE_BY_CODE.server_error)
+      return e.message;
     return e.requestId
       ? `Something went wrong. Try again, or quote reference ${e.requestId}.`
       : 'Something went wrong. Try again.';

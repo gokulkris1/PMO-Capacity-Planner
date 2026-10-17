@@ -21,7 +21,7 @@ import { iso, json, one, withTx } from '../db';
 import { conflict } from '../errors';
 import { bumpDataVersion } from '../entity';
 import { loadStored, planviewCreds } from '../integrationsStore';
-import { TimeoutError, UpstreamError } from '../net';
+import { TimeoutError, UpstreamError, outboundHttpError } from '../net';
 import { upstreamError } from '../errors';
 import type { NormalisedAssignment, NormalisedProject, PlanviewCreds } from '../planview/client';
 import {
@@ -45,9 +45,9 @@ function mapStatus(s: string | null): string | null {
 const personKey = (a: NormalisedAssignment) => (a.resourceEmail || a.resourceName || '').trim().toLowerCase();
 
 function upstream(e: unknown): never {
-  if (e instanceof UpstreamError) throw upstreamError(`Planview responded ${e.status}: ${e.message}`.slice(0, 200));
-  if (e instanceof TimeoutError) throw upstreamError('Planview did not respond in time.');
-  throw e;
+  if (e instanceof UpstreamError && !(e.status === 401 || e.status === 403))
+    throw upstreamError(`Planview responded ${e.status}: ${e.message}`.slice(0, 200));
+  throw outboundHttpError(e) ?? e;
 }
 
 interface PreviewPayload {

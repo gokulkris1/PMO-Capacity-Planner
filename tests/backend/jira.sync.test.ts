@@ -120,6 +120,7 @@ describe('manual sync (JI-01#AC3-5)', () => {
     );
     let page = 0;
     fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      if (url === 'https://acme.atlassian.net/rest/api/3/myself') return jsonResponse({ accountId: 'acc-sync' });
       expect(url).toBe('https://acme.atlassian.net/rest/api/3/search/jql');
       const body = JSON.parse(String(init.body));
       page++;

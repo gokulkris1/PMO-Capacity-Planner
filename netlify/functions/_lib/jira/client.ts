@@ -36,6 +36,12 @@ export async function jiraFetch(
     },
     { label: 'Jira', timeoutMs },
   );
+  // QA-010: Jira Cloud answers some endpoints (JQL search among them) with 200 and anonymous results when the
+  // credentials are wrong; the failed login is only in X-Seraph-LoginReason. Treat that as the 401 it is.
+  const loginReason = String(res.headers?.get?.('x-seraph-loginreason') ?? '').toUpperCase();
+  if (/AUTHENTICAT(ED|ION)_(FAILED|DENIED)/.test(loginReason)) {
+    throw new UpstreamError('Jira', 401, 'Jira rejected the credentials');
+  }
   const { text, json } = await readJson(res);
   if (!res.ok) {
     const retry = Number(res.headers?.get?.('retry-after') ?? '');
@@ -47,6 +53,17 @@ export async function jiraFetch(
     );
   }
   return json;
+}
+
+/**
+ * QA-010: proves the credentials authenticate (an anonymous caller gets 401 from /myself, never a user), so a sync
+ * with a wrong token fails instead of "succeeding" with zero issues.
+ */
+export async function assertJiraAuthenticated(c: JiraCreds): Promise<void> {
+  const me = (await jiraFetch(c, '/rest/api/3/myself')) as { accountId?: unknown } | null;
+  if (!me || typeof me !== 'object' || (me.accountId !== undefined && !me.accountId)) {
+    throw new UpstreamError('Jira', 401, 'Jira rejected the credentials');
+  }
 }
 
 export async function jiraFields(c: JiraCreds): Promise<JiraField[]> {

@@ -12,7 +12,7 @@ import { userRef } from '../dto';
 import { HttpError } from '../errors';
 import { audit, SYSTEM_AUDIT } from '../audit';
 import { errorFields, log } from '../log';
-import { TimeoutError, UpstreamError } from '../net';
+import { TimeoutError, UnreachableError, UpstreamError } from '../net';
 import { loadStored, jiraCreds, jiraConfigured } from '../integrationsStore';
 import { featuresOf } from '../dto';
 import {
@@ -24,7 +24,7 @@ import {
   type Calibration,
 } from './aggregate';
 import { detectJiraFields, jqlString } from './fields';
-import { jiraFields, searchPage } from './client';
+import { assertJiraAuthenticated, jiraFields, searchPage } from './client';
 
 type R = Record<string, unknown>;
 
@@ -151,6 +151,7 @@ async function initCursor(db: Db, job: R): Promise<Cursor> {
   const wsId = String(job.workspace_id);
   const stored = await loadStored(db, wsId);
   const creds = jiraCreds(stored);
+  await assertJiraAuthenticated(creds); // QA-010: a wrong token fails the job, it never "succeeds" with 0 issues
   const mapped = await db.query<{ external_key: string }>(
     `SELECT external_key FROM integration_mappings WHERE workspace_id = $1 AND provider = 'jira' AND confirmed`,
     [wsId],
@@ -455,11 +456,15 @@ export async function runStep(db: Db, jobId: string, deadline: number): Promise<
       return;
     }
     let message = 'Sync failed';
-    if (e instanceof UpstreamError && (e.status === 401 || e.status === 403)) message = 'Jira rejected the credentials';
+    const authFailed = e instanceof UpstreamError && (e.status === 401 || e.status === 403);
+    if (authFailed) message = 'Jira rejected the credentials';
     else if (e instanceof UpstreamError) message = `Jira ${e.status}: ${e.message}`.slice(0, 300);
+    else if (e instanceof UnreachableError)
+      message = e.message; // QA-026: the actual reason, not "Sync failed"
     else if (e instanceof HttpError) message = e.message;
     else log('error', { event: 'jira.sync_failed', jobId, err: errorFields(e) });
-    await finish(db, job, pages > 0 ? 'partial' : 'failed', message);
+    // Rejected credentials fail the job outright (QA-010): nothing after that point can be trusted.
+    await finish(db, job, pages > 0 && !authFailed ? 'partial' : 'failed', message);
   }
 }
 

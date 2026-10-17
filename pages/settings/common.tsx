@@ -134,6 +134,8 @@ export function errorText(e: unknown): string {
     if (e.status === 403 && e.code === 'entitlement') return e.message || 'Your plan does not include this.';
     if (e.status === 501) return "This isn't available yet.";
     if ((e.status === 400 || e.status === 409) && e.message) return e.message;
+    // QA-009: Jira/Planview unreachable (502) or too slow (504): the API's message says what to do.
+    if ((e.status === 502 || e.status === 504) && e.message) return e.message;
     return e.requestId
       ? `Something went wrong. Try again, or quote reference ${e.requestId}.`
       : 'Something went wrong. Try again.';

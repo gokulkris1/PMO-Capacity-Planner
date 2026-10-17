@@ -147,6 +147,8 @@ export function errorMessage(e: unknown, fallback = 'Something went wrong. Try a
   if (err.status === 409) return err.message || 'Someone else changed this. Reload to see their change.';
   if (err.status === 400) return err.message || 'Check the highlighted fields.';
   if (err.status === 413) return 'Too many changes at once. Try a smaller selection.';
+  // QA-009: an integration that is unreachable (502) or too slow (504); the API's message is written for people.
+  if ((err.status === 502 || err.status === 504) && err.message) return err.message;
   return `${fallback}${ref}`;
 }
 
