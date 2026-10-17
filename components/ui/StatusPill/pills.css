@@ -43,7 +43,7 @@
 }
 .pcp-pill--brand {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-on-subtle);
 }
 /* Tentative bookings: dashed outline (never colour alone: the word says "Tentative"). */
 .pcp-pill--outline {
@@ -240,7 +240,7 @@
 }
 .pcp-badge--brand {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-on-subtle);
 }
 .pcp-badge--neutral {
   background: var(--color-chip-bg);

@@ -100,3 +100,8 @@
 .dl-test {
   margin-top: var(--space-200);
 }
+
+/* QA-026: the reason a failing sync failed, on the Jira connection card. */
+.dl-conn__error {
+  color: var(--color-danger);
+}

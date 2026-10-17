@@ -6,7 +6,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-full);
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-on-subtle);
   font-weight: 600;
   user-select: none;
 }

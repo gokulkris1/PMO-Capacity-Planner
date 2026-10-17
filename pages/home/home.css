@@ -22,3 +22,11 @@
 .home-list__band {
   flex: 0 0 88px;
 }
+
+/* First-run state (ST-08#AC1, QA-038). */
+.home-firstrun__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-100);
+}

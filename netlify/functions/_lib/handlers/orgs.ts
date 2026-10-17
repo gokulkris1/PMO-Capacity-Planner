@@ -15,11 +15,14 @@ import { seedCrafts } from '../catalog';
 import type { Queryable } from '../db';
 import { one, withTx } from '../db';
 import { ORG_COLUMNS, WORKSPACE_COLUMNS, featuresOf, orgDTO, planningOf, workspaceDTO } from '../dto';
-import { appBaseUrl } from '../env';
+import { appBaseUrl, optionalEnv } from '../env';
 import { badRequest, conflict, forbidden } from '../errors';
 import { sendEmail, welcomeEmail } from '../email';
 import { bestEffort, slugify, staleOrMissing } from '../entity';
 import type { Params } from '../router';
+
+export const AI_NOT_CONFIGURED =
+  'The AI assistant is not set up on this deployment (no OpenAI key). Ask whoever runs PMO Capacity Planner to add one.';
 
 export async function loadOrgDTO(q: Queryable, orgId: string): Promise<OrgDTO | null> {
   const r = await one(
@@ -148,6 +151,13 @@ export async function patchOrg(ctx: Ctx, p: Params): Promise<OrgDTO | null> {
     if (unknown.length)
       throw badRequest('Unknown feature flag.', { 'patch.features': `Unknown: ${unknown.join(', ')}` });
     const next = { ...featuresOf(access.org.features), ...patch.features };
+    // QA-029 (HS-11#AC2): the assistant cannot be switched on where it cannot answer.
+    if (
+      patch.features.aiAssistant === true &&
+      !featuresOf(access.org.features).aiAssistant &&
+      !optionalEnv('OPENAI_API_KEY')
+    )
+      throw conflict(AI_NOT_CONFIGURED, { fields: { 'patch.features.aiAssistant': AI_NOT_CONFIGURED } });
     params.push(JSON.stringify(next));
     sets.push(`features = $${params.length}::jsonb`);
     after.features = next;

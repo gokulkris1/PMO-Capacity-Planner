@@ -7,6 +7,8 @@
   --color-primary-hover: #184ea8;
   --color-primary-pressed: #123f8a;
   --color-primary-subtle: #ebf2fd;
+  /* Primary text on --color-primary-subtle (active nav, selection counts); AA in both themes (QA-030). */
+  --color-primary-on-subtle: var(--color-primary);
   --color-primary-border: #b7cdf3;
   --color-on-primary: #ffffff;
   --color-link: #1f5fcc;
@@ -182,6 +184,7 @@
   --color-primary-hover: #255fc4;
   --color-primary-pressed: #1f55b0;
   --color-primary-subtle: #1a2c4d;
+  --color-primary-on-subtle: var(--color-link);
   --color-primary-border: #2f4c7e;
   --color-on-primary: #ffffff;
   --color-link: #7ea8f5;

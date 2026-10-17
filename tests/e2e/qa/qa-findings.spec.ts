@@ -158,3 +158,33 @@ test.describe('QA findings (demo workspace)', () => {
     await expect(page.getByRole('button', { name: 'Verify email' })).toHaveCount(0);
   });
 });
+
+test('QA-038 a new, empty workspace opens on the first-run state with sample data one click away', async ({ page }) => {
+  await openDemo(page, 'settings/organisation');
+  await page.getByRole('button', { name: 'Add workspace' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Workspace name').fill('Empty Office');
+  await dialog.getByRole('button', { name: 'Add workspace' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Switch workspace$/ }).click();
+  await page.getByRole('menuitemradio', { name: /Empty Office/ }).click();
+  await page
+    .getByRole('navigation', { name: /primary/i })
+    .getByRole('link', { name: 'Home' })
+    .click();
+  await expect(page.getByText('Start your plan', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add people' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Import CSV' })).toBeVisible();
+  await page.getByRole('button', { name: 'Install sample data' }).click();
+  await expect(page.getByText('Start your plan', { exact: true })).toBeHidden();
+  await expect(page.getByRole('list', { name: 'Key figures' })).toBeVisible();
+});
+
+test('QA-030 dark theme: Settings pages meet colour contrast (active nav item included)', async ({ page }) => {
+  for (const section of ['profile', 'organisation', 'members', 'structure', 'crafts', 'planning', 'integrations']) {
+    await openDemo(page, `settings/${section}`);
+    await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+    const res = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
+    expect([section, res.violations.map((v) => v.id)]).toEqual([section, []]);
+  }
+});

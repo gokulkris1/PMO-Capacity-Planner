@@ -46,7 +46,7 @@
 
 .pcp-table__bulk-count {
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-primary-on-subtle);
   white-space: nowrap;
 }
 

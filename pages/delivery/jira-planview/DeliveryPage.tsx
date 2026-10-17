@@ -184,12 +184,17 @@ function ConnectionStrip({ delivery, serverTime }: { delivery: DeliverySource; s
       <div className="dl-conn" role="listitem">
         <div className="dl-conn__head">
           <span className="dl-conn__name">Jira Cloud</span>
-          {delivery.configured.jira ? (
+          {!delivery.configured.jira ? (
+            <StatusPill icon={CircleDashed}>Not connected</StatusPill>
+          ) : h?.state === 'failed' ? (
+            // QA-026: a connection whose last sync failed is not shown as healthy.
+            <StatusPill tone="danger" icon={CircleAlert}>
+              Sync failing
+            </StatusPill>
+          ) : (
             <StatusPill tone="success" icon={CircleCheck}>
               Connected
             </StatusPill>
-          ) : (
-            <StatusPill icon={CircleDashed}>Not connected</StatusPill>
           )}
         </div>
         <div className="pcp-caption pcp-text-tertiary">
@@ -197,6 +202,9 @@ function ConnectionStrip({ delivery, serverTime }: { delivery: DeliverySource; s
             ? `Last successful sync ${fmt.relative(h.lastSuccessAt, serverTime)}`
             : 'No successful sync yet'}
         </div>
+        {h?.state === 'failed' && h.lastJob?.error ? (
+          <div className="pcp-caption dl-conn__error">{h.lastJob.error}</div>
+        ) : null}
         {h && <div className="dl-conn__state">{syncStatePill(h.state)}</div>}
       </div>
       <div className="dl-conn" role="listitem">

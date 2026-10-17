@@ -564,6 +564,13 @@ describe('craft change requests (PPL-06)', () => {
     const ok = await call(v2, 'POST', `${W()}/craft-requests/${r.json.id}/approve`, { token: planner.token });
     expect(ok.status).toBe(200);
     expect(ok.json).toMatchObject({ status: 'approved', decidedBy: { id: planner.id } });
+    // QA-018 (PPL-06#AC4): the requester's snapshot carries the decision, so My plan can say "Approved by {name}".
+    const ownSnap = await call(v2, 'GET', `${W()}/snapshot`, { token: contributor.token });
+    expect(
+      (ownSnap.json.craftRequests as Array<{ id: string; status: string; decidedBy: { id: string } | null }>).find(
+        (x) => x.id === r.json.id,
+      ),
+    ).toMatchObject({ status: 'approved', decidedBy: { id: planner.id } });
     const person = await db.query(`SELECT craft_profile FROM resources WHERE id = $1`, [mine]);
     expect((person[0].craft_profile as { secondaryCrafts: unknown }).secondaryCrafts).toEqual(proposed);
     const again = await call(v2, 'POST', `${W()}/craft-requests/${r.json.id}/approve`, { token: planner.token });

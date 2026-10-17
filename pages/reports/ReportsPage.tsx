@@ -86,7 +86,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       await downloadQbrPack(buildQbrPack(s, quarters, thresholds, delivery), {
         org: org?.name ?? s.org.name,
         workspace: workspace?.name ?? s.workspace.name,
-        generatedAt: fmt.dateTime(new Date().toISOString()),
+        generatedAt: stamp, // ISO date, as QbrPackMeta expects (QA-031)
         filename: `qbr-pack-${quarters[0]?.key ?? stamp}.pdf`,
       });
       void recordExport({ kind: 'qbr-pack', format: 'pdf' }).catch(() => undefined);

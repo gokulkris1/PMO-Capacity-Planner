@@ -54,7 +54,7 @@ export async function buildSnapshot(
        (SELECT coalesce(json_agg(row_to_json(t) ORDER BY t.sort_order, lower(t.name)), '[]') FROM (SELECT x.*, ub.name AS updated_by_name FROM crafts x LEFT JOIN users ub ON ub.id = x.updated_by WHERE x.org_id = w.org_id) t) AS crafts,
        (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (SELECT ${OFFER_COLUMNS_O2} FROM marketplace_offers o2 LEFT JOIN users cb ON cb.id = o2.created_by WHERE o2.workspace_id = w.id) t) AS offers,
        (SELECT coalesce(json_agg(row_to_json(t)), '[]') FROM (SELECT ${CRAFT_REQUEST_COLUMNS} FROM craft_change_requests c ${CRAFT_REQUEST_JOINS}
-          WHERE c.workspace_id = w.id AND c.status = 'pending' AND ${requestFilter} ORDER BY c.submitted_at DESC) t) AS craft_requests
+          WHERE c.workspace_id = w.id AND (c.status = 'pending' OR c.decided_at > now() - interval '90 days') AND ${requestFilter} ORDER BY c.submitted_at DESC) t) AS craft_requests
      FROM workspaces w JOIN organizations o ON o.id = w.org_id WHERE w.id = $1`,
     requestFilter.includes('$2') ? [wsId, actorId] : [wsId],
   );

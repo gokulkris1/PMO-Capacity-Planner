@@ -156,6 +156,7 @@ describe('B2-compatible CSV and QBR builders', () => {
       filename: 'qbr.pdf',
     });
     expect(model.cover.title).toBeTruthy();
+    expect(model.cover.generatedOn).toBe('16 Oct 2026'); // QA-031: the whole date, year included
     expect(model.fileName).toBe('qbr.pdf');
     expect(model.sections.length).toBeGreaterThan(2);
   });

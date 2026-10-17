@@ -67,7 +67,10 @@ export default function PeoplePage() {
   const can = useViewportCan();
   const ent = useEntitlements();
   const [, setPerson] = useQueryParam('person');
-  const [importOpen, setImportOpen] = useState(false);
+  // `?import=1` opens the CSV import (the Home first-run state links here, ST-08#AC1).
+  const [importParam, setImportParam] = useQueryParam('import');
+  const [importOpenState, setImportOpen] = useState(false);
+  const importOpen = importOpenState || (importParam === '1' && can('import.csv') && ent.has('csvImport'));
   const [exportReq, setExportReq] = useState(0);
   const overflow = [
     ...(can('import.csv') && ent.has('csvImport')
@@ -100,7 +103,10 @@ export default function PeoplePage() {
           <PeopleBody
             snapshot={s}
             importOpen={importOpen}
-            onImportClose={() => setImportOpen(false)}
+            onImportClose={() => {
+              setImportOpen(false);
+              setImportParam(null);
+            }}
             exportReq={exportReq}
           />
         )}

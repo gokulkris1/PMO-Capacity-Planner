@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Sparkles } from 'lucide-react';
-import { useApi, useFeature, userMessage } from '../../state';
+import { ApiRequestError, useApi, useFeature, userMessage } from '../../state';
 import { Banner } from '../ui/Banner';
 import { FormField } from '../ui/FormField';
 import { Textarea } from '../ui/TextField';
@@ -147,7 +147,12 @@ export function AssistantDrawer({ open, onClose }: { open: boolean; onClose: () 
       setHistory((h) => [{ id: Date.now(), question: q, answer }, ...h].slice(0, 10));
       setQuestion('');
     } catch (err) {
-      setError(userMessage(err));
+      // QA-029: "not set up" (503) and limits (4xx) are written for people; anything else stays generic.
+      setError(
+        err instanceof ApiRequestError && err.status === 503 && err.code === 'server_error' && err.message
+          ? err.message
+          : userMessage(err),
+      );
     } finally {
       setBusy(false);
     }

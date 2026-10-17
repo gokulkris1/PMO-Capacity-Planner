@@ -2,7 +2,7 @@
  * Home (RP-01) — route `/o/:org/w/:ws/home`.
  * QBR KPI tiles, four-quarter capacity vs demand outlook, action lists and recent activity.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -14,15 +14,19 @@ import {
   ListChecks,
   Store,
   TriangleAlert,
+  Plus,
+  Sparkles,
+  Upload,
   Users,
 } from 'lucide-react';
 import type * as D from '../../shared/contracts/dto';
-import { useQuarters, useWorkspace } from '../../state';
-import { buildDemandGrid, buildHome, buildPeopleRows, type PersonRow } from '../../utils/viewModels';
+import { useApi, useEntitlements, useQuarters, useWorkspace } from '../../state';
+import { buildDemandGrid, buildHome, type PersonRow } from '../../utils/viewModels';
 import {
   BandCell,
   BandPill,
   Banner,
+  Button,
   Card,
   CraftChip,
   EmptyState,
@@ -32,6 +36,8 @@ import {
   PageHeader,
   PersonLabel,
   LinkButton,
+  errorMessage,
+  useToast,
 } from '../../components/ui';
 import { PageBody } from '../../components/shell/PageBody';
 import { useTimeBasis, TimeBasisControl } from '../../components/shell/TimeBasis';
@@ -73,9 +79,65 @@ export default function HomePage() {
         }
       />
       <PageBody skeleton="kpi" label="home">
-        {(s) => <HomeBody snapshot={s} />}
+        {(s) => (s.people.length === 0 && s.projects.length === 0 ? <FirstRun /> : <HomeBody snapshot={s} />)}
       </PageBody>
     </div>
+  );
+}
+
+/**
+ * ST-08#AC1 (QA-038): a workspace with no people and no projects shows how to start instead of a zeroed dashboard.
+ */
+function FirstRun() {
+  const { can } = useWorkspace();
+  const ent = useEntitlements();
+  const { api, workspaceId, reload } = useApi();
+  const wsPath = useWsPath();
+  const toast = useToast();
+  const [installing, setInstalling] = useState(false);
+  const canWrite = can('people.write');
+  const install = async () => {
+    if (!workspaceId) return;
+    setInstalling(true);
+    try {
+      await api.workspace.installSampleData(workspaceId);
+      await reload();
+      toast.success('Sample data installed');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setInstalling(false);
+    }
+  };
+  return (
+    <Card>
+      <EmptyState
+        icon={Users}
+        title="Start your plan"
+        description={
+          canWrite
+            ? 'Add the people in your squad and the projects they work on, import them from a CSV, or install sample data to look around first.'
+            : 'Nothing has been planned in this workspace yet. A Planner or PMO Admin adds the people and projects.'
+        }
+        action={
+          canWrite ? (
+            <span className="home-firstrun__actions">
+              <LinkButton variant="primary" iconBefore={Plus} to={`${wsPath('org/people')}?person=new`}>
+                Add people
+              </LinkButton>
+              {can('import.csv') && ent.has('csvImport') ? (
+                <LinkButton variant="secondary" iconBefore={Upload} to={`${wsPath('org/people')}?import=1`}>
+                  Import CSV
+                </LinkButton>
+              ) : null}
+              <Button variant="secondary" iconBefore={Sparkles} loading={installing} onClick={() => void install()}>
+                Install sample data
+              </Button>
+            </span>
+          ) : undefined
+        }
+      />
+    </Card>
   );
 }
 
@@ -90,16 +152,14 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     () => buildHome(s, quarters, b.basis, thresholds, workspace),
     [s, quarters, b.basis, thresholds, workspace],
   );
-  const rows = useMemo(() => buildPeopleRows(s, quarters, thresholds), [s, quarters, thresholds]);
   const demand = useMemo(() => buildDemandGrid(s, quarters), [s, quarters]);
   const qi = b.quarterIndex;
   const nextQ = quarters[qi + 1];
 
-  const at = (r: PersonRow) => r.quarters[qi];
-  const strained = rows.filter((r) => at(r)?.band === 'over').sort((a, z) => at(z).relativePct - at(a).relativePct);
-  const underUsed = rows
-    .filter((r) => at(r)?.band === 'bench' || at(r)?.band === 'under')
-    .sort((a, z) => at(a).relativePct - at(z).relativePct);
+  // RP-01#AC3 (QA-023): the lists are the people behind the "Over capacity" and "Available" tiles, for the same
+  // basis, so their counts match the tiles and the People band filter.
+  const strained = home.over;
+  const available = home.available;
   const unstaffed = demand
     .map((d) => ({ ...d, cell: d.cells[qi] }))
     .filter((d) => d.cell && d.cell.gapFte > 0.04)
@@ -203,8 +263,8 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           </Card>
           <div className="home-gap" />
           <Card
-            title="Under target"
-            subtitle={`${basisLabel} · offer spare capacity on the Marketplace`}
+            title="Available"
+            subtitle={`${basisLabel} · below ${thresholds.benchBelow}% of target; offer them on the Marketplace`}
             flush
             actions={
               <LinkButton variant="subtle" size="sm" to={`${wsPath('plan/marketplace')}?tab=under`}>
@@ -213,10 +273,10 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             }
           >
             <PeopleList
-              rows={underUsed.slice(0, 5)}
+              rows={available.slice(0, 5)}
               qi={qi}
               href={personHref}
-              empty="Everyone is at or above target."
+              empty="Nobody is in the Available band."
             />
           </Card>
         </div>

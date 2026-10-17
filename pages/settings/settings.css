@@ -61,7 +61,7 @@
 .pcp-settings__nav-item--active,
 .pcp-settings__nav-item--active:hover {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-on-subtle);
 }
 
 .pcp-settings__content {

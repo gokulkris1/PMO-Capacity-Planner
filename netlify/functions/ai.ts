@@ -10,6 +10,7 @@ import { orgEntitlements, requireFeature, requireWorkspace } from './_lib/authz'
 import { buildSystemPrompt } from './_lib/aiPrompt';
 import { optionalEnv } from './_lib/env';
 import { badRequest, forbidden, notFound, rateLimited, serviceUnavailable, upstreamError } from './_lib/errors';
+import { AI_NOT_CONFIGURED } from './_lib/handlers/orgs';
 import { buildSnapshot } from './_lib/handlers/snapshot';
 import { readJson, safeFetch } from './_lib/net';
 import { errorFields, log } from './_lib/log';
@@ -30,7 +31,8 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   requireFeature(access.org, 'aiAssistant');
   if (!access.permissions.has('ai.use')) throw forbidden();
   const apiKey = optionalEnv('OPENAI_API_KEY');
-  if (!apiKey) throw serviceUnavailable('The AI service is not configured.', 'OPENAI_API_KEY missing');
+  // QA-029: a clear, specific message (the assistant UI shows it) rather than a generic error.
+  if (!apiKey) throw serviceUnavailable(AI_NOT_CONFIGURED, 'OPENAI_API_KEY missing');
 
   const limit = orgEntitlements(access.org).aiQueriesPerMonth;
   const used = await ctx.db.query<{ n: number }>(

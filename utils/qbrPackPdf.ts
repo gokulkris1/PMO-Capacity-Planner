@@ -129,11 +129,20 @@ export function qbrPackModel(data: QbrPackData, meta: QbrPackMeta): QbrPackModel
     cover: {
       title: `${PRODUCT_NAME} · QBR pack`,
       subtitle: `${meta.org} · ${meta.workspace}`,
-      generatedOn: meta.generatedAt.slice(0, 10),
+      generatedOn: coverDate(meta.generatedAt),
       basis: q[0] ? `QBR1 = ${q[0].calendarLabel} (${q[0].fiscalLabel})` : '',
     },
     sections,
   };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "17 Oct 2026" from an ISO date or date-time (QA-031: the cover used to cut a formatted date at 10 characters). */
+export function coverDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}`;
 }
 
 /** Renders and downloads the QBR pack; jsPDF is fetched on first use. */
