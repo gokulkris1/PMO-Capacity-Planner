@@ -1,8 +1,8 @@
 /* eslint-disable security/detect-non-literal-regexp -- patterns are built from fixed demo names */
 /**
  * Independent QA (Release 2.0): browser checks on the demo workspace that the developer e2e suite does not make.
- * Each `test.fixme` reproduces an open QA defect (docs/qa/QA_REPORT.md) and is expected to fail until it is fixed;
- * the plain tests pin behaviour QA verified.
+ * Each test named after a QA defect (docs/qa/QA_REPORT.md) reproduced it and failed until the fix; they now guard
+ * against regressions. The other tests pin behaviour QA verified.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, openDemo, test } from '../fixtures';
@@ -19,6 +19,7 @@ test.describe('QA findings (demo workspace)', () => {
       page.waitForEvent('download'),
       page.getByRole('menuitem', { name: 'Export CSV' }).click(),
     ]);
+    expect(download.suggestedFilename()).toMatch(/^people-\d{4}-\d{2}-\d{2}\.csv$/); // QA-028 (DS-04#AC7)
     const text = await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8'));
     const line = text.split(/\r?\n/).find((l) => l.includes('HYPERLINK')) ?? '';
     expect(line).toMatch(/^"'=HYPERLINK/);
@@ -132,14 +133,14 @@ test.describe('QA findings (demo workspace)', () => {
     );
   });
 
-  test.fixme('QA-016 at 390 px editing is hidden (SH-09#AC2)', async ({ page }) => {
+  test('QA-016 at 390 px editing is hidden (SH-09#AC2)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openDemo(page, 'plan/allocations');
     await expect(page.locator('[role="gridcell"][aria-readonly="false"]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add booking/ })).toHaveCount(0);
   });
 
-  test.fixme('QA-012 an out-of-range target (151 %) is reported inline instead of "Saved" with nothing saved', async ({
+  test('QA-012 an out-of-range target (151 %) is reported inline instead of "Saved" with nothing saved', async ({
     page,
   }) => {
     await openDemo(page, 'org/people', 'person=r1');
@@ -148,5 +149,12 @@ test.describe('QA findings (demo workspace)', () => {
     await drawer.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(drawer).toBeVisible();
     await expect(drawer.getByText(/150/)).toBeVisible();
+  });
+
+  test('QA-027 /verify-email while signed out asks to sign in instead of showing a code form', async ({ page }) => {
+    await page.goto('/verify-email?demo=1&demoSignedOut=1');
+    await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Sign in to verify' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Verify email' })).toHaveCount(0);
   });
 });

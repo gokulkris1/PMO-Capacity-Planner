@@ -103,7 +103,7 @@ describe('QA: unstaffed demand is counted the same way on Home and in the Market
 describe('QA: dirty v1.1 dates', () => {
   // QA-025 (Minor): the drifted v1.1 schema has TEXT date columns and the API passes their values through unchanged.
   // One non-ISO value ("TBC") on a single booking turns the person's load into NaN for every quarter.
-  it.skip("QA-025 a booking with a non-ISO date never turns a person's load into NaN", () => {
+  it("QA-025 a booking with a non-ISO date never turns a person's load into NaN", () => {
     const s = snapshot({
       people: [person('k', { name: 'Kerrie Dalton' })],
       projects: [project('ledger', { name: 'Ledger' })],

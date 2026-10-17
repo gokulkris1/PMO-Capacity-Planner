@@ -28,6 +28,11 @@ export interface NumberFieldProps {
   'aria-label'?: string;
   'aria-describedby'?: string;
   onBlur?: () => void;
+  /**
+   * Called with the inline error when the typed value is rejected (not a number, out of range) and with null when it
+   * is accepted again, so a form can refuse to save while the field shows something it did not accept (QA-012).
+   */
+  onValidityChange?: (error: string | null) => void;
   ref?: Ref<HTMLInputElement>;
 }
 
@@ -55,6 +60,7 @@ export function NumberField({
   placeholder,
   className,
   onBlur,
+  onValidityChange,
   ref,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
@@ -62,7 +68,11 @@ export function NumberField({
   const places = decimals ?? (step < 1 ? Math.min(2, String(step).split('.')[1]?.length ?? 1) : 0);
   const [draft, setDraft] = useState(() => format(value, places));
   const [editing, setEditing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const setError = (e: string | null) => {
+    setErrorState(e);
+    onValidityChange?.(e);
+  };
   const errorId = useId();
   const field = useFieldControl({
     id,
@@ -133,7 +143,7 @@ export function NumberField({
           inputMode="decimal"
           autoComplete="off"
           className="pcp-control__input"
-          value={editing ? draft : format(value, places)}
+          value={editing || error ? draft : format(value, places)}
           placeholder={placeholder}
           disabled={disabled}
           readOnly={readOnly}

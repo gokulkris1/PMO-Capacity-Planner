@@ -135,6 +135,8 @@ function PersonDrawerInner({
   const [profile, setProfile] = useState<ProfileDraft>(() => profileOf(person));
   const [crafts, setCrafts] = useState<CraftDraft>(() => craftsOf(person));
   const [tried, setTried] = useState(false);
+  // QA-012: the target field holds a value it rejected (e.g. 151 %), which it shows inline; saving must wait.
+  const [targetRejected, setTargetRejected] = useState(false);
   const [editBooking, setEditBooking] = useState<{
     resourceId: string;
     projectId: string;
@@ -157,7 +159,7 @@ function PersonDrawerInner({
   if (!profile.name.trim()) profileErrors.name = 'Enter a name';
   if (profile.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(profile.email)) profileErrors.email = 'Enter a valid email';
   const t = Number(profile.targetUtil);
-  if (!Number.isFinite(t) || t < 0 || t > 150) profileErrors.targetUtil = 'Enter 0–150';
+  if (!Number.isFinite(t) || t < 0 || t > 150 || targetRejected) profileErrors.targetUtil = 'Enter 0–150';
   if (profile.dailyRate && !(Number(profile.dailyRate) >= 0)) profileErrors.dailyRate = 'Enter a positive number';
   const craftErrors = crafts.secondary.map((c, i) => {
     if (!c.craftId) return 'Choose a craft';
@@ -371,7 +373,7 @@ function PersonDrawerInner({
                 label="Target utilisation"
                 id="pf-target"
                 help="100% means fully planned. Part-time people use a lower target."
-                error={tried ? profileErrors.targetUtil : null}
+                error={tried && !targetRejected ? profileErrors.targetUtil : null}
               >
                 <NumberField
                   id="pf-target"
@@ -382,6 +384,7 @@ function PersonDrawerInner({
                   step={5}
                   disabled={readOnly}
                   invalid={tried && !!profileErrors.targetUtil}
+                  onValidityChange={(e) => setTargetRejected(!!e)}
                   onChange={(n) => setProfile({ ...profile, targetUtil: numText(n) })}
                 />
               </FormField>

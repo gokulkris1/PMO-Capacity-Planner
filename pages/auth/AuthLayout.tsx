@@ -71,7 +71,11 @@ export function AuthForm({ onSubmit, children }: { onSubmit: () => void; childre
 /** Plain-language error copy; never shows raw server text (DESIGN_SYSTEM §14). */
 export function authErrorMessage(err: unknown, context: 'login' | 'generic' = 'generic'): string {
   if (err instanceof ApiRequestError) {
-    if (err.status === 429) return 'Too many attempts. Wait a few minutes and try again.';
+    // QA-021 (HS-05#AC3): the API says how long to wait ("Too many attempts. Try again in 9 minutes.").
+    if (err.status === 429)
+      return /^Too many attempts\. Try again in \d+ minutes?\.$/.test(err.message)
+        ? err.message
+        : 'Too many attempts. Wait a few minutes and try again.';
     if (context === 'login' && (err.status === 401 || err.status === 400)) return 'Email or password is incorrect.';
     if (err.status === 501) return "This isn't available yet. Try again later.";
     if (err.status === 400 && err.message && !/sql|stack|exception/i.test(err.message)) return err.message;

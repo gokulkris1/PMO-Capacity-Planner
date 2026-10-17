@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, FolderKanban, Funnel, Plus, Search, X, Ellipsis } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { useQuarters, useRecordExport, useSession, useWorkspace } from '../../../state';
+import { useQuarters, useRecordExport, useSession } from '../../../state';
 import { buildDemandGrid } from '../../../utils/viewModels';
 import {
   Button,
@@ -30,9 +30,10 @@ import {
 import { PageBody } from '../../../components/shell/PageBody';
 import { ProjectDrawer } from './ProjectDrawer';
 import './projects.css';
+import { useViewportCan } from '../../../components/shell/viewport';
 
 export default function ProjectsPage() {
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const [, setProject] = useQueryParam('project');
   const [exportReq, setExportReq] = useState(0);
   return (
@@ -68,7 +69,7 @@ type Row = ReturnType<typeof buildDemandGrid>[number];
 function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapshot; exportReq: number }) {
   const quarters = useQuarters();
   const recordExport = useRecordExport();
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const { me } = useSession();
   const [projectId, setProject] = useQueryParam('project');
   const [stage, setStage] = useQueryParam('stage');

@@ -33,4 +33,8 @@ export const MIGRATION_FILES: ReadonlyArray<{ file: string; sql: string }> = [
     file: '0008_revoked_sessions.sql',
     sql: '-- 0008 revoked sessions (AC-03#AC6 hardening, QA-019): plain sign-out revokes that one session on the server.\n-- Each session JWT carries a `jti`; signing out records it here until the token would have expired anyway, and\n-- authentication refuses a recorded jti. "Sign out of all devices" still bumps users.token_version.\n-- Additive and idempotent.\nCREATE TABLE IF NOT EXISTS revoked_sessions (\n  jti TEXT PRIMARY KEY,\n  user_id TEXT,\n  revoked_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  expires_at TIMESTAMPTZ NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_revoked_sessions_expires ON revoked_sessions(expires_at);\n',
   },
+  {
+    file: '0009_craft_short_codes.sql',
+    sql: "-- 0009 craft short codes (ORG-04, QA-034): the seeded codes `PgM` and `PdM` broke the rule the craft form enforces\n-- (2-4 capital letters or digits). Upper-case any code that becomes valid that way. The unique index is on\n-- upper(short), so this can never collide. Idempotent: a second run matches nothing.\nUPDATE crafts\nSET short = upper(short), version = version + 1, updated_at = now()\nWHERE short <> upper(short) AND upper(short) ~ '^[A-Z0-9]{2,4}$';\n",
+  },
 ];

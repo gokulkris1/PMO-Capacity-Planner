@@ -28,7 +28,10 @@ export async function rateLimit(q: Queryable, rules: LimitRule[], message?: stri
     if (count > rule.max) {
       const retryAfter = Math.ceil((windowStart.getTime() + windowMs - now) / 1000);
       const minutes = Math.max(1, Math.ceil(retryAfter / 60));
-      throw rateLimited(message ?? `Too many attempts. Try again in ${minutes} minutes.`, retryAfter);
+      throw rateLimited(
+        message ?? `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+        retryAfter,
+      );
     }
   }
   // Opportunistic clean-up of old windows (cheap, bounded).

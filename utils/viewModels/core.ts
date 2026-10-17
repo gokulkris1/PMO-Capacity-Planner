@@ -27,7 +27,7 @@ import {
   type DayRange,
   type RangeLoad,
 } from '../craftEngine';
-import { dayNumber } from '../quarters';
+import { dayNumber, isIsoDate } from '../quarters';
 import type { QuarterView, TimeBasis } from './types';
 
 export { round1, round2 };
@@ -38,8 +38,15 @@ export function rangeOfView(q: QuarterView): DayRange {
   return { key: q.key, label: q.label, start: q.start, end: q.end };
 }
 
-/** Declined never counts; tentative counts unless excluded. */
+/** A booking date is usable when it is empty (open-ended) or an ISO day; v1.1 data can hold "TBC" (QA-025). */
+const usableDate = (d: string | null | undefined): boolean => !d || isIsoDate(d);
+
+/**
+ * Declined never counts; tentative counts unless excluded. A booking whose dates cannot be read (a drifted v1.1
+ * TEXT value such as "TBC") is left out of every number instead of turning a person's load into NaN (QA-025).
+ */
 export function counts(a: D.AllocationDTO, includeTentative = true): boolean {
+  if (!usableDate(a.startDate) || !usableDate(a.endDate)) return false;
   return a.state === 'confirmed' || (includeTentative && a.state === 'tentative');
 }
 

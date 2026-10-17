@@ -5,17 +5,18 @@
 .pp-tabs {
   margin-bottom: var(--space-200);
 }
+/* Search plus six filters fit on one line from 1280 px (QA-036); narrower, the bar wraps. */
 .pp-search {
-  flex: 1 1 180px;
+  flex: 1 1 172px;
   max-width: 240px;
-  min-width: 160px;
+  min-width: 148px;
 }
 .pp-filter {
-  flex: 0 1 132px;
-  min-width: 112px;
+  flex: 0 1 124px;
+  min-width: 104px;
 }
 .pp-filter--sm {
-  flex-basis: 150px;
+  flex-basis: 132px;
 }
 .pp-table {
   table-layout: fixed;

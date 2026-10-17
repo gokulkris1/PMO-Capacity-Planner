@@ -58,10 +58,13 @@ import { ImportPeopleDialog } from './_parts/ImportPeopleDialog';
 import { CraftRequests } from './_parts/CraftRequests';
 import { peopleToCsv } from '../../../utils/csvPeople';
 import './people.css';
+import { useViewportCan } from '../../../components/shell/viewport';
+import { csvFileName } from '../../../utils/csv';
+import { today } from '../../../utils/clock';
 
 export default function PeoplePage() {
   const basis = useTimeBasis('qbr1');
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const ent = useEntitlements();
   const [, setPerson] = useQueryParam('person');
   const [importOpen, setImportOpen] = useState(false);
@@ -119,7 +122,8 @@ function PeopleBody({
   onImportClose(): void;
   exportReq: number;
 }) {
-  const { can, thresholds } = useWorkspace();
+  const { thresholds } = useWorkspace();
+  const can = useViewportCan();
   const quarters = useQuarters();
   const recordExport = useRecordExport();
   const b = useTimeBasis('qbr1');
@@ -195,7 +199,7 @@ function PeopleBody({
     if (exportReq === handledExport.current) return;
     handledExport.current = exportReq;
     downloadText(
-      `people-${quarters[0]?.key ?? 'export'}.csv`,
+      csvFileName('people', today()), // QA-028: {page}-{yyyy-mm-dd}.csv (DS-04#AC7)
       peopleToCsv(
         sorted.map((r) => r.person),
         s,
@@ -352,7 +356,8 @@ function PeopleBody({
                     onValueChange={setBand}
                     options={(['over', 'on-target', 'under', 'bench'] as UtilBand[]).map((x) => ({
                       value: x,
-                      label: `${b.quarter?.label}: ${BAND_LABEL[x]}`,
+                      // The quarter is in the placeholder and the accessible name; the value stays short (QA-036).
+                      label: BAND_LABEL[x],
                     }))}
                   />
                 </span>

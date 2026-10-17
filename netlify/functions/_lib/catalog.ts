@@ -5,7 +5,7 @@ export const DEFAULT_CRAFTS: Array<{ id: string; name: string; short: string; de
   {
     id: 'programme-mgmt',
     name: 'Programme Management',
-    short: 'PgM',
+    short: 'PGM',
     description: 'Multi-project programmes, benefits and governance',
   },
   { id: 'project-mgmt', name: 'Project Management', short: 'PM', description: 'Plan, run and close a single project' },
@@ -18,7 +18,7 @@ export const DEFAULT_CRAFTS: Array<{ id: string; name: string; short: string; de
   {
     id: 'product-mgmt',
     name: 'Product Management',
-    short: 'PdM',
+    short: 'PDM',
     description: 'Backlog ownership, discovery, roadmaps',
   },
   {

@@ -43,9 +43,10 @@ import { BookingDatesDialog } from '../_parts/BookingDatesDialog';
 import { AllocationGrid, type CellAddress, type FlatRow, type ProjectDemand } from './AllocationGrid';
 import { AddBookingDialog } from './AddBookingDialog';
 import './allocations.css';
+import { useViewportCan } from '../../../components/shell/viewport';
 
 export default function AllocationsPage() {
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const undo = useUndo();
   const [adding, setAdding] = useState(false);
   return (
@@ -91,7 +92,8 @@ function AllocationsBody({
   onAddClose(): void;
 }) {
   const toast = useToast();
-  const { can, thresholds } = useWorkspace();
+  const { thresholds } = useWorkspace();
+  const can = useViewportCan();
   const quarters = useQuarters();
   const m = useMutations();
   const undo = useUndo();

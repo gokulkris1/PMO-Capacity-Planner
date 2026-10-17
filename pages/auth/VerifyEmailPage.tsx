@@ -60,6 +60,23 @@ export default function VerifyEmailPage() {
     }
   };
 
+  // QA-027 (ST-07#AC4): signed out and no address to verify: the code form could not succeed, so ask to sign in.
+  if (status === 'anonymous' && !email) {
+    return (
+      <AuthLayout
+        title="Verify your email"
+        subtitle="Sign in first, then enter the 6-digit code we emailed to you."
+        showValue={false}
+      >
+        <div className="pcp-auth__actions">
+          <LinkButton variant="primary" size="lg" to={`/login?next=${encodeURIComponent('/verify-email')}`}>
+            Sign in to verify
+          </LinkButton>
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       title="Verify your email"

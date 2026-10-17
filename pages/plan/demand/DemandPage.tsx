@@ -38,9 +38,10 @@ import { type BasisKey, useTimeBasis } from '../../../components/shell/TimeBasis
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { DemandCellDialog } from './DemandCellDialog';
 import './demand.css';
+import { useViewportCan } from '../../../components/shell/viewport';
 
 export default function DemandPage() {
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const [, setEdit] = useQueryParam('edit');
   return (
     <div className="pcp-page pcp-page--dense">
@@ -123,7 +124,7 @@ function ByProject({
   missingIds: Set<string>;
 }) {
   const quarters = useQuarters();
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const wsPath = useWsPath();
   const idx = useMemo(() => indexSnapshot(s), [s]);
   const [stage, setStage] = useQueryParam('stage');

@@ -523,7 +523,7 @@ function InviteDialog({
           {results.some((r) => !r.emailSent) ? (
             <Banner tone="neutral">
               {results.every((r) => !r.emailSent)
-                ? "Email isn't set up. Copy each link and send it yourself; it works once and expires in 7 days."
+                ? "Email isn't set up. Send this link yourself; it works once and expires in 7 days."
                 : 'Some emails could not be sent. Copy those links and send them yourself; each works once and expires in 7 days.'}
             </Banner>
           ) : (

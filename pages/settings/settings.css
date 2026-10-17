@@ -348,10 +348,13 @@
   width: 180px;
 }
 
-/* Sticky save bar for multi-card forms (Planning). */
+/* Sticky save bar for multi-card forms (Planning). The margins keep its resting place clear of the last card's help
+   text: scrolled to the end it sits below the content instead of being lifted over it by the sticky offset (QA-035). */
 .pcp-settings__savebar {
   position: sticky;
   bottom: var(--space-200);
+  margin-top: var(--space-100);
+  margin-bottom: var(--space-200);
   z-index: var(--z-page-header);
   display: flex;
   align-items: center;
@@ -362,4 +365,33 @@
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: var(--elevation-2);
+}
+
+/* Settings › Crafts (QA-034): the description wraps to two lines and the holders header stacks, so the table fits. */
+.pcp-settings__desc {
+  display: -webkit-box;
+  min-width: 160px;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.pcp-settings__stacked-head {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 14px;
+}
+
+.pcp-settings__stacked-head .pcp-settings__muted {
+  font-weight: 400;
+}
+
+.pcp-settings__craft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-025);
 }

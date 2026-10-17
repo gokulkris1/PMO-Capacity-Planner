@@ -38,9 +38,9 @@ describe('migration files', () => {
     }
   });
 
-  it('are numbered 0001..0008 and additive (no DROP TABLE / DROP COLUMN / legacy CHECK changes)', () => {
-    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(REQUIRED_SCHEMA_VERSION).toBe(8);
+  it('are numbered 0001..0009 and additive (no DROP TABLE / DROP COLUMN / legacy CHECK changes)', () => {
+    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(REQUIRED_SCHEMA_VERSION).toBe(9);
     for (const m of MIGRATIONS) {
       const sql = m.sql.replace(/--.*$/gm, '');
       expect(sql).not.toMatch(/DROP\s+TABLE/i);
@@ -70,8 +70,8 @@ describe('empty database', () => {
 
   it('applies every migration, records them, and a second run applies nothing', async () => {
     const first = await db.session((s) => applyPending(s));
-    expect(first.applied).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(await currentSchemaVersion(db)).toBe(8);
+    expect(first.applied).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(await currentSchemaVersion(db)).toBe(9);
     const second = await db.session((s) => applyPending(s));
     expect(second.applied).toEqual([]);
     expect(second.lockAcquired).toBe(true);
@@ -282,7 +282,7 @@ describe('v1.1 production-shaped database', () => {
 
   it('dry run reports the planned backfill and changes nothing', async () => {
     const report = await db.session((s) => dryRun(s));
-    expect(report.pending.map((p) => p.version)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(report.pending.map((p) => p.version)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
     expect(report.counts['org_memberships'].after).toBe(6);
     expect(report.counts['users.is_platform_admin'].after).toBe(1);
     expect(report.counts['workspace_members.access_role'].after).toBe(5);
@@ -297,6 +297,11 @@ describe('v1.1 production-shaped database', () => {
     resetSchemaCheck();
     await ensureSchema(db);
     expect(await currentSchemaVersion(db)).toBe(REQUIRED_SCHEMA_VERSION);
+    // 0009 (QA-034): the seeded PgM / PdM codes follow the form rule (2-4 capitals or digits).
+    const shorts = await db.query<{ short: string }>(
+      `SELECT DISTINCT short FROM crafts WHERE id IN ('programme-mgmt', 'product-mgmt')`,
+    );
+    expect(shorts.map((r) => r.short).sort()).toEqual(['PDM', 'PGM']);
     resetSchemaCheck();
   });
 

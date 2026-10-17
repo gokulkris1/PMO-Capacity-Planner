@@ -44,6 +44,9 @@ import { PageBody } from '../../../components/shell/PageBody';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { rankMatches, type Match } from '../../../utils/viewModels';
 import './marketplace.css';
+import { useViewportCan } from '../../../components/shell/viewport';
+import { csvFileName } from '../../../utils/csv';
+import { today } from '../../../utils/clock';
 
 type Tab = 'open' | 'catalogue' | 'under' | 'proposals';
 
@@ -61,7 +64,7 @@ export default function MarketplacePage() {
 }
 
 function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const quarters = useQuarters();
   const planner = can('allocations.propose');
   const [tabRaw, setTab] = useQueryParam('tab');
@@ -385,7 +388,7 @@ function Catalogue({
 }) {
   const toast = useToast();
   const quarters = useQuarters();
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const recordExport = useRecordExport();
   const wsPath = useWsPath();
   const entries = useMemo(() => buildCatalogue(s, quarters, quarter.key), [s, quarters, quarter.key]);
@@ -416,7 +419,7 @@ function Catalogue({
   const exportCsv = () => {
     void recordExport({ kind: 'squad-catalogue', format: 'csv' }).catch(() => undefined);
     downloadText(
-      `squad-catalogue-${quarter.key}.csv`,
+      csvFileName('squad-catalogue', today()), // QA-028: {page}-{yyyy-mm-dd}.csv (DS-04#AC7)
       toCsv(
         ['craft', 'person', 'via', 'proficiency', 'free_pct', 'offered_pct', 'offer_note'],
         shown.flatMap((e) =>
@@ -516,7 +519,8 @@ function UnderTarget({
   tribe: string;
 }) {
   const quarters = useQuarters();
-  const { thresholds, can } = useWorkspace();
+  const { thresholds } = useWorkspace();
+  const can = useViewportCan();
   const m = useMutations();
   const { run, busy } = useAction();
   const idx = useMemo(() => indexSnapshot(s), [s]);
@@ -780,7 +784,7 @@ function OfferInner({
 /* ── proposals (DM-03#AC4/5, AL-05#AC3) ──────────────────────────────────────────── */
 
 function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
-  const { can } = useWorkspace();
+  const can = useViewportCan();
   const m = useMutations();
   const { run, busy } = useAction();
   const idx = useMemo(() => indexSnapshot(s), [s]);

@@ -134,39 +134,44 @@ export default function CraftsSettings() {
     {
       id: 'name',
       header: 'Craft',
-      width: 240,
+      width: 196,
       sortValue: (c) => c.name,
-      cell: (c) =>
-        editable ? (
-          <button type="button" className="pcp-cell-button" onClick={() => open(c)}>
-            {c.name}
-          </button>
-        ) : (
-          <strong>{c.name}</strong>
-        ),
+      csvValue: (c) => c.name,
+      // The family is a caption under the name, so the table fits its card at 1280 px (QA-034).
+      cell: (c) => (
+        <span className="pcp-settings__craft">
+          {editable ? (
+            <button type="button" className="pcp-cell-button" onClick={() => open(c)}>
+              {c.name}
+            </button>
+          ) : (
+            <strong>{c.name}</strong>
+          )}
+          <span className="pcp-caption pcp-settings__muted">{c.family ?? 'No family'}</span>
+          {c.archived ? <StatusPill tone="neutral">Archived</StatusPill> : null}
+        </span>
+      ),
     },
-    { id: 'short', header: 'Code', width: 88, sortValue: (c) => c.short, cell: (c) => <CraftChip craft={c} /> },
-    {
-      id: 'family',
-      header: 'Family',
-      hideable: true,
-      sortValue: (c) => c.family ?? '',
-      cell: (c) => c.family ?? <span className="pcp-settings__muted">—</span>,
-    },
+    { id: 'short', header: 'Code', width: 72, sortValue: (c) => c.short, cell: (c) => <CraftChip craft={c} /> },
     {
       id: 'desc',
       header: 'Description',
       hideable: true,
       cell: (c) => (
-        <span className="pcp-truncate" title={c.description ?? undefined} style={{ display: 'block', maxWidth: 320 }}>
+        // Wraps to two lines instead of forcing the table wider than its card (QA-034).
+        <span className="pcp-settings__desc" title={c.description ?? undefined}>
           {c.description ?? <span className="pcp-settings__muted">—</span>}
         </span>
       ),
     },
     {
       id: 'holders',
-      header: 'Holders (above / below)',
-      headerText: 'Holders',
+      header: (
+        <span className="pcp-settings__stacked-head">
+          Holders<span className="pcp-settings__muted">above / below</span>
+        </span>
+      ),
+      headerText: 'Holders (above / below)',
       align: 'right',
       sortValue: (c) => (holders.above.get(c.id) ?? 0) + (holders.below.get(c.id) ?? 0),
       csvValue: (c) => `${holders.above.get(c.id) ?? 0} / ${holders.below.get(c.id) ?? 0}`,
@@ -175,13 +180,6 @@ export default function CraftsSettings() {
           {holders.above.get(c.id) ?? 0} / {holders.below.get(c.id) ?? 0}
         </span>
       ),
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      sortValue: (c) => (c.archived ? 1 : 0),
-      cell: (c) =>
-        c.archived ? <StatusPill tone="neutral">Archived</StatusPill> : <StatusPill tone="success">Active</StatusPill>,
     },
     {
       id: 'actions',

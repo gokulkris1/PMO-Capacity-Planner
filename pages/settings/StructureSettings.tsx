@@ -82,7 +82,7 @@ export default function StructureSettings() {
     }
     const list = (snapshot?.[dialog.kind] ?? []) as Entity[];
     if (list.some((e) => e.id !== dialog.entity?.id && e.name.trim().toLowerCase() === name.trim().toLowerCase())) {
-      setError(`A ${SINGULAR[dialog.kind]} with this name already exists.`);
+      setError('Already exists'); // ORG-02#AC1 copy, the same as the API's fields.name (QA-036)
       return;
     }
     setBusy(true);

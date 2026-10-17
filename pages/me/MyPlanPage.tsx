@@ -92,7 +92,9 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       <PageHeader
         breadcrumbs={[{ label: 'My plan' }]}
         title="My plan"
-        description={`${person.name} · ${person.role}${chapter ? ` · ${chapter.name}` : ''} · target ${person.targetUtil}%`}
+        description={[person.name, person.role?.trim(), chapter?.name, `target ${person.targetUtil}%`]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           canOffer && (
             <Button variant="primary" iconBefore={Store} onClick={() => setOfferQ(quarters[0] ?? null)}>
