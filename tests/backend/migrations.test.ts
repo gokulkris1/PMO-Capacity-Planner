@@ -137,29 +137,33 @@ describe('ensureSchema (auto-apply on first use)', () => {
     await db.close();
   });
 
+  // No database at all (QA round 2 saw this flake at Jest's 5 s default while PGlite started on a loaded runner): a
+  // stub session whose advisory lock is always taken elsewhere, a 50 ms wait and an explicit budget.
   it('gives up waiting for a lock held elsewhere without applying', async () => {
-    const db = new PgliteDb();
     let calls = 0;
-    const result = await db.session((s) =>
-      applyPending(
-        {
-          ...s,
-          query: async (text: string, params?: unknown[]) => {
-            if (text.includes('pg_try_advisory_lock')) {
-              calls += 1;
-              return [{ ok: false }] as never;
-            }
-            return s.query(text, params);
-          },
-        },
-        { lockWaitMs: 300 },
-      ),
-    );
+    const statements: string[] = [];
+    const stub = {
+      query: async (text: string) => {
+        statements.push(text);
+        if (text.includes('pg_try_advisory_lock')) {
+          calls += 1;
+          return [{ ok: false }] as never;
+        }
+        return [] as never;
+      },
+      exec: async (text: string) => {
+        statements.push(text);
+      },
+    };
+    const started = Date.now();
+    const result = await applyPending(stub, { lockWaitMs: 50 });
     expect(result.lockAcquired).toBe(false);
     expect(result.applied).toEqual([]);
     expect(calls).toBeGreaterThan(1);
-    await db.close();
-  });
+    // Nothing but lock attempts: no schema table, no migration, and no unlock of a lock it never held.
+    expect(statements.every((t) => t.includes('pg_try_advisory_lock'))).toBe(true);
+    expect(Date.now() - started).toBeLessThan(2000);
+  }, 15_000);
 });
 
 describe('auto-migration inside the function time limit (QA-011)', () => {
