@@ -120,7 +120,7 @@ describe('QA: sessions and CSRF', () => {
 
   // QA-001 (Major): the login JSON still carries the 7-day session JWT, so any script that can call /login (or read
   // its response) gets a bearer token that bypasses the HttpOnly cookie and CSRF. Known deviation (handoff-I §7.1).
-  it.skip('QA-001 POST /api/auth/login returns { user } and no token (AC-03#AC1)', async () => {
+  it('QA-001 POST /api/auth/login returns { user } and no token (AC-03#AC1)', async () => {
     const s = await login(planner.email);
     expect(s.res.status).toBe(200);
     expect(s.res.json).not.toHaveProperty('token');

@@ -103,8 +103,10 @@ staff). Every export is recorded in the audit log.
 
 ## Known limitations
 
-- `POST /api/auth/login` still returns the v1.1 `token` field, so tabs left open on v1.1 can sign in again
-  (deviation from AC-03#AC1). The 2.0 client ignores it. It will be removed in 2.1.
+- A browser tab left open on the v1.1 bundle across the deploy cannot sign in again from that tab: `POST
+  /api/auth/login` returns `{ user }` only and the session lives in the HttpOnly cookie (AC-03#AC1, QA-001). Reloading
+  the tab loads 2.0, which signs in normally. Browsers that already hold a v1.1 token stay signed in (it is exchanged
+  for a cookie session).
 - The Allocations grid renders every row (no virtualisation). It is fine for a squad of a few hundred bookings
   (AL-01#AC6).
 - Rollback to v1.1 is possible because v1.1 columns are still written, but data that exists only in 2.0 (demand

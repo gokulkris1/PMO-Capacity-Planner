@@ -1,9 +1,10 @@
 /**
  * /api/auth/* — sign-in, sessions, password reset, 2FA, registration (AC-03, HS-05, HS-13, HS-14, AC-07).
  *
- * Compatibility (production constraint "same logins"): the v1.1 request/response shapes are kept. `POST /login`
- * still returns `{ token, user }` with the v1.1 user fields, now also with session cookies. v1.1 tokens (no `tv`)
- * are accepted and can be exchanged for a cookie session at `POST /session`. Legacy admin routes that allowed
+ * Compatibility (production constraint "same logins"): the v1.1 request shapes are kept. `POST /login` returns
+ * `{ user }` with the v1.1 user fields and sets the session cookies; the session token is never in a response body
+ * (AC-03#AC1, QA-001). v1.1 tokens (no `tv`) already held by a browser are accepted and can be exchanged for a cookie
+ * session at `POST /session`. Legacy admin routes that allowed
  * privilege escalation answer 410 (SEC-02/03).
  */
 import { z } from 'zod';
@@ -74,8 +75,9 @@ async function login(ctx: Ctx) {
       { action: 'auth.login', orgId: user.org_id, targetType: 'user', targetId: user.id },
     );
   });
-  const token = issueSession(ctx, user);
-  return { token, user: await sessionUserPayload(ctx.db, user) };
+  // AC-03#AC1 (QA-001): the session lives only in the HttpOnly cookie; the body never carries the JWT.
+  issueSession(ctx, user);
+  return { user: await sessionUserPayload(ctx.db, user) };
 }
 
 const registerSchema = z.object({

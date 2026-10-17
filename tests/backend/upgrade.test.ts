@@ -106,7 +106,7 @@ async function signIn(u: V11User): Promise<{ res: CallResult; session: Session }
   const csrf = cookieValue(res.cookies, 'pcp_csrf') ?? '';
   return {
     res,
-    session: { cookies: { pcp_session: session, pcp_csrf: csrf }, csrf, token: String(res.json.token ?? '') },
+    session: { cookies: { pcp_session: session, pcp_csrf: csrf }, csrf, token: session },
   };
 }
 
@@ -229,7 +229,7 @@ describe.each((['pglite', 'postgres'] as Backend[]).flatMap((b) => VARIANTS.map(
           error: undefined,
         });
         expect(res.json.user).toMatchObject({ id: u.id });
-        expect(typeof res.json.token).toBe('string');
+        expect(res.json).not.toHaveProperty('token'); // QA-001: cookie only
         expect(session.cookies.pcp_session).toBeTruthy();
         sessions.set(u.key, session);
       }

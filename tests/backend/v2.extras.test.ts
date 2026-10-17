@@ -36,7 +36,7 @@ async function signIn(u: TestUser) {
   expect(r.status).toBe(200);
   return {
     cookies: { pcp_session: cookieValue(r.cookies, 'pcp_session')!, pcp_csrf: cookieValue(r.cookies, 'pcp_csrf')! },
-    token: r.json.token as string,
+    token: cookieValue(r.cookies, 'pcp_session')!,
   };
 }
 

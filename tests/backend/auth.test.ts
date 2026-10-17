@@ -71,7 +71,7 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
       twoFactorEnabled: false,
     });
     expect((r.json.user as { orgSlug: string }).orgSlug).toMatch(/^acme-/);
-    expect(typeof r.json.token).toBe('string');
+    expect(r.json).not.toHaveProperty('token'); // AC-03#AC1 (QA-001): the session is only in the HttpOnly cookie
     const session = r.cookies.find((c) => c.startsWith('pcp_session='))!;
     expect(session).toMatch(/HttpOnly/);
     expect(session).toMatch(/Secure/);
@@ -124,7 +124,8 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
       body: { email: 'twofa@x.test', password: PASSWORD, otp: code },
     });
     expect(second.status).toBe(200);
-    expect(second.json.token).toBeDefined();
+    expect(second.json).not.toHaveProperty('token');
+    expect(second.cookies.some((c) => c.startsWith('pcp_session=') && /HttpOnly/.test(c))).toBe(true);
   });
 
   it('expires an OTP after 5 wrong attempts, even when the 6th is right (HS-05#AC2)', async () => {
@@ -405,7 +406,10 @@ describe('registration and verification (AC-07, HS-13)', () => {
     });
     expect(login.status).toBe(200);
     expect((login.json.user as { emailVerified: boolean }).emailVerified).toBe(false);
-    const token = login.json.token as string;
+    const token = login.cookies
+      .find((c) => c.startsWith('pcp_session='))!
+      .split(';')[0]
+      .slice('pcp_session='.length);
     const blocked = await call(v2, 'POST', '/api/v2/orgs', { token, body: { name: 'Mine', workspaceName: 'PMO' } });
     expect(blocked.status).toBe(403);
     expect(blocked.json.error).toBe('Verify your email first');

@@ -5,6 +5,7 @@
  * login page with their old password (the first request runs the 2.0 auto-migration), walks the main pages, saves
  * a change that survives a reload, and a browser holding a v1.1 token stays signed in (AC-03#AC1–2, §6.3 1–3).
  */
+import jwt from 'jsonwebtoken';
 import { expect, test } from '../fixtures';
 
 const ORG = 'acme-bank';
@@ -148,11 +149,20 @@ test('a browser holding a v1.1 token stays signed in and the token is removed (A
   page,
   request,
 }) => {
-  // What v1.1 returned from /api/auth/login and kept in localStorage.pcp_token.
+  // What v1.1 kept in localStorage.pcp_token: a bearer JWT with the v1.1 claims (no `tv`), signed with the
+  // production JWT_SECRET. 2.0's login no longer returns a token (QA-001), so the test mints the v1.1 one.
   const res = await request.post('/api/auth/login', {
     data: { email: 'owen.owner@acme.example', password: 'Owen-Owner-2025' },
   });
-  const { token, user } = (await res.json()) as { token: string; user: unknown };
+  const body = (await res.json()) as { user: { id: string; email: string; orgId?: string | null } };
+  expect(body).not.toHaveProperty('token');
+  const me = (await (await request.get('/api/v2/me')).json()) as { user: { id: string }; org: { id: string } | null };
+  const token = jwt.sign(
+    { id: me.user.id, email: body.user.email, role: 'USER', org_id: me.org?.id ?? null },
+    process.env.JWT_SECRET ?? 'local-dev-jwt-secret-not-for-production',
+    { expiresIn: '7d' },
+  );
+  const user = body.user;
   await page.context().clearCookies();
   await page.addInitScript(
     ([t, u]) => {

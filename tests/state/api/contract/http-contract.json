@@ -46,7 +46,6 @@
           "x-request-id": "4fd913a3-d802-4fd0-81b3-71786a47ac36"
         },
         "body": {
-          "token": "<redacted-v1.1-compat-token>",
           "user": {
             "id": "50000000-0000-4000-8000-000000000009",
             "email": "owen.owner@acme.example",

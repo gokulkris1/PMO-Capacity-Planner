@@ -185,7 +185,7 @@ describe.each(['pglite', 'postgres'] as const)('upgrade edge cases on %s', (back
       if (skip()) return;
       const tom = users.find((u) => u.key === 'tom')!;
       const login = await signIn(tom.loginEmail, tom.password);
-      const token = String(login.json.token ?? cookieValue(login.cookies, 'pcp_session'));
+      const token = String(cookieValue(login.cookies, 'pcp_session'));
       const snap = await call(v2, 'GET', `/api/v2/workspaces/${V11.wsAcme}/snapshot`, req({ token }));
       expect(snap.status).toBe(200);
       const people = (snap.json.people as Array<{ id: string; name: string }>).map((p) => p.id);
@@ -219,7 +219,7 @@ describe.each(['pglite', 'postgres'] as const)('upgrade edge cases on %s', (back
         v2,
         'GET',
         `/api/v2/workspaces/${WS_NO_ORG}/snapshot`,
-        req({ token: String(login.json.token) }),
+        req({ token: String(cookieValue(login.cookies, 'pcp_session')) }),
       );
       expect([403, 404]).toContain(r.status);
     });

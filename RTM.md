@@ -76,7 +76,7 @@ Built in: `netlify/functions/_lib/{auth,authz,session}.ts`, `state/runtime.ts`. 
 |---|---|---|---|---|
 | AC-01 | Target role model: schema and backfill | Must | Done |  |
 | AC-02 | One authentication and authorization library, applied everywhere | Must | Done |  |
-| AC-03 | Cookie session, CSRF, refresh, logout; existing sessions preserved | Must | Done (deviation) | Cookie session + CSRF + v1.1 token exchange. Deviation: login body still carries the v1.1 `token` for open v1.1 tabs (remove in 2.1). |
+| AC-03 | Cookie session, CSRF, refresh, logout; existing sessions preserved | Must | Done | Cookie session + CSRF + v1.1 token exchange. The login body is `{ user }` only; the session lives in the HttpOnly cookie (QA-001). |
 | AC-04 | `GET /api/v2/me` and permission-driven UI | Must | Done |  |
 | AC-05 | Invitations replace temp passwords and role overwrites | Must | Done |  |
 | AC-06 | Tenant-scoped member management | Must | Done |  |

@@ -129,8 +129,8 @@ Fixes:
 
 ## 7. Open issues
 
-1. **AC-03#AC1 deviation:** the login body still returns the v1.1 `token`, so v1.1 tabs left open can sign in
-   again. The client ignores it. Remove it in 2.1, a week after go-live.
+1. ~~AC-03#AC1 deviation: the login body still returns the v1.1 `token`.~~ Resolved by QA-001: the login body is
+   `{ user }`; the session is only in the HttpOnly cookie. v1.1 tokens already in a browser are still exchanged.
 2. **AL-01#AC6:** the Allocations grid is not virtualised above 200 rows.
 3. **PL-14#AC2:** the rehearsal on a Neon branch of production has not been done (it needs CA-5/CA-12). The
    evidence so far is the replay on PGlite and PostgreSQL 16, plus the live e2e.
