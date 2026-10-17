@@ -88,6 +88,10 @@
 .pcp-num {
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
+}
+.pcp-strong {
+  font-weight: 600;
 }
 
 /* ---- Accessibility ------------------------------------------------------------------------ */
@@ -246,4 +250,127 @@
   .pcp-show-below-md {
     display: none !important;
   }
+}
+
+/* ---- Product page patterns ------------------------------------------------------------------ */
+/* Dense pages (Allocations, Demand) use the 16 px gutter so grids get the width. */
+.pcp-page--dense {
+  padding-left: var(--space-200);
+  padding-right: var(--space-200);
+}
+.pcp-page-header--dense {
+  padding-left: var(--space-200);
+  padding-right: var(--space-200);
+}
+/* 12-column grid that stacks below 1280 px (two-column dashboards need the full width). */
+.pcp-grid-xl {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-300);
+}
+.pcp-span-4 {
+  grid-column: span 4;
+}
+.pcp-span-5 {
+  grid-column: span 5;
+}
+.pcp-span-6 {
+  grid-column: span 6;
+}
+.pcp-span-7 {
+  grid-column: span 7;
+}
+.pcp-span-8 {
+  grid-column: span 8;
+}
+.pcp-span-12 {
+  grid-column: span 12;
+}
+@media (max-width: 1279px) {
+  .pcp-grid-xl {
+    gap: var(--space-200);
+  }
+  .pcp-span-4,
+  .pcp-span-5,
+  .pcp-span-6,
+  .pcp-span-7,
+  .pcp-span-8 {
+    grid-column: span 12;
+  }
+}
+/* Two-column form grid in dialogs and drawers. */
+.pcp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-200);
+}
+.pcp-form-grid__full {
+  grid-column: 1 / -1;
+}
+/* Simple list with 48 px rows and dividers. */
+.pcp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pcp-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-150);
+  min-height: 48px;
+  padding: var(--space-100) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.pcp-list > li:last-child {
+  border-bottom: 0;
+}
+.pcp-link {
+  color: var(--color-link);
+  text-decoration: none;
+}
+.pcp-link:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+.pcp-code-block {
+  margin: 0;
+  padding: var(--space-150);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  font: 400 12px/16px var(--font-mono);
+  color: var(--color-text);
+  overflow: auto;
+  max-height: 280px;
+  white-space: pre;
+}
+.pcp-progress {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+.pcp-progress__bar {
+  height: 100%;
+  background: var(--color-primary);
+}
+.pcp-icon-status--success {
+  color: var(--color-success);
+}
+.pcp-icon-status--warning {
+  color: var(--color-warning);
+}
+.pcp-icon-status--danger {
+  color: var(--color-danger);
+}
+.pcp-icon-status--info {
+  color: var(--color-info);
+}
+.pcp-icon-status--neutral {
+  color: var(--color-text-tertiary);
+}
+/* A PageHeader inside a .pcp-page wrapper uses the wrapper's gutter. */
+.pcp-page > .pcp-page-header {
+  padding-left: 0;
+  padding-right: 0;
 }

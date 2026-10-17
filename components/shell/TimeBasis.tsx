@@ -13,6 +13,8 @@ export interface TimeBasisState {
   basis: TimeBasis;
   /** The selected quarter for qbr1–qbr4, else null. */
   quarter: QuarterView | null;
+  /** Index of the selected quarter in `quarters` (0 for today/window), for highlighting a table column. */
+  quarterIndex: number;
   quarters: QuarterView[];
   /** Caption every KPI repeats, e.g. "QBR1 · Q4 2026" (SH-03#AC2). */
   caption: string;
@@ -55,7 +57,8 @@ export function useTimeBasis(defaultKey: BasisKey = 'qbr1'): TimeBasisState {
       basis = quarter ? { kind: 'quarter', key: quarter.key } : { kind: 'today' };
       caption = quarter ? `${quarter.label} · ${quarter.calendarLabel}` : key.toUpperCase();
     }
-    return { key, basis, quarter, quarters, caption, setKey };
+    const quarterIndex = key.startsWith('qbr') ? Number(key.slice(3)) - 1 : 0;
+    return { key, basis, quarter, quarterIndex, quarters, caption, setKey };
   }, [key, quarters, setKey]);
 }
 
@@ -63,9 +66,9 @@ export function useTimeBasis(defaultKey: BasisKey = 'qbr1'): TimeBasisState {
  * "Today · QBR1 · QBR2 · QBR3 · QBR4 · Window" (sm SegmentedControl) bound to `?basis=`; each quarter's
  * calendar and fiscal label is in its tooltip (SH-03#AC2). Put it in PageHeader's `timeBasis` slot.
  */
-export function TimeBasisControl({ state }: { state: TimeBasisState }) {
+export function TimeBasisControl({ state, exclude = [] }: { state: TimeBasisState; exclude?: BasisKey[] }) {
   const { quarters } = state;
-  const options = BASIS_KEYS.map((k) => {
+  const options = BASIS_KEYS.filter((k) => !exclude.includes(k)).map((k) => {
     if (k === 'today') return { value: k, label: 'Today', title: 'Today' };
     if (k === 'window') {
       const first = quarters[0];

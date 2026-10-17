@@ -34,7 +34,7 @@
   gap: var(--space-150);
   min-height: 28px;
 }
-.me-load > li .b2-qbar {
+.me-load > li .pcp-load {
   flex: 1 1 auto;
 }
 .me-load__q {

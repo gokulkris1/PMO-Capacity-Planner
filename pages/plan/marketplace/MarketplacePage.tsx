@@ -17,10 +17,12 @@ import {
   Checkbox,
   CraftChip,
   Dialog,
+  downloadText,
   EmptyState,
+  fmt,
   FormField,
+  indexSnapshot,
   NumberField,
-  PageBody,
   PageHeader,
   PersonLabel,
   SegmentedControl,
@@ -29,16 +31,16 @@ import {
   TabPanel,
   Tabs,
   TextField,
-  downloadText,
-  fmt,
-  indexSnapshot,
   toCsv,
-  toast,
   useAction,
   useConfirm,
   useQueryParam,
-  useWsPath,
-} from '../_kit';
+  useToast,
+  numOrNull,
+  numText,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { rankMatches, type Match } from '../../../utils/viewModels';
 import './marketplace.css';
 
@@ -46,9 +48,9 @@ type Tab = 'open' | 'catalogue' | 'under' | 'proposals';
 
 export default function MarketplacePage() {
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Plan' }, { label: 'Marketplace' }]}
+        breadcrumbs={[{ label: 'Plan' }, { label: 'Marketplace' }]}
         title="Marketplace"
         description="Match open demand to the squad, and show tribes what the PMO squad can offer each quarter."
       />
@@ -73,14 +75,14 @@ function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const tentative = s.allocations.filter((a) => a.state === 'tentative');
 
   return (
-    <div className="b2-stack b2-stack--sm">
+    <div className="pcp-stack pcp-stack--md">
       {planner && (
         <Tabs
-          idPrefix="mkt"
+          idBase="mkt"
           label="Marketplace views"
           value={tab}
           onChange={(v) => setTab(v)}
-          items={[
+          tabs={[
             { id: 'open', label: 'Open demand' },
             { id: 'catalogue', label: 'Squad catalogue' },
             { id: 'under', label: 'Under target' },
@@ -89,33 +91,33 @@ function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         />
       )}
       {tab !== 'proposals' && (
-        <div className="b2-row b2-row--wrap mk-controls">
+        <div className="pcp-row pcp-row--wrap mk-controls">
           <SegmentedControl
             label="Quarter"
             value={quarter?.key ?? ''}
             onChange={(v) => setQuarter(v)}
-            items={quarters.map((q) => ({ id: q.key, label: q.label, title: fmt.quarterTooltip(q) }))}
+            options={quarters.map((q) => ({ value: q.key, label: q.label, title: fmt.quarterTooltip(q) }))}
           />
-          <span className="b2-caption">{quarter?.calendarLabel}</span>
+          <span className="pcp-caption pcp-text-tertiary">{quarter?.calendarLabel}</span>
           {
             <>
               <span className="mk-filter">
                 <Select
                   size="sm"
-                  ariaLabel="Filter by craft"
+                  aria-label="Filter by craft"
                   value={craft}
                   placeholder="Craft: all"
-                  onChange={setCraft}
+                  onValueChange={setCraft}
                   options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))}
                 />
               </span>
               <span className="mk-filter">
                 <Select
                   size="sm"
-                  ariaLabel="Filter by tribe"
+                  aria-label="Filter by tribe"
                   value={tribe}
                   placeholder="Tribe: all"
-                  onChange={setTribe}
+                  onValueChange={setTribe}
                   options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))}
                 />
               </span>
@@ -123,7 +125,7 @@ function MarketBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           }
         </div>
       )}
-      <TabPanel idPrefix="mkt" value={tab}>
+      <TabPanel idBase="mkt" tabId={tab}>
         {quarter && tab === 'open' && <OpenDemand snapshot={s} quarter={quarter} craft={craft} tribe={tribe} />}
         {quarter && tab === 'catalogue' && <Catalogue snapshot={s} quarter={quarter} craft={craft} tribe={tribe} />}
         {quarter && tab === 'under' && <UnderTarget snapshot={s} quarter={quarter} craft={craft} tribe={tribe} />}
@@ -150,7 +152,7 @@ function OpenDemand({
   const { thresholds } = useWorkspace();
   const m = useMutations();
   const { run, busy } = useAction();
-  const { confirm, dialog } = useConfirm();
+  const confirm = useConfirm();
   const wsPath = useWsPath();
   const idx = useMemo(() => indexSnapshot(s), [s]);
   const qi = quarters.findIndex((q) => q.key === quarter.key);
@@ -234,7 +236,7 @@ function OpenDemand({
         <EmptyState
           icon={Store}
           title="No open demand"
-          body={`Every demand line in ${quarter.label} is staffed or proposed.`}
+          description={`Every demand line in ${quarter.label} is staffed or proposed.`}
         />
       ) : (
         <ul className="mk-lines">
@@ -276,15 +278,15 @@ function OpenDemand({
                   )}
                   <CraftChip craft={craftDto} />
                   <span className="mk-line__title">
-                    <span className="b2-strong">{x.project?.name}</span>
-                    <span className="b2-caption">
+                    <span className="pcp-strong">{x.project?.name}</span>
+                    <span className="pcp-caption pcp-text-tertiary">
                       {idx.tribes.get(x.project?.tribeId ?? '')?.name ?? 'No tribe'} · {craftDto?.name} ·{' '}
                       {x.line.status}
                     </span>
                   </span>
-                  <span className="mk-line__fte b2-tnum">
-                    <span className="b2-strong">{fmt.fte(x.open)} FTE open</span>
-                    <span className="b2-caption">
+                  <span className="mk-line__fte pcp-tnum">
+                    <span className="pcp-strong">{fmt.fte(x.open)} FTE open</span>
+                    <span className="pcp-caption pcp-text-tertiary">
                       {fmt.fte(x.line.fte)} needed · {fmt.fte(x.staffed)} staffed
                       {x.proposed > 0.04 ? ` · ${fmt.fte(x.proposed)} proposed` : ''}
                     </span>
@@ -293,27 +295,30 @@ function OpenDemand({
                 {isOpen && (
                   <div className="mk-matches">
                     {matches.length === 0 ? (
-                      <p className="b2-muted mk-matches__empty">
+                      <p className="pcp-text-secondary mk-matches__empty">
                         Nobody with this craft has free capacity in {quarter.label}.{' '}
-                        <Link className="b2-link" to={`${wsPath('plan/capacity')}?pivot=craft&craft=${x.line.craftId}`}>
+                        <Link
+                          className="pcp-link"
+                          to={`${wsPath('plan/capacity')}?pivot=craft&craft=${x.line.craftId}`}
+                        >
                           See the craft outlook
                         </Link>
                       </p>
                     ) : (
-                      <table className="b2-table b2-table--compact">
-                        <caption className="b2-sr-only">Ranked matches for {x.project?.name}</caption>
+                      <table className="pcp-tbl pcp-tbl--compact">
+                        <caption className="pcp-sr-only">Ranked matches for {x.project?.name}</caption>
                         <thead>
                           <tr>
                             <th scope="col">Person</th>
                             <th scope="col">Why</th>
-                            <th scope="col" className="b2-num">
+                            <th scope="col" className="pcp-num">
                               Score
                             </th>
-                            <th scope="col" className="b2-num">
+                            <th scope="col" className="pcp-num">
                               Propose at
                             </th>
                             <th scope="col">
-                              <span className="b2-sr-only">Action</span>
+                              <span className="pcp-sr-only">Action</span>
                             </th>
                           </tr>
                         </thead>
@@ -321,13 +326,13 @@ function OpenDemand({
                           {matches.map((mt, i) => (
                             <tr key={mt.person.id}>
                               <th scope="row">
-                                <span className="b2-row">
+                                <span className="pcp-row">
                                   <span className="mk-rank">{i + 1}</span>
                                   <PersonLabel name={mt.person.name} sub={mt.person.role} />
                                 </span>
                               </th>
                               <td>
-                                <span className="b2-chips">
+                                <span className="pcp-chips">
                                   {mt.reasons.map((r) => (
                                     <StatusPill key={r} tone={r === 'Offered' ? 'brand' : 'neutral'}>
                                       {r}
@@ -335,13 +340,13 @@ function OpenDemand({
                                   ))}
                                 </span>
                               </td>
-                              <td className="b2-num">{mt.score}</td>
-                              <td className="b2-num">{mt.suggestedPct}%</td>
-                              <td className="b2-num">
+                              <td className="pcp-num">{mt.score}</td>
+                              <td className="pcp-num">{mt.suggestedPct}%</td>
+                              <td className="pcp-num">
                                 <Button
                                   size="sm"
                                   variant="primary"
-                                  icon={Send}
+                                  iconBefore={Send}
                                   loading={busy === `p${mt.person.id}${x.line.id}`}
                                   onClick={() => void propose(x, mt)}
                                 >
@@ -360,7 +365,6 @@ function OpenDemand({
           })}
         </ul>
       )}
-      {dialog}
     </Card>
   );
 }
@@ -378,6 +382,7 @@ function Catalogue({
   craft: string;
   tribe: string;
 }) {
+  const toast = useToast();
   const quarters = useQuarters();
   const { can } = useWorkspace();
   const recordExport = useRecordExport();
@@ -402,9 +407,9 @@ function Catalogue({
     const url = `${window.location.origin}${wsPath('plan/marketplace')}?view=catalogue&quarter=${quarter.key}${craft ? `&craft=${craft}` : ''}${tribe ? `&tribe=${tribe}` : ''}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast({ tone: 'success', title: 'Link copied', body: 'Anyone in this workspace can open it.' });
+      toast.show({ tone: 'success', title: 'Link copied', body: 'Anyone in this workspace can open it.' });
     } catch {
-      toast({ tone: 'error', title: 'Could not copy the link', body: url });
+      toast.show({ tone: 'error', title: 'Could not copy the link', body: url });
     }
   };
   const exportCsv = () => {
@@ -435,11 +440,11 @@ function Catalogue({
       subtitle={`${fmt.fte(totalAbove)} FTE free above the table · ${fmt.fte(totalBelow)} FTE reach below the table · ${quarter.calendarLabel}`}
       actions={
         <>
-          <Button size="sm" icon={Link2} onClick={() => void copyLink()}>
+          <Button size="sm" iconBefore={Link2} onClick={() => void copyLink()}>
             Copy link
           </Button>
           {can('export') && (
-            <Button size="sm" icon={Download} onClick={exportCsv}>
+            <Button size="sm" iconBefore={Download} onClick={exportCsv}>
               Export CSV
             </Button>
           )}
@@ -450,7 +455,7 @@ function Catalogue({
         <EmptyState
           icon={craft || tribe ? Funnel : Users}
           title="No spare capacity to offer"
-          body={`The squad is fully planned in ${quarter.label}${craft || tribe ? ' for these filters' : ''}.`}
+          description={`The squad is fully planned in ${quarter.label}${craft || tribe ? ' for these filters' : ''}.`}
         />
       ) : (
         <div className="mk-catalogue">
@@ -460,14 +465,14 @@ function Catalogue({
                 <CraftChip craft={e.craft} />
                 <h3 className="mk-craft__title">{e.craft.name}</h3>
               </header>
-              <div className="mk-craft__stats b2-tnum">
+              <div className="mk-craft__stats pcp-tnum">
                 <span>
-                  <span className="b2-strong">{fmt.fte(e.freeAboveFte)}</span>{' '}
-                  <span className="b2-caption">FTE above</span>
+                  <span className="pcp-strong">{fmt.fte(e.freeAboveFte)}</span>{' '}
+                  <span className="pcp-caption pcp-text-tertiary">FTE above</span>
                 </span>
                 <span>
-                  <span className="b2-strong">{fmt.fte(e.reachBelowFte)}</span>{' '}
-                  <span className="b2-caption">FTE reach below</span>
+                  <span className="pcp-strong">{fmt.fte(e.reachBelowFte)}</span>{' '}
+                  <span className="pcp-caption pcp-text-tertiary">FTE reach below</span>
                 </span>
               </div>
               <ul className="mk-craft__people">
@@ -479,12 +484,14 @@ function Catalogue({
                         p.offer?.note ?? (p.via === 'above' ? 'Above the table' : `Below the table · L${p.proficiency}`)
                       }
                     />
-                    <span className="b2-spacer" />
+                    <span className="pcp-spacer" />
                     {p.offer && <StatusPill tone="brand">Offered {p.offer.pct}%</StatusPill>}
-                    <span className="b2-tnum b2-strong mk-free">{Math.round(p.freePct)}%</span>
+                    <span className="pcp-tnum pcp-strong mk-free">{Math.round(p.freePct)}%</span>
                   </li>
                 ))}
-                {e.people.length > 6 && <li className="b2-caption">and {e.people.length - 6} more</li>}
+                {e.people.length > 6 && (
+                  <li className="pcp-caption pcp-text-tertiary">and {e.people.length - 6} more</li>
+                )}
               </ul>
             </section>
           ))}
@@ -532,25 +539,25 @@ function UnderTarget({
         <EmptyState
           icon={Users}
           title="Everyone is at or above target"
-          body={`Nobody is under target in ${quarter.label}.`}
+          description={`Nobody is under target in ${quarter.label}.`}
         />
       ) : (
-        <div className="b2-table-wrap">
-          <table className="b2-table">
-            <caption className="b2-sr-only">People under target in {quarter.label}</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl">
+            <caption className="pcp-sr-only">People under target in {quarter.label}</caption>
             <thead>
               <tr>
                 <th scope="col">Person</th>
                 <th scope="col">Crafts</th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Load
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Free
                 </th>
                 <th scope="col">Offer</th>
                 <th scope="col">
-                  <span className="b2-sr-only">Action</span>
+                  <span className="pcp-sr-only">Action</span>
                 </th>
               </tr>
             </thead>
@@ -565,7 +572,7 @@ function UnderTarget({
                       <PersonLabel name={r.person.name} sub={r.person.role} />
                     </th>
                     <td>
-                      <span className="b2-chips">
+                      <span className="pcp-chips">
                         <CraftChip craft={r.primary} />
                         {r.secondary.map((c) => (
                           <CraftChip
@@ -578,23 +585,23 @@ function UnderTarget({
                         ))}
                       </span>
                     </td>
-                    <td className="b2-num">
+                    <td className="pcp-num">
                       <BandCell value={q.relativePct} band={q.band} label={r.person.name} />
                     </td>
-                    <td className="b2-num">{fmt.pct(free)}</td>
+                    <td className="pcp-num">{fmt.pct(free)}</td>
                     <td>
                       {offer ? (
-                        <span className="b2-row">
+                        <span className="pcp-row">
                           <StatusPill tone="brand">Offered {offer.pct}%</StatusPill>
-                          <span className="b2-caption b2-ellipsis">
+                          <span className="pcp-caption pcp-text-tertiary pcp-truncate">
                             {offer.craftIds.map((c) => idx.crafts.get(c)?.short).join(', ')}
                           </span>
                         </span>
                       ) : (
-                        <span className="b2-subtle">Not offered</span>
+                        <span className="pcp-text-tertiary">Not offered</span>
                       )}
                     </td>
-                    <td className="b2-num">
+                    <td className="pcp-num">
                       {(can('offers.write') || can('offers.write.own')) &&
                         (offer ? (
                           <Button
@@ -611,7 +618,7 @@ function UnderTarget({
                             Withdraw offer
                           </Button>
                         ) : (
-                          <Button size="sm" icon={Store} onClick={() => setOffering(r.person)}>
+                          <Button size="sm" iconBefore={Store} onClick={() => setOffering(r.person)}>
                             Offer to marketplace
                           </Button>
                         ))}
@@ -703,7 +710,7 @@ function OfferInner({
           <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="primary"
-            icon={Store}
+            iconBefore={Store}
             disabled={invalid}
             loading={busy === 'offer'}
             onClick={async () => {
@@ -731,12 +738,20 @@ function OfferInner({
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
-        <FormField label="Capacity to offer" htmlFor="of-pct" error={!(n > 0 && n <= 100) ? 'Enter 1–100' : null}>
-          <NumberField id="of-pct" unit="%" value={pct} min={0} max={100} step={5} onChange={setPct} />
+      <div className="pcp-stack pcp-stack--md">
+        <FormField label="Capacity to offer" id="of-pct" error={!(n > 0 && n <= 100) ? 'Enter 1–100' : null}>
+          <NumberField
+            id="of-pct"
+            unit="%"
+            value={numOrNull(pct)}
+            min={0}
+            max={100}
+            step={5}
+            onChange={(n) => setPct(numText(n))}
+          />
         </FormField>
         <fieldset className="mk-fieldset">
-          <legend className="b2-field__label">Crafts</legend>
+          <legend className="pcp-field__label">Crafts</legend>
           {all.map((c) => (
             <Checkbox
               key={c}
@@ -753,8 +768,8 @@ function OfferInner({
             />
           ))}
         </fieldset>
-        <FormField label="Note" htmlFor="of-note" optional help="Shown to tribe leads in the catalogue.">
-          <TextField id="of-note" value={note} placeholder="e.g. Free from mid-November" onChange={setNote} />
+        <FormField label="Note" id="of-note" optional help="Shown to tribe leads in the catalogue.">
+          <TextField id="of-note" value={note} placeholder="e.g. Free from mid-November" onValueChange={setNote} />
         </FormField>
       </div>
     </Dialog>
@@ -780,7 +795,7 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     h < 1 ? 'under an hour' : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days`;
   const canDecide = can('allocations.write');
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <Card
         flush
         title="Waiting for a response"
@@ -790,24 +805,24 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <EmptyState
             icon={Send}
             title="No proposals waiting"
-            body="Propose people from Open demand to see them here."
+            description="Propose people from Open demand to see them here."
           />
         ) : (
-          <div className="b2-table-wrap">
-            <table className="b2-table">
-              <caption className="b2-sr-only">Proposals waiting for a response</caption>
+          <div className="pcp-tbl-wrap">
+            <table className="pcp-tbl">
+              <caption className="pcp-sr-only">Proposals waiting for a response</caption>
               <thead>
                 <tr>
                   <th scope="col">Person</th>
                   <th scope="col">Project</th>
                   <th scope="col">Craft</th>
-                  <th scope="col" className="b2-num">
+                  <th scope="col" className="pcp-num">
                     %
                   </th>
                   <th scope="col">Dates</th>
                   <th scope="col">Proposed</th>
                   <th scope="col">
-                    <span className="b2-sr-only">Actions</span>
+                    <span className="pcp-sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
@@ -829,19 +844,19 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                           proficiency={sec?.proficiency}
                         />
                       </td>
-                      <td className="b2-num">{a.percentage}%</td>
-                      <td className="b2-tnum">{fmt.dateRange(a.startDate, a.endDate)}</td>
+                      <td className="pcp-num">{a.percentage}%</td>
+                      <td className="pcp-tnum">{fmt.dateRange(a.startDate, a.endDate)}</td>
                       <td>
-                        <span className="b2-caption">
+                        <span className="pcp-caption pcp-text-tertiary">
                           {a.proposedBy?.name ?? 'A planner'} · {fmt.relative(a.proposedAt, s.serverTime)}
                         </span>
                       </td>
-                      <td className="b2-num">
+                      <td className="pcp-num">
                         {canDecide && (
-                          <span className="b2-row mk-actions">
+                          <span className="pcp-row mk-actions">
                             <Button
                               size="sm"
-                              icon={X}
+                              iconBefore={X}
                               disabled={busy !== null}
                               onClick={() =>
                                 void run(`d${a.id}`, () => m.allocations.respond(a.id, { decision: 'decline' }), {
@@ -855,7 +870,7 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                             <Button
                               size="sm"
                               variant="primary"
-                              icon={Check}
+                              iconBefore={Check}
                               loading={busy === `c${a.id}`}
                               onClick={() =>
                                 void run(`c${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), {
@@ -879,20 +894,20 @@ function Proposals({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       </Card>
       {responded.length > 0 && (
         <Card flush title="Recently answered" subtitle="Time to staff = response time from the proposal">
-          <ul className="b2-list mk-answered">
+          <ul className="pcp-list mk-answered">
             {responded.map((a) => (
               <li key={a.id}>
                 <PersonLabel
                   name={idx.people.get(a.resourceId)?.name ?? a.resourceId}
                   sub={idx.projects.get(a.projectId)?.name}
                 />
-                <span className="b2-spacer" />
+                <span className="pcp-spacer" />
                 {a.state === 'confirmed' ? (
                   <StatusPill tone="success">Accepted</StatusPill>
                 ) : (
                   <StatusPill>Declined</StatusPill>
                 )}
-                <span className="b2-caption b2-tnum">
+                <span className="pcp-caption pcp-text-tertiary pcp-tnum">
                   Time to staff {timeToStaff(hours(a.proposedAt ?? '', a.respondedAt ?? ''))}
                 </span>
               </li>

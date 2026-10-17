@@ -10,14 +10,16 @@ import {
   Button,
   CraftChip,
   Dialog,
+  fmt,
   IconButton,
+  indexSnapshot,
   NumberField,
   ProvenanceTag,
   TextField,
-  fmt,
-  indexSnapshot,
   useAction,
-} from '../_kit';
+  numOrNull,
+  numText,
+} from '../../../components/ui';
 
 interface Slice {
   key: string;
@@ -170,26 +172,28 @@ function Editor({
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
-        <dl className="b2-dl">
+      <div className="pcp-stack pcp-stack--md">
+        <dl className="pcp-dl">
           <dt>Person</dt>
           <dd>{person?.name ?? booking.resourceId}</dd>
           <dt>Project</dt>
           <dd>
             {project?.name ?? booking.projectId}{' '}
-            <span className="b2-caption">Project runs {fmt.dateRange(project?.startDate, project?.endDate)}</span>
+            <span className="pcp-caption pcp-text-tertiary">
+              Project runs {fmt.dateRange(project?.startDate, project?.endDate)}
+            </span>
           </dd>
           <dt>Craft</dt>
           <dd>
             <CraftChip craft={craft} via={craft?.id === person?.primaryCraft ? 'above' : 'below'} />
           </dd>
         </dl>
-        <div className="b2-table-wrap">
-          <table className="b2-table b2-table--compact al-slices">
-            <caption className="b2-sr-only">Booking slices</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl pcp-tbl--compact al-slices">
+            <caption className="pcp-sr-only">Booking slices</caption>
             <thead>
               <tr>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Allocation
                 </th>
                 <th scope="col">Start</th>
@@ -197,7 +201,7 @@ function Editor({
                 <th scope="col">Notes</th>
                 <th scope="col">State</th>
                 <th scope="col">
-                  <span className="b2-sr-only">Remove</span>
+                  <span className="pcp-sr-only">Remove</span>
                 </th>
               </tr>
             </thead>
@@ -209,13 +213,13 @@ function Editor({
                       id={`slice-${x.key}-pct`}
                       size="sm"
                       unit="%"
-                      value={x.pct}
+                      value={numOrNull(x.pct)}
                       min={0}
                       max={200}
                       step={5}
                       invalid={tried && errors[i] === 'Enter 0–200'}
-                      ariaLabel={`Slice ${i + 1} allocation`}
-                      onChange={(v) => update(x.key, { pct: v })}
+                      aria-label={`Slice ${i + 1} allocation`}
+                      onChange={(n) => update(x.key, { pct: numText(n) })}
                     />
                   </td>
                   <td>
@@ -224,8 +228,8 @@ function Editor({
                       type="date"
                       size="sm"
                       value={x.start}
-                      ariaLabel={`Slice ${i + 1} start date`}
-                      onChange={(v) => update(x.key, { start: v })}
+                      aria-label={`Slice ${i + 1} start date`}
+                      onValueChange={(v) => update(x.key, { start: v })}
                     />
                   </td>
                   <td>
@@ -235,8 +239,8 @@ function Editor({
                       size="sm"
                       value={x.end}
                       invalid={tried && !!errors[i] && errors[i] !== 'Enter 0–200'}
-                      ariaLabel={`Slice ${i + 1} end date`}
-                      onChange={(v) => update(x.key, { end: v })}
+                      aria-label={`Slice ${i + 1} end date`}
+                      onValueChange={(v) => update(x.key, { end: v })}
                     />
                   </td>
                   <td>
@@ -245,17 +249,17 @@ function Editor({
                       size="sm"
                       value={x.notes}
                       placeholder="Optional"
-                      ariaLabel={`Slice ${i + 1} notes`}
-                      onChange={(v) => update(x.key, { notes: v })}
+                      aria-label={`Slice ${i + 1} notes`}
+                      onValueChange={(v) => update(x.key, { notes: v })}
                     />
                   </td>
                   <td>
-                    <span className="b2-row">
+                    <span className="pcp-row">
                       <BookingStatePill state={x.state} />
                       <ProvenanceTag source={x.source} />
                     </span>
                   </td>
-                  <td className="b2-cell-menu">
+                  <td className="pcp-tbl-menu">
                     <IconButton
                       icon={Trash2}
                       size="sm"
@@ -268,7 +272,7 @@ function Editor({
             </tbody>
           </table>
         </div>
-        {slices.length === 0 && <p className="b2-muted">No slices. Saving removes this booking.</p>}
+        {slices.length === 0 && <p className="pcp-text-secondary">No slices. Saving removes this booking.</p>}
         {tried &&
           errors.map((e, i) =>
             e ? (
@@ -279,8 +283,8 @@ function Editor({
           )}
         {warnings.map((w, i) =>
           w ? (
-            <p key={`w${i}`} className="b2-field__help">
-              <TriangleAlert size={12} strokeWidth={2} aria-hidden="true" className="b2-icon-status--warning" /> Slice{' '}
+            <p key={`w${i}`} className="pcp-field__help">
+              <TriangleAlert size={12} strokeWidth={2} aria-hidden="true" className="pcp-icon-status--warning" /> Slice{' '}
               {i + 1}: {w}
             </p>
           ) : null,
@@ -288,7 +292,7 @@ function Editor({
         <div>
           <Button
             size="sm"
-            icon={Plus}
+            iconBefore={Plus}
             onClick={() =>
               setSlices((list) => [
                 ...list,

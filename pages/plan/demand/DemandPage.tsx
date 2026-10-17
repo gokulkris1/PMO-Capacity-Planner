@@ -13,8 +13,10 @@ import {
   Button,
   Card,
   CraftChip,
+  cx,
   EmptyState,
-  PageBody,
+  fmt,
+  indexSnapshot,
   PageHeader,
   SegmentedControl,
   Select,
@@ -22,14 +24,11 @@ import {
   TabPanel,
   Tabs,
   TextField,
-  cx,
-  fmt,
-  indexSnapshot,
-  useBasis,
   useQueryParam,
-  useWsPath,
-  type BasisId,
-} from '../_kit';
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { type BasisKey, useTimeBasis } from '../../../components/shell/TimeBasis';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { DemandCellDialog } from './DemandCellDialog';
 import './demand.css';
 
@@ -37,14 +36,14 @@ export default function DemandPage() {
   const { can } = useWorkspace();
   const [, setEdit] = useQueryParam('edit');
   return (
-    <div className="b2-page b2-page--dense">
+    <div className="pcp-page pcp-page--dense">
       <PageHeader
-        crumbs={[{ label: 'Plan' }, { label: 'Demand' }]}
+        breadcrumbs={[{ label: 'Plan' }, { label: 'Demand' }]}
         title="Demand"
         description="Craft demand per project and quarter, with what is staffed and the gap, and supply against demand by craft."
         actions={
           can('demand.write') && (
-            <Button variant="primary" icon={Plus} onClick={() => setEdit('new')}>
+            <Button variant="primary" iconBefore={Plus} onClick={() => setEdit('new')}>
               Add demand
             </Button>
           )
@@ -69,24 +68,24 @@ function DemandBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   );
   const [, setMissing] = useQueryParam('missing');
   return (
-    <div className="b2-stack b2-stack--sm">
-      <div className="b2-row dm-head">
+    <div className="pcp-stack pcp-stack--md">
+      <div className="pcp-row dm-head">
         <Tabs
-          idPrefix="demand"
+          idBase="demand"
           label="Demand views"
           value={tab === 'craft' ? 'craft' : 'project'}
           onChange={(v) => setTab(v === 'project' ? null : v)}
-          items={[
+          tabs={[
             { id: 'project', label: 'By project' },
             { id: 'craft', label: 'By craft' },
           ]}
         />
-        <span className="b2-spacer" />
+        <span className="pcp-spacer" />
         {missing.length > 0 && (
           <Button
             size="sm"
             variant="subtle"
-            icon={TriangleAlert}
+            iconBefore={TriangleAlert}
             onClick={() => {
               setTab(null);
               setMissing('1');
@@ -96,7 +95,7 @@ function DemandBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           </Button>
         )}
       </div>
-      <TabPanel idPrefix="demand" value={tab === 'craft' ? 'craft' : 'project'}>
+      <TabPanel idBase="demand" tabId={tab === 'craft' ? 'craft' : 'project'}>
         {tab === 'craft' ? (
           <ByCraft snapshot={s} />
         ) : (
@@ -162,35 +161,35 @@ function ByProject({
 
   return (
     <Card flush>
-      <div className="b2-toolbar">
+      <div className="pcp-tbl-toolbar">
         <span className="dm-search">
           <TextField
             id="dm-q"
-            icon={Search}
+            leadingIcon={Search}
             size="sm"
             value={q}
             placeholder="Find a project"
-            ariaLabel="Find a project"
-            onChange={(v) => setQ(v)}
+            aria-label="Find a project"
+            onValueChange={(v) => setQ(v)}
           />
         </span>
         <span className="dm-filter">
           <Select
             size="sm"
-            ariaLabel="Filter by stage"
+            aria-label="Filter by stage"
             value={stage}
             placeholder="Stage: all"
-            onChange={setStage}
+            onValueChange={setStage}
             options={fmt.STAGE_ORDER.map((x) => ({ value: x, label: `Stage: ${x}` }))}
           />
         </span>
         <span className="dm-filter">
           <Select
             size="sm"
-            ariaLabel="Filter by tribe"
+            aria-label="Filter by tribe"
             value={tribe}
             placeholder="Tribe: all"
-            onChange={setTribe}
+            onValueChange={setTribe}
             options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))}
           />
         </span>
@@ -203,7 +202,7 @@ function ByProject({
           <Button
             size="sm"
             variant="subtle"
-            icon={X}
+            iconBefore={X}
             onClick={() => {
               setStage(null);
               setTribe(null);
@@ -214,13 +213,13 @@ function ByProject({
             Clear filters
           </Button>
         )}
-        <span className="b2-spacer" />
-        <ul className="b2-legend" aria-label="Legend">
+        <span className="pcp-spacer" />
+        <ul className="pcp-legend" aria-label="Legend">
           <li>
-            <span className="b2-chip b2-chip--demand-confirmed dm-legend-chip">PM 1.0</span> Confirmed
+            <span className="pcp-craft-chip pcp-craft-chip--demand-confirmed dm-legend-chip">PM 1.0</span> Confirmed
           </li>
           <li>
-            <span className="b2-chip b2-chip--demand-forecast dm-legend-chip">PM 1.0</span> Forecast
+            <span className="pcp-craft-chip pcp-craft-chip--demand-forecast dm-legend-chip">PM 1.0</span> Forecast
           </li>
         </ul>
       </div>
@@ -231,16 +230,16 @@ function ByProject({
           <EmptyState
             icon={MapIcon}
             title="No projects yet"
-            body="Add a project, then capture the crafts it needs per quarter."
+            description="Add a project, then capture the crafts it needs per quarter."
           />
         )
       ) : (
-        <div className="b2-table-wrap b2-table-wrap--tall">
-          <table className="b2-table dm-table">
-            <caption className="b2-sr-only">Demand by project and quarter</caption>
+        <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+          <table className="pcp-tbl dm-table">
+            <caption className="pcp-sr-only">Demand by project and quarter</caption>
             <thead>
               <tr>
-                <th scope="col" className="b2-sticky-col dm-col-project">
+                <th scope="col" className="pcp-tbl-sticky dm-col-project">
                   Project
                 </th>
                 {quarters.map((qq) => (
@@ -253,16 +252,16 @@ function ByProject({
             <tbody>
               {groups.map((g) => (
                 <Fragment key={g.id}>
-                  <tr className="b2-group">
-                    <th scope="rowgroup" className="b2-sticky-col">
-                      {g.label} <span className="b2-caption">· {g.rows.length}</span>
+                  <tr className="pcp-tbl-group">
+                    <th scope="rowgroup" className="pcp-tbl-sticky">
+                      {g.label} <span className="pcp-caption pcp-text-tertiary">· {g.rows.length}</span>
                     </th>
                     {quarters.map((qq, i) => {
                       const demand = g.rows.reduce((x, d) => x + d.cells[i].demandFte, 0);
                       const gap = g.rows.reduce((x, d) => x + Math.max(0, d.cells[i].gapFte), 0);
                       return (
                         <td key={qq.key} className="dm-total">
-                          <span className="b2-tnum">{fmt.fte(demand)} FTE</span>
+                          <span className="pcp-tnum">{fmt.fte(demand)} FTE</span>
                           {gap > 0.04 && <span className="dm-gap"> · gap {fmt.fte(gap)}</span>}
                         </td>
                       );
@@ -270,10 +269,10 @@ function ByProject({
                   </tr>
                   {g.rows.map((d) => (
                     <tr key={d.project.id}>
-                      <th scope="row" className="b2-sticky-col dm-col-project">
+                      <th scope="row" className="pcp-tbl-sticky dm-col-project">
                         <span className="dm-project">
                           <Link
-                            className="b2-link b2-strong b2-ellipsis"
+                            className="pcp-link pcp-strong pcp-truncate"
                             to={`${wsPath('org/projects')}?project=${d.project.id}`}
                             title={d.project.name}
                           >
@@ -281,7 +280,7 @@ function ByProject({
                           </Link>
                           <span className="dm-project__meta">
                             {d.project.stage && <StatusPill>{d.project.stage}</StatusPill>}
-                            <span className="b2-caption">
+                            <span className="pcp-caption pcp-text-tertiary">
                               {d.project.initiatedOn
                                 ? `Initiated ${fmt.date(d.project.initiatedOn)}`
                                 : fmt.dateRange(d.project.startDate, d.project.endDate)}
@@ -297,14 +296,18 @@ function ByProject({
                       {d.cells.map((c, i) => {
                         const content = (
                           <>
-                            <span className="b2-chips dm-lines">
-                              {c.lines.length === 0 && <span className="b2-subtle">{canEdit ? 'Add' : '—'}</span>}
+                            <span className="pcp-chips dm-lines">
+                              {c.lines.length === 0 && (
+                                <span className="pcp-text-tertiary">{canEdit ? 'Add' : '—'}</span>
+                              )}
                               {c.lines.map((l) => (
                                 <span
                                   key={l.id}
                                   className={cx(
-                                    'b2-chip',
-                                    l.status === 'Confirmed' ? 'b2-chip--demand-confirmed' : 'b2-chip--demand-forecast',
+                                    'pcp-craft-chip',
+                                    l.status === 'Confirmed'
+                                      ? 'pcp-craft-chip--demand-confirmed'
+                                      : 'pcp-craft-chip--demand-forecast',
                                   )}
                                   title={`${idx.crafts.get(l.craftId)?.name ?? l.craftId} · ${fmt.fte(l.fte)} FTE · ${l.status}${l.note ? ` · ${l.note}` : ''}`}
                                 >
@@ -345,8 +348,8 @@ function ByProject({
           </table>
         </div>
       )}
-      <div className="b2-card__foot">
-        <span className="b2-caption">
+      <div className="pcp-card__footer">
+        <span className="pcp-caption pcp-text-tertiary">
           Bar: confirmed bookings (blue) and proposals (outlined) against demand. Gap = demand not yet staffed by
           confirmed bookings.
         </span>
@@ -379,7 +382,7 @@ function StaffBar({ demand, staffed, proposed }: { demand: number; staffed: numb
         )}
         {demand > 0 && <span className="dm-staff__demand" style={{ left: `${(demand / scale) * 100}%` }} />}
       </span>
-      <span className="dm-staff__label b2-tnum">
+      <span className="dm-staff__label pcp-tnum">
         {fmt.fte(staffed)}/{fmt.fte(demand)}
         {gap > 0.04 && <span className="dm-gap"> gap {fmt.fte(gap)}</span>}
       </span>
@@ -391,7 +394,7 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const quarters = useQuarters();
   const { thresholds } = useWorkspace();
   const wsPath = useWsPath();
-  const b = useBasis();
+  const b = useTimeBasis('qbr1');
   const qi = b.quarterIndex;
   const outlook = useMemo(
     () => buildCapacityOutlook(s, quarters, { pivot: 'craft', thresholds }),
@@ -440,22 +443,22 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         <SegmentedControl
           size="sm"
           label="Quarter for detail"
-          value={(b.id === 'today' || b.id === 'window' ? 'qbr1' : b.id) as BasisId}
-          onChange={(v) => b.set(v)}
-          items={quarters.map((q, i) => ({
-            id: `qbr${i + 1}` as BasisId,
+          value={(b.key === 'today' || b.key === 'window' ? 'qbr1' : b.key) as BasisKey}
+          onChange={(v) => b.setKey(v)}
+          options={quarters.map((q, i) => ({
+            value: `qbr${i + 1}` as BasisKey,
             label: q.label,
             title: fmt.quarterTooltip(q),
           }))}
         />
       }
     >
-      <div className="b2-table-wrap">
-        <table className="b2-table b2-table--compact dm-craft">
-          <caption className="b2-sr-only">Supply and demand by craft</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl pcp-tbl--compact dm-craft">
+          <caption className="pcp-sr-only">Supply and demand by craft</caption>
           <thead>
             <tr>
-              <th scope="col" rowSpan={2} className="b2-sticky-col">
+              <th scope="col" rowSpan={2} className="pcp-tbl-sticky">
                 Craft
               </th>
               <th scope="colgroup" colSpan={quarters.length} className="dm-craft__group">
@@ -467,26 +470,26 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             </tr>
             <tr>
               {quarters.map((q, i) => (
-                <th key={q.key} scope="col" className={cx('b2-num', i === 0 && 'dm-first', i === qi && 'is-basis')}>
+                <th key={q.key} scope="col" className={cx('pcp-num', i === 0 && 'dm-first', i === qi && 'is-basis')}>
                   {q.label}
                 </th>
               ))}
-              <th scope="col" className="b2-num dm-first">
+              <th scope="col" className="pcp-num dm-first">
                 Supply
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Committed
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Demand
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Gap
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Bench
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Reach below
               </th>
             </tr>
@@ -497,14 +500,14 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               const p = r.points[qi];
               return (
                 <tr key={r.id}>
-                  <th scope="row" className="b2-sticky-col">
-                    <span className="b2-row">
+                  <th scope="row" className="pcp-tbl-sticky">
+                    <span className="pcp-row">
                       <CraftChip craft={craft} />
-                      <span className="b2-ellipsis">{r.label}</span>
+                      <span className="pcp-truncate">{r.label}</span>
                     </span>
                   </th>
                   {r.gaps.map((g, i) => (
-                    <td key={quarters[i].key} className={cx('b2-num', i === 0 && 'dm-first')}>
+                    <td key={quarters[i].key} className={cx('pcp-num', i === 0 && 'dm-first')}>
                       {g > 0.04 ? (
                         <Link
                           className="dm-gaplink"
@@ -514,30 +517,30 @@ function ByCraft({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                           {fmt.fte(g)}
                         </Link>
                       ) : (
-                        <span className="b2-subtle">{g < -0.04 ? `+${fmt.fte(-g)}` : '0.0'}</span>
+                        <span className="pcp-text-tertiary">{g < -0.04 ? `+${fmt.fte(-g)}` : '0.0'}</span>
                       )}
                     </td>
                   ))}
-                  <td className="b2-num dm-first">{fmt.fte(p.supplyFte)}</td>
-                  <td className="b2-num">{fmt.fte(r.committed[qi])}</td>
-                  <td className="b2-num">{fmt.fte(p.demandFte)}</td>
-                  <td className="b2-num">
+                  <td className="pcp-num dm-first">{fmt.fte(p.supplyFte)}</td>
+                  <td className="pcp-num">{fmt.fte(r.committed[qi])}</td>
+                  <td className="pcp-num">{fmt.fte(p.demandFte)}</td>
+                  <td className="pcp-num">
                     {r.gaps[qi] > 0.04 ? (
                       <span className="dm-gap">{fmt.fte(r.gaps[qi])}</span>
                     ) : (
-                      <span className="b2-subtle">0.0</span>
+                      <span className="pcp-text-tertiary">0.0</span>
                     )}
                   </td>
-                  <td className="b2-num">{fmt.fte(p.freeFte)}</td>
-                  <td className="b2-num">{fmt.fte(r.reach[qi])}</td>
+                  <td className="pcp-num">{fmt.fte(p.freeFte)}</td>
+                  <td className="pcp-num">{fmt.fte(r.reach[qi])}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <div className="b2-card__foot">
-        <span className="b2-caption">
+      <div className="pcp-card__footer">
+        <span className="pcp-caption pcp-text-tertiary">
           A positive gap links to the Marketplace filtered to that craft and quarter. A “+” value means more is
           committed than demanded.
         </span>

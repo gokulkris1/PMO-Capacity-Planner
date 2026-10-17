@@ -4,15 +4,15 @@ import { Activity } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import {
   Card,
-  ChartFrame,
+  ChartPanel,
   EmptyState,
+  fmt,
   GroupedBarChart,
   Select,
   StatusPill,
   TrendChart,
-  fmt,
   useQueryParam,
-} from '../../plan/_kit';
+} from '../../../components/ui';
 import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
 export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
@@ -32,7 +32,7 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
         <EmptyState
           icon={Activity}
           title="No sprint data yet"
-          body="Sprints appear once a mapped Jira board has synced."
+          description="Sprints appear once a mapped Jira board has synced."
         />
       </Card>
     );
@@ -43,21 +43,23 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
     sublabel: fmt.dateShort(r.from),
   }));
   return (
-    <div className="b2-stack">
-      <div className="b2-row">
+    <div className="pcp-stack">
+      <div className="pcp-row">
         <span className="dl-tribe-select">
           <Select
-            ariaLabel="Tribe"
+            aria-label="Tribe"
             value={tribeId}
-            onChange={(v) => setTribe(v)}
+            onValueChange={(v) => setTribe(v)}
             options={tribesWithData.map((t) => ({ value: t.id, label: t.name }))}
           />
         </span>
-        <span className="b2-caption">Last {rows.length} sprints · the newest may still be running</span>
+        <span className="pcp-caption pcp-text-tertiary">
+          Last {rows.length} sprints · the newest may still be running
+        </span>
       </div>
-      <div className="b2-grid-12">
-        <div className="b2-col-6">
-          <ChartFrame
+      <div className="pcp-grid-xl">
+        <div className="pcp-span-6">
+          <ChartPanel
             title={`Velocity · ${tribeName}`}
             caption="Story points committed and done per sprint"
             legend={[
@@ -75,10 +77,10 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
                 { name: 'Done', kind: '1', values: rows.map((r) => r.pointsDone) },
               ]}
             />
-          </ChartFrame>
+          </ChartPanel>
         </div>
-        <div className="b2-col-6">
-          <ChartFrame
+        <div className="pcp-span-6">
+          <ChartPanel
             title="Implied vs planned FTE"
             caption="Points done ÷ calibration, against booked FTE · signal, not a timesheet"
             legend={[
@@ -98,7 +100,7 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
               ]}
               format={(v) => fmt.fte(v)}
             />
-          </ChartFrame>
+          </ChartPanel>
         </div>
       </div>
       <Card title="Sprints" subtitle={tribeName} flush>
@@ -110,26 +112,26 @@ export function SprintsTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
 
 function SprintTable({ rows }: { rows: D.DeliveryRowDTO[] }) {
   return (
-    <div className="b2-table-wrap">
-      <table className="b2-table b2-table--compact">
-        <caption className="b2-sr-only">Sprints</caption>
+    <div className="pcp-tbl-wrap">
+      <table className="pcp-tbl pcp-tbl--compact">
+        <caption className="pcp-sr-only">Sprints</caption>
         <thead>
           <tr>
             <th scope="col">Sprint</th>
             <th scope="col">Dates</th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Committed
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Done
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Issues done
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Implied FTE
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Planned FTE
             </th>
             <th scope="col">Signal</th>
@@ -141,14 +143,14 @@ function SprintTable({ rows }: { rows: D.DeliveryRowDTO[] }) {
             return (
               <tr key={r.key}>
                 <th scope="row">{r.sprintName}</th>
-                <td className="b2-tnum">
+                <td className="pcp-tnum">
                   {fmt.dateShort(r.from)} – {fmt.dateShort(r.to)}
                 </td>
-                <td className="b2-num">{r.pointsTotal}</td>
-                <td className="b2-num">{r.pointsDone}</td>
-                <td className="b2-num">{r.issuesDone}</td>
-                <td className="b2-num">{fmt.fte(r.impliedFte)}</td>
-                <td className="b2-num">{fmt.fte(r.plannedFte)}</td>
+                <td className="pcp-num">{r.pointsTotal}</td>
+                <td className="pcp-num">{r.pointsDone}</td>
+                <td className="pcp-num">{r.issuesDone}</td>
+                <td className="pcp-num">{fmt.fte(r.impliedFte)}</td>
+                <td className="pcp-num">{fmt.fte(r.plannedFte)}</td>
                 <td>
                   <StatusPill tone={sig.kind === 'inline' ? 'success' : 'info'} title={sig.label}>
                     {sig.kind === 'inline' ? 'In line' : sig.kind === 'more' ? 'More effort' : 'Less effort'}

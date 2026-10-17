@@ -1,5 +1,5 @@
 /* Home (RP-01) page styles — tokens only. */
-.b2-gap {
+.home-gap {
   height: var(--space-300);
 }
 .home-list > li {

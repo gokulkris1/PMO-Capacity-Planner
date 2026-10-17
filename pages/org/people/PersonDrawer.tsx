@@ -1,36 +1,39 @@
 /** Person drawer (PPL-02): Profile, Crafts, Load, Bookings, Identity. `?person=<id>` or `?person=new`. */
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CalendarRange, Check, Link2, Plus, Send, Trash2, UserRound, X } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useMutations, useQuarters, useWorkspace } from '../../../state';
 import { buildPeopleRows } from '../../../utils/viewModels';
 import {
   Avatar,
-  Banner,
   BandCell,
+  Banner,
   BookingStatePill,
   Button,
   CraftChip,
   Drawer,
   EmptyState,
+  fmt,
   FormField,
   IconButton,
+  indexSnapshot,
   NumberField,
   ProvenanceTag,
   QuarterLoadBar,
+  relativeLoadSplit,
   Select,
   StatusPill,
   TabPanel,
   Tabs,
   Tag,
   TextField,
-  fmt,
-  indexSnapshot,
   useAction,
   useConfirm,
-  useWsPath,
-} from '../../plan/_kit';
+  LinkButton,
+  numOrNull,
+  numText,
+} from '../../../components/ui';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { BookingDatesDialog } from '../../plan/_parts/BookingDatesDialog';
 import { useDelivery } from '../../../state';
 
@@ -100,7 +103,7 @@ export function PersonDrawer({
         <EmptyState
           icon={UserRound}
           title="This person no longer exists"
-          body="They may have been removed. Close this panel to continue."
+          description="They may have been removed. Close this panel to continue."
         />
       </Drawer>
     );
@@ -122,7 +125,7 @@ function PersonDrawerInner({
   const quarters = useQuarters();
   const m = useMutations();
   const { busy, run } = useAction();
-  const { confirm, dialog } = useConfirm();
+  const confirm = useConfirm();
   const idx = useMemo(() => indexSnapshot(s), [s]);
   const isNew = !person;
   const canEdit = can('people.write');
@@ -263,7 +266,7 @@ function PersonDrawerInner({
         <Button onClick={() => void requestClose()}>Cancel</Button>
         <Button
           variant="primary"
-          icon={Send}
+          iconBefore={Send}
           loading={busy === 'suggest'}
           disabled={!dirty || !!pendingRequest}
           onClick={() => void suggest()}
@@ -281,135 +284,135 @@ function PersonDrawerInner({
         open
         title={isNew ? 'Add person' : (person?.name ?? '')}
         subtitle={isNew ? 'Profile and crafts' : [person?.role, person?.type].filter(Boolean).join(' · ')}
-        headerExtra={!isNew && person ? <Avatar name={person.name} size={40} /> : undefined}
+        headerStart={!isNew && person ? <Avatar name={person.name} size={40} /> : undefined}
         onClose={() => void requestClose()}
-        tabs={<Tabs idPrefix="person" label="Person sections" items={tabs} value={tab} onChange={setTab} />}
+        tabs={<Tabs idBase="person" label="Person sections" tabs={tabs} value={tab} onChange={setTab} />}
         footer={footer}
       >
-        <TabPanel idPrefix="person" value={tab}>
+        <TabPanel idBase="person" tabId={tab}>
           {tab === 'profile' && (
-            <div className="b2-form">
-              <FormField label="Name" htmlFor="pf-name" error={tried ? profileErrors.name : null}>
+            <div className="pcp-form-grid">
+              <FormField label="Name" id="pf-name" error={tried ? profileErrors.name : null}>
                 <TextField
                   id="pf-name"
                   value={profile.name}
                   readOnly={readOnly}
                   invalid={tried && !!profileErrors.name}
-                  onChange={(v) => setProfile({ ...profile, name: v })}
+                  onValueChange={(v) => setProfile({ ...profile, name: v })}
                 />
               </FormField>
-              <FormField label="Email" htmlFor="pf-email" optional error={tried ? profileErrors.email : null}>
+              <FormField label="Email" id="pf-email" optional error={tried ? profileErrors.email : null}>
                 <TextField
                   id="pf-email"
                   type="email"
                   value={profile.email}
                   readOnly={readOnly}
                   invalid={tried && !!profileErrors.email}
-                  onChange={(v) => setProfile({ ...profile, email: v })}
+                  onValueChange={(v) => setProfile({ ...profile, email: v })}
                 />
               </FormField>
-              <FormField label="Job title" htmlFor="pf-role" optional>
+              <FormField label="Job title" id="pf-role" optional>
                 <TextField
                   id="pf-role"
                   value={profile.role}
                   readOnly={readOnly}
-                  onChange={(v) => setProfile({ ...profile, role: v })}
+                  onValueChange={(v) => setProfile({ ...profile, role: v })}
                 />
               </FormField>
-              <FormField label="Type" htmlFor="pf-type">
+              <FormField label="Type" id="pf-type">
                 <Select
                   id="pf-type"
                   value={profile.type}
                   disabled={readOnly}
-                  onChange={(v) => setProfile({ ...profile, type: v as D.PersonType })}
+                  onValueChange={(v) => setProfile({ ...profile, type: v as D.PersonType })}
                   options={['Permanent', 'Contractor', 'Part-Time'].map((x) => ({ value: x, label: x }))}
                 />
               </FormField>
-              <FormField label="Location" htmlFor="pf-loc" optional>
+              <FormField label="Location" id="pf-loc" optional>
                 <TextField
                   id="pf-loc"
                   value={profile.location}
                   readOnly={readOnly}
-                  onChange={(v) => setProfile({ ...profile, location: v })}
+                  onValueChange={(v) => setProfile({ ...profile, location: v })}
                 />
               </FormField>
-              <FormField label="Chapter" htmlFor="pf-chapter" optional>
+              <FormField label="Chapter" id="pf-chapter" optional>
                 <Select
                   id="pf-chapter"
                   value={profile.chapterId}
                   disabled={readOnly}
                   placeholder="No chapter"
-                  onChange={(v) => setProfile({ ...profile, chapterId: v })}
+                  onValueChange={(v) => setProfile({ ...profile, chapterId: v })}
                   options={s.chapters.filter((c) => !c.archived).map((c) => ({ value: c.id, label: c.name }))}
                 />
               </FormField>
-              <FormField label="Team" htmlFor="pf-team" optional>
+              <FormField label="Team" id="pf-team" optional>
                 <Select
                   id="pf-team"
                   value={profile.teamId}
                   disabled={readOnly}
                   placeholder="No team"
-                  onChange={(v) => setProfile({ ...profile, teamId: v })}
+                  onValueChange={(v) => setProfile({ ...profile, teamId: v })}
                   options={s.teams.filter((c) => !c.archived).map((c) => ({ value: c.id, label: c.name }))}
                 />
               </FormField>
-              <FormField label="Home tribe" htmlFor="pf-tribe" optional>
+              <FormField label="Home tribe" id="pf-tribe" optional>
                 <Select
                   id="pf-tribe"
                   value={profile.homeTribeId}
                   disabled={readOnly}
                   placeholder="No home tribe"
-                  onChange={(v) => setProfile({ ...profile, homeTribeId: v })}
+                  onValueChange={(v) => setProfile({ ...profile, homeTribeId: v })}
                   options={tribeOptions}
                 />
               </FormField>
               <FormField
                 label="Target utilisation"
-                htmlFor="pf-target"
+                id="pf-target"
                 help="100% means fully planned. Part-time people use a lower target."
                 error={tried ? profileErrors.targetUtil : null}
               >
                 <NumberField
                   id="pf-target"
                   unit="%"
-                  value={profile.targetUtil}
+                  value={numOrNull(profile.targetUtil)}
                   min={0}
                   max={150}
                   step={5}
                   disabled={readOnly}
                   invalid={tried && !!profileErrors.targetUtil}
-                  onChange={(v) => setProfile({ ...profile, targetUtil: v })}
+                  onChange={(n) => setProfile({ ...profile, targetUtil: numText(n) })}
                 />
               </FormField>
-              <FormField label="Daily rate" htmlFor="pf-rate" optional error={tried ? profileErrors.dailyRate : null}>
+              <FormField label="Daily rate" id="pf-rate" optional error={tried ? profileErrors.dailyRate : null}>
                 <NumberField
                   id="pf-rate"
-                  value={profile.dailyRate}
+                  value={numOrNull(profile.dailyRate)}
                   min={0}
                   step={50}
                   disabled={readOnly}
-                  onChange={(v) => setProfile({ ...profile, dailyRate: v })}
+                  onChange={(n) => setProfile({ ...profile, dailyRate: numText(n) })}
                 />
               </FormField>
               <FormField
                 label="Skills"
-                htmlFor="pf-skills"
+                id="pf-skills"
                 optional
                 help="Comma-separated; searchable on People."
-                className="b2-form__full"
+                className="pcp-form-grid__full"
               >
                 <TextField
                   id="pf-skills"
                   value={profile.skills}
                   readOnly={readOnly}
-                  onChange={(v) => setProfile({ ...profile, skills: v })}
+                  onValueChange={(v) => setProfile({ ...profile, skills: v })}
                 />
               </FormField>
             </div>
           )}
 
           {tab === 'crafts' && (
-            <div className="b2-stack">
+            <div className="pcp-stack">
               {pendingRequest && (
                 <Banner tone="info" title="A craft change is waiting for approval">
                   Submitted by {pendingRequest.submittedBy.name}{' '}
@@ -424,7 +427,7 @@ function PersonDrawerInner({
               )}
               <FormField
                 label="Above the table"
-                htmlFor="pc-primary"
+                id="pc-primary"
                 help="The craft this person is hired for. One per person."
               >
                 <Select
@@ -432,25 +435,27 @@ function PersonDrawerInner({
                   value={crafts.primaryCraft}
                   disabled={!canEdit}
                   placeholder="Not set"
-                  onChange={(v) => setCrafts({ ...crafts, primaryCraft: v })}
+                  onValueChange={(v) => setCrafts({ ...crafts, primaryCraft: v })}
                   options={craftOptions}
                 />
               </FormField>
-              <div className="b2-stack b2-stack--sm">
-                <div className="b2-row b2-row--between">
-                  <span className="b2-field__label">Below the table</span>
-                  <span className="b2-caption">L1 can assist · L2 can own with support · L3 can own independently</span>
+              <div className="pcp-stack pcp-stack--md">
+                <div className="pcp-row pcp-row--between">
+                  <span className="pcp-field__label">Below the table</span>
+                  <span className="pcp-caption pcp-text-tertiary">
+                    L1 can assist · L2 can own with support · L3 can own independently
+                  </span>
                 </div>
-                {crafts.secondary.length === 0 && <p className="b2-muted">No below-the-table crafts yet.</p>}
+                {crafts.secondary.length === 0 && <p className="pcp-text-secondary">No below-the-table crafts yet.</p>}
                 {crafts.secondary.map((c, i) => (
                   <div key={c.key} className="pd-craft-row">
                     <Select
-                      ariaLabel={`Below-the-table craft ${i + 1}`}
+                      aria-label={`Below-the-table craft ${i + 1}`}
                       value={c.craftId}
                       disabled={!canEdit && !own}
                       placeholder="Choose a craft"
                       invalid={tried && !!craftErrors[i]}
-                      onChange={(v) =>
+                      onValueChange={(v) =>
                         setCrafts({
                           ...crafts,
                           secondary: crafts.secondary.map((x) => (x.key === c.key ? { ...x, craftId: v } : x)),
@@ -459,10 +464,10 @@ function PersonDrawerInner({
                       options={craftOptions}
                     />
                     <Select
-                      ariaLabel={`Proficiency for craft ${i + 1}`}
+                      aria-label={`Proficiency for craft ${i + 1}`}
                       value={String(c.proficiency)}
                       disabled={!canEdit && !own}
-                      onChange={(v) =>
+                      onValueChange={(v) =>
                         setCrafts({
                           ...crafts,
                           secondary: crafts.secondary.map((x) =>
@@ -477,17 +482,17 @@ function PersonDrawerInner({
                     />
                     <NumberField
                       id={`pc-cap-${c.key}`}
-                      ariaLabel={`Cap for craft ${i + 1}`}
+                      aria-label={`Cap for craft ${i + 1}`}
                       unit="%"
-                      value={c.maxPct}
+                      value={numOrNull(c.maxPct)}
                       min={0}
                       max={100}
                       step={5}
                       disabled={!canEdit && !own}
-                      onChange={(v) =>
+                      onChange={(n) =>
                         setCrafts({
                           ...crafts,
-                          secondary: crafts.secondary.map((x) => (x.key === c.key ? { ...x, maxPct: v } : x)),
+                          secondary: crafts.secondary.map((x) => (x.key === c.key ? { ...x, maxPct: numText(n) } : x)),
                         })
                       }
                     />
@@ -501,7 +506,7 @@ function PersonDrawerInner({
                       />
                     )}
                     {tried && craftErrors[i] && (
-                      <span className="b2-field__error pd-craft-row__err">{craftErrors[i]}</span>
+                      <span className="pcp-field__error pd-craft-row__err">{craftErrors[i]}</span>
                     )}
                   </div>
                 ))}
@@ -509,7 +514,7 @@ function PersonDrawerInner({
                   <div>
                     <Button
                       size="sm"
-                      icon={Plus}
+                      iconBefore={Plus}
                       onClick={() =>
                         setCrafts({
                           ...crafts,
@@ -534,49 +539,46 @@ function PersonDrawerInner({
           )}
 
           {tab === 'load' && row && (
-            <div className="b2-stack">
-              <ul className="b2-list">
+            <div className="pcp-stack">
+              <ul className="pcp-list">
                 {row.quarters.map((q, i) => (
                   <li key={q.key} className="pd-load-row">
                     <span className="pd-load-row__q">
-                      <span className="b2-strong">{quarters[i]?.label}</span>
-                      <span className="b2-caption">{quarters[i]?.calendarLabel}</span>
+                      <span className="pcp-strong">{quarters[i]?.label}</span>
+                      <span className="pcp-caption pcp-text-tertiary">{quarters[i]?.calendarLabel}</span>
                     </span>
                     <span className="pd-load-row__bar">
                       <QuarterLoadBar
-                        size="lg"
-                        above={q.above}
-                        below={q.below}
-                        undeclared={q.undeclared}
-                        target={person?.targetUtil ?? 100}
-                        label={quarters[i]?.label ?? q.key}
+                        size="md"
+                        quarterLabel={quarters[i]?.label ?? q.key}
+                        {...relativeLoadSplit(q, person?.targetUtil ?? 100)}
                       />
                     </span>
                     <BandCell value={q.relativePct} band={q.band} label={quarters[i]?.label} />
                   </li>
                 ))}
               </ul>
-              <div className="b2-table-wrap">
-                <table className="b2-table b2-table--compact">
-                  <caption className="b2-caption">
+              <div className="pcp-tbl-wrap">
+                <table className="pcp-tbl pcp-tbl--compact">
+                  <caption className="pcp-caption pcp-text-tertiary">
                     Load by kind of work (% of a full-time week, FTE in brackets)
                   </caption>
                   <thead>
                     <tr>
                       <th scope="col">Quarter</th>
-                      <th scope="col" className="b2-num">
+                      <th scope="col" className="pcp-num">
                         Above
                       </th>
-                      <th scope="col" className="b2-num">
+                      <th scope="col" className="pcp-num">
                         Below
                       </th>
-                      <th scope="col" className="b2-num">
+                      <th scope="col" className="pcp-num">
                         Undeclared
                       </th>
-                      <th scope="col" className="b2-num">
+                      <th scope="col" className="pcp-num">
                         Free
                       </th>
-                      <th scope="col" className="b2-num">
+                      <th scope="col" className="pcp-num">
                         Of target
                       </th>
                     </tr>
@@ -585,19 +587,23 @@ function PersonDrawerInner({
                     {row.quarters.map((q, i) => (
                       <tr key={q.key}>
                         <th scope="row">{quarters[i]?.label}</th>
-                        <td className="b2-num">
-                          {fmt.pct(q.above)} <span className="b2-caption">({fmt.fte(q.above / 100)})</span>
+                        <td className="pcp-num">
+                          {fmt.pct(q.above)}{' '}
+                          <span className="pcp-caption pcp-text-tertiary">({fmt.fte(q.above / 100)})</span>
                         </td>
-                        <td className="b2-num">
-                          {fmt.pct(q.below)} <span className="b2-caption">({fmt.fte(q.below / 100)})</span>
+                        <td className="pcp-num">
+                          {fmt.pct(q.below)}{' '}
+                          <span className="pcp-caption pcp-text-tertiary">({fmt.fte(q.below / 100)})</span>
                         </td>
-                        <td className="b2-num">
-                          {fmt.pct(q.undeclared)} <span className="b2-caption">({fmt.fte(q.undeclared / 100)})</span>
+                        <td className="pcp-num">
+                          {fmt.pct(q.undeclared)}{' '}
+                          <span className="pcp-caption pcp-text-tertiary">({fmt.fte(q.undeclared / 100)})</span>
                         </td>
-                        <td className="b2-num">
-                          {fmt.pct(q.free)} <span className="b2-caption">({fmt.fte(q.free / 100)})</span>
+                        <td className="pcp-num">
+                          {fmt.pct(q.free)}{' '}
+                          <span className="pcp-caption pcp-text-tertiary">({fmt.fte(q.free / 100)})</span>
                         </td>
-                        <td className="b2-num">{fmt.pct(q.relativePct)}</td>
+                        <td className="pcp-num">{fmt.pct(q.relativePct)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -612,7 +618,6 @@ function PersonDrawerInner({
         </TabPanel>
       </Drawer>
       <BookingDatesDialog snapshot={s} booking={editBooking} onClose={() => setEditBooking(null)} />
-      {dialog}
     </>
   );
 }
@@ -634,23 +639,29 @@ function BookingsTab({
     .filter((a) => a.resourceId === person.id)
     .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
   if (list.length === 0)
-    return <EmptyState icon={CalendarRange} title="No bookings" body="This person is not booked on any project yet." />;
+    return (
+      <EmptyState
+        icon={CalendarRange}
+        title="No bookings"
+        description="This person is not booked on any project yet."
+      />
+    );
   return (
-    <div className="b2-table-wrap">
-      <table className="b2-table b2-table--compact">
-        <caption className="b2-sr-only">Bookings for {person.name}</caption>
+    <div className="pcp-tbl-wrap">
+      <table className="pcp-tbl pcp-tbl--compact">
+        <caption className="pcp-sr-only">Bookings for {person.name}</caption>
         <thead>
           <tr>
             <th scope="col">Project</th>
             <th scope="col">Craft</th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               %
             </th>
             <th scope="col">Dates</th>
             <th scope="col">State</th>
             <th scope="col">Source</th>
             <th scope="col">
-              <span className="b2-sr-only">Actions</span>
+              <span className="pcp-sr-only">Actions</span>
             </th>
           </tr>
         </thead>
@@ -663,14 +674,14 @@ function BookingsTab({
             const via = craftId === person.primaryCraft ? 'above' : sec ? 'below' : 'undeclared';
             return (
               <tr key={a.id}>
-                <th scope="row" className="b2-ellipsis">
+                <th scope="row" className="pcp-truncate">
                   {project?.name ?? a.projectId}
                 </th>
                 <td>
                   <CraftChip craft={craft} via={via} proficiency={sec?.proficiency} />
                 </td>
-                <td className="b2-num">{fmt.pct(a.percentage)}</td>
-                <td className="b2-tnum">
+                <td className="pcp-num">{fmt.pct(a.percentage)}</td>
+                <td className="pcp-tnum">
                   {fmt.dateRange(a.startDate ?? project?.startDate, a.endDate ?? project?.endDate)}
                 </td>
                 <td>
@@ -679,8 +690,8 @@ function BookingsTab({
                 <td>
                   <ProvenanceTag source={a.source} />
                 </td>
-                <td className="b2-num">
-                  <span className="b2-row pd-actions">
+                <td className="pcp-num">
+                  <span className="pcp-row pd-actions">
                     {a.state === 'tentative' && can('allocations.write') && (
                       <>
                         <IconButton
@@ -737,8 +748,8 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
   const delivery = useDelivery(s);
   const ids = delivery.identities.filter((i) => i.personId === person.id);
   return (
-    <div className="b2-stack">
-      <dl className="b2-dl">
+    <div className="pcp-stack">
+      <dl className="pcp-dl">
         <dt>Login</dt>
         <dd>
           {person.linkedUserId ? (
@@ -746,27 +757,27 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
               Linked
             </StatusPill>
           ) : (
-            <span className="b2-muted">Not linked to a login. Members and roles links people to logins.</span>
+            <span className="pcp-text-secondary">Not linked to a login. Members and roles links people to logins.</span>
           )}
         </dd>
         <dt>Email</dt>
-        <dd>{person.email ?? <span className="b2-muted">None</span>}</dd>
+        <dd>{person.email ?? <span className="pcp-text-secondary">None</span>}</dd>
         <dt>Skills</dt>
         <dd>
           {person.skills.length ? (
-            <span className="b2-chips">
+            <span className="pcp-chips">
               {person.skills.map((x) => (
                 <Tag key={x}>{x}</Tag>
               ))}
             </span>
           ) : (
-            <span className="b2-muted">None</span>
+            <span className="pcp-text-secondary">None</span>
           )}
         </dd>
       </dl>
-      <div className="b2-table-wrap">
-        <table className="b2-table b2-table--compact">
-          <caption className="b2-caption">Jira and Planview identities</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl pcp-tbl--compact">
+          <caption className="pcp-caption pcp-text-tertiary">Jira and Planview identities</caption>
           <thead>
             <tr>
               <th scope="col">Provider</th>
@@ -778,7 +789,7 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
           <tbody>
             {ids.length === 0 ? (
               <tr>
-                <td colSpan={4} className="b2-muted">
+                <td colSpan={4} className="pcp-text-secondary">
                   No Jira or Planview identity linked yet.
                 </td>
               </tr>
@@ -811,9 +822,9 @@ function IdentityTab({ s, person }: { s: D.WorkspaceSnapshot; person: D.PersonDT
       </div>
       {can('integrations.run') && (
         <div>
-          <Link className="b2-btn b2-btn--secondary b2-btn--sm" to={`${wsPath('delivery/jira-planview')}?tab=people`}>
+          <LinkButton variant="secondary" size="sm" to={`${wsPath('delivery/jira-planview')}?tab=people`}>
             Change in people mapping
-          </Link>
+          </LinkButton>
         </div>
       )}
     </div>

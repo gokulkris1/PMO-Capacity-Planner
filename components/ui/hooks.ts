@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore, type RefObject } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export const PRODUCT_NAME = 'PMO Capacity Planner';
@@ -36,6 +36,48 @@ export function useUrlParam(
     [setParams, name, replace],
   );
   return [value, set];
+}
+
+/**
+ * A URL query parameter used as a filter (`?craft=`, `?tab=`): replace navigation, so Back leaves the page rather
+ * than undoing a filter; the fallback value is never written to the URL.
+ */
+export function useQueryParam(name: string, fallback = ''): [string, (v: string | null) => void] {
+  const [params, setParams] = useSearchParams();
+  const value = params.get(name) ?? fallback;
+  const set = useCallback(
+    (v: string | null) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (v === null || v === '' || v === fallback) next.delete(name);
+          else next.set(name, v);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [name, fallback, setParams],
+  );
+  return [value, set];
+}
+
+/** Width of an element, kept current with ResizeObserver (for charts drawn to scale). */
+export function useElementWidth(ref: RefObject<HTMLElement | null>, initial = 640): number {
+  const [width, setWidth] = useState(initial);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(Math.max(0, Math.round(el.getBoundingClientRect().width)));
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    const id = requestAnimationFrame(measure);
+    return () => {
+      cancelAnimationFrame(id);
+      ro?.disconnect();
+    };
+  }, [ref]);
+  return width;
 }
 
 /** Subscribes to a CSS media query, e.g. useMediaQuery('(max-width: 767px)'). */

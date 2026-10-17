@@ -6,7 +6,7 @@
 import { lazy, Suspense } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { useFeature, useWorkspace } from '../../../state';
-import { Card, EmptyState, PageHeader, Skeleton } from '../../plan/_kit';
+import { Card, EmptyState, PageHeader, Skeleton } from '../../../components/ui';
 
 const QBRPlanner = lazy(() => import('./legacy/QBRPlanner').then((m) => ({ default: m.QBRPlanner })));
 
@@ -14,9 +14,9 @@ export default function SprintsPage() {
   const enabled = useFeature('qbrSprintModule');
   const { org, workspace } = useWorkspace();
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Delivery' }, { label: 'Sprint planning' }]}
+        breadcrumbs={[{ label: 'Delivery' }, { label: 'Sprint planning' }]}
         title="Sprint planning"
         description="Legacy QBR sprint module. It keeps its own members and projects until it is unified with the core plan."
       />
@@ -25,7 +25,7 @@ export default function SprintsPage() {
           <EmptyState
             icon={CalendarDays}
             title="Sprint planning is turned off"
-            body="An Org Admin can switch it on in Settings › Features."
+            description="An Org Admin can switch it on in Settings › Features."
           />
         </Card>
       ) : (

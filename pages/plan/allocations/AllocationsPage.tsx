@@ -22,20 +22,22 @@ import {
   Checkbox,
   Dialog,
   EmptyState,
+  errorMessage,
   FormField,
   Kbd,
+  type MenuItem,
   NumberField,
-  PageBody,
   PageHeader,
   SegmentedControl,
   Select,
   TextField,
-  errorMessage,
-  toast,
   useAction,
   useQueryParam,
-  type MenuItem,
-} from '../_kit';
+  useToast,
+  numOrNull,
+  numText,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
 import { BookingDatesDialog } from '../_parts/BookingDatesDialog';
 import { AllocationGrid, type CellAddress, type FlatRow } from './AllocationGrid';
 import { AddBookingDialog } from './AddBookingDialog';
@@ -46,16 +48,16 @@ export default function AllocationsPage() {
   const undo = useUndo();
   const [adding, setAdding] = useState(false);
   return (
-    <div className="b2-page b2-page--dense">
+    <div className="pcp-page pcp-page--dense">
       <PageHeader
-        crumbs={[{ label: 'Plan' }, { label: 'Allocations' }]}
+        breadcrumbs={[{ label: 'Plan' }, { label: 'Allocations' }]}
         title="Allocations"
         description="Plan each person across QBR1–QBR4. Type into a cell; Enter or Tab saves, Escape cancels, Ctrl+Z undoes."
         actions={
           <>
             {can('allocations.write') && (
               <Button
-                icon={Undo2}
+                iconBefore={Undo2}
                 disabled={!undo.canUndo}
                 onClick={() => void undo.undo()}
                 title={undo.label ? `Undo: ${undo.label}` : 'Nothing to undo'}
@@ -64,7 +66,7 @@ export default function AllocationsPage() {
               </Button>
             )}
             {can('allocations.write') && (
-              <Button variant="primary" icon={Plus} onClick={() => setAdding(true)}>
+              <Button variant="primary" iconBefore={Plus} onClick={() => setAdding(true)}>
                 Add booking
               </Button>
             )}
@@ -87,6 +89,7 @@ function AllocationsBody({
   adding: boolean;
   onAddClose(): void;
 }) {
+  const toast = useToast();
   const { can, thresholds } = useWorkspace();
   const quarters = useQuarters();
   const m = useMutations();
@@ -180,7 +183,7 @@ function AllocationsBody({
     const i = quarters.findIndex((x) => x.key === a.fromQuarterKey);
     const later = quarters.slice(i + 1);
     if (later.length === 0) {
-      toast({
+      toast.show({
         tone: 'info',
         title: 'Nothing to copy to',
         body: `${quarters[i]?.label} is the last quarter in the window.`,
@@ -206,7 +209,7 @@ function AllocationsBody({
   const onUndo = () => {
     if (!undo.canUndo) return;
     const label = undo.label;
-    void undo.undo().then(() => toast({ tone: 'info', title: 'Undone', body: label ?? undefined }));
+    void undo.undo().then(() => toast.show({ tone: 'info', title: 'Undone', body: label ?? undefined }));
   };
 
   const onPaste = async (start: { rowKey: string; col: number }, block: string[][], rows: FlatRow[]) => {
@@ -215,7 +218,7 @@ function AllocationsBody({
     const values = block.map((line) => line.map((v) => v.trim().replace('%', '')));
     const bad = values.flat().filter((v) => v !== '' && !Number.isFinite(Number(v)));
     if (bad.length) {
-      toast({
+      toast.show({
         tone: 'error',
         title: 'Paste cancelled',
         body: `Only numbers can be pasted. Found "${bad.slice(0, 3).join('", "')}".`,
@@ -256,7 +259,7 @@ function AllocationsBody({
       });
     });
     if (!cells.length) {
-      toast({ tone: 'warning', title: `0 cells updated, ${skipped} skipped` });
+      toast.show({ tone: 'warning', title: `0 cells updated, ${skipped} skipped` });
       return;
     }
     // AL-07: the whole paste is one atomic batch and one undo step.
@@ -273,14 +276,14 @@ function AllocationsBody({
         label,
       );
     } catch (e) {
-      toast({ tone: 'error', title: 'Paste failed', body: errorMessage(e) });
+      toast.show({ tone: 'error', title: 'Paste failed', body: errorMessage(e) });
       return;
     }
     const done = cells.length;
-    toast({
+    toast.show({
       tone: skipped ? 'warning' : 'success',
       title: `${done} cell${done === 1 ? '' : 's'} updated, ${skipped} skipped`,
-      action: { label: 'Undo', onClick: () => void undo.undo() },
+      action: { label: 'Undo', onAction: () => void undo.undo() },
     });
   };
 
@@ -367,38 +370,38 @@ function AllocationsBody({
     <>
       <Card flush>
         {selectedRows.length > 0 && canEdit ? (
-          <div className="b2-toolbar b2-toolbar--bulk" role="region" aria-label="Bulk actions">
-            <span className="b2-toolbar__count">
+          <div className="pcp-tbl-toolbar pcp-tbl-toolbar--bulk" role="region" aria-label="Bulk actions">
+            <span className="pcp-tbl-toolbar__count">
               {selectedRows.length} booking{selectedRows.length === 1 ? '' : 's'} selected
             </span>
             <Button size="sm" onClick={() => setBulk('set')}>
               Set % in a quarter
             </Button>
-            <Button size="sm" icon={Copy} onClick={() => setBulk('copy')}>
+            <Button size="sm" iconBefore={Copy} onClick={() => setBulk('copy')}>
               Copy to later quarters
             </Button>
-            <span className="b2-spacer" />
+            <span className="pcp-spacer" />
             <Button variant="link" onClick={() => setSelected(new Set())}>
               Clear
             </Button>
           </div>
         ) : (
-          <div className="b2-toolbar al-toolbar">
+          <div className="pcp-tbl-toolbar al-toolbar">
             <SegmentedControl
               label="Pivot"
               value={pv}
               onChange={(v) => setPivot(v)}
-              items={[
-                { id: 'person', label: 'By person' },
-                { id: 'project', label: 'By project' },
+              options={[
+                { value: 'person', label: 'By person' },
+                { value: 'project', label: 'By project' },
               ]}
             />
             <span className="al-toolbar__group">
               <Select
                 size="sm"
-                ariaLabel="Group by"
+                aria-label="Group by"
                 value={group}
-                onChange={setGroupBy}
+                onValueChange={setGroupBy}
                 options={[
                   ...(pv === 'person'
                     ? [
@@ -414,12 +417,12 @@ function AllocationsBody({
             <span className="al-toolbar__search">
               <TextField
                 id="al-q"
-                icon={Search}
+                leadingIcon={Search}
                 size="sm"
                 value={q}
                 placeholder={pv === 'person' ? 'Find person or project' : 'Find project or person'}
-                ariaLabel="Find in grid"
-                onChange={(v) => setQ(v)}
+                aria-label="Find in grid"
+                onValueChange={(v) => setQ(v)}
               />
             </span>
             <Checkbox
@@ -427,10 +430,10 @@ function AllocationsBody({
               onChange={(v) => setTentative(v ? '1' : '0')}
               label={`Show tentative (${tentativeCount})`}
             />
-            <span className="b2-spacer" />
-            <ul className="b2-legend" aria-label="Legend">
+            <span className="pcp-spacer" />
+            <ul className="pcp-legend" aria-label="Legend">
               <li>
-                <span className="b2-swatch b2-swatch--dashed al-swatch-tentative" aria-hidden="true" />
+                <span className="pcp-swatch pcp-swatch--dashed al-swatch-tentative" aria-hidden="true" />
                 Tentative
               </li>
               <li>
@@ -448,10 +451,10 @@ function AllocationsBody({
           <EmptyState
             icon={Grid3x3}
             title={q ? 'Nothing matches that search.' : 'No bookings yet'}
-            body={q ? undefined : 'Add a booking to start planning the next four quarters.'}
+            description={q ? undefined : 'Add a booking to start planning the next four quarters.'}
           />
         ) : (
-          <div className="b2-table-wrap b2-table-wrap--tall al-wrap">
+          <div className="pcp-tbl-wrap pcp-tbl-wrap--tall al-wrap">
             <AllocationGrid
               model={model}
               pivot={pv}
@@ -485,20 +488,20 @@ function AllocationsBody({
             />
           </div>
         )}
-        <div className="b2-card__foot al-foot">
-          <span className="b2-caption">
+        <div className="pcp-card__footer al-foot">
+          <span className="pcp-caption pcp-text-tertiary">
             {pv === 'person'
               ? 'Person rows: total load as % of target. Booking rows: % of a full-time week.'
               : 'Project rows: staffed / demand FTE. Person rows: FTE.'}
           </span>
-          <span className="b2-spacer" />
+          <span className="pcp-spacer" />
           {lockedRule && (
-            <span className="b2-caption al-foot__hint">
+            <span className="pcp-caption pcp-text-tertiary al-foot__hint">
               <Lock size={12} aria-hidden="true" /> Planview bookings are locked
             </span>
           )}
           {canEdit && (
-            <span className="b2-caption al-foot__hint">
+            <span className="pcp-caption pcp-text-tertiary al-foot__hint">
               <Kbd>Enter</Kbd> edit · <Kbd>Tab</Kbd> save and move · <Kbd>Ctrl</Kbd>+<Kbd>Shift</Kbd>+<Kbd>→</Kbd> copy
               forward · <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd> undo · paste from Excel
             </span>
@@ -597,30 +600,32 @@ function BulkDialog({
         </>
       }
     >
-      <div className="b2-form">
-        <FormField label={kind === 'set' ? 'Quarter' : 'Copy from'} htmlFor="bulk-q">
-          <Select id="bulk-q" value={quarterKey} onChange={setQuarterKey} options={options} />
+      <div className="pcp-form-grid">
+        <FormField label={kind === 'set' ? 'Quarter' : 'Copy from'} id="bulk-q">
+          <Select id="bulk-q" value={quarterKey} onValueChange={setQuarterKey} options={options} />
         </FormField>
         {kind === 'set' && (
           <FormField
             label="Allocation"
-            htmlFor="bulk-pct"
+            id="bulk-pct"
             help="0 removes that quarter only."
             error={invalid ? 'Enter 0–200' : null}
           >
             <NumberField
               id="bulk-pct"
               unit="%"
-              value={pct}
+              value={numOrNull(pct)}
               min={0}
               max={200}
               step={5}
               invalid={invalid}
-              onChange={setPct}
+              onChange={(n) => setPct(numText(n))}
             />
           </FormField>
         )}
-        <p className="b2-caption b2-form__full">Applied in one change, so a single Undo restores everything.</p>
+        <p className="pcp-caption pcp-text-tertiary pcp-form-grid__full">
+          Applied in one change, so a single Undo restores everything.
+        </p>
       </div>
     </Dialog>
   );

@@ -10,22 +10,23 @@ import type * as D from '../../../shared/contracts/dto';
 import { useQuarters, useWorkspace } from '../../../state';
 import { buildDemandGrid, buildTribeView } from '../../../utils/viewModels';
 import {
+  Button,
   Card,
-  ChartFrame,
+  ChartPanel,
   CraftChip,
   EmptyState,
+  fmt,
   GroupedBarChart,
+  indexSnapshot,
   KpiTile,
-  PageBody,
   PageHeader,
   PersonLabel,
   StatusPill,
-  Button,
-  fmt,
-  indexSnapshot,
-  useBasis,
-  useWsPath,
-} from '../../plan/_kit';
+  LinkButton,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { CalibrationDialog } from '../../delivery/_parts/CalibrationDialog';
 import { useDelivery } from '../../../state';
 import './tribes.css';
@@ -34,7 +35,7 @@ export default function TribeDetailPage() {
   const { tribeId = '' } = useParams();
   const wsPath = useWsPath();
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageBody label="the tribe">
         {(s) => {
           const tribe = s.tribes.find((t) => t.id === tribeId);
@@ -42,7 +43,7 @@ export default function TribeDetailPage() {
             return (
               <>
                 <PageHeader
-                  crumbs={[
+                  breadcrumbs={[
                     { label: 'Organisation' },
                     { label: 'Tribes', to: wsPath('org/tribes') },
                     { label: 'Not found' },
@@ -53,11 +54,11 @@ export default function TribeDetailPage() {
                   <EmptyState
                     icon={Network}
                     title="This tribe does not exist"
-                    body="It may have been archived or the link is wrong."
+                    description="It may have been archived or the link is wrong."
                     action={
-                      <Link className="b2-btn b2-btn--secondary" to={wsPath('org/tribes')}>
+                      <LinkButton variant="secondary" to={wsPath('org/tribes')}>
                         All tribes
-                      </Link>
+                      </LinkButton>
                     }
                   />
                 </Card>
@@ -73,7 +74,7 @@ export default function TribeDetailPage() {
 function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; tribe: D.TribeDTO }) {
   const quarters = useQuarters();
   const { can } = useWorkspace();
-  const b = useBasis();
+  const b = useTimeBasis('qbr1');
   const wsPath = useWsPath();
   const delivery = useDelivery(s);
   const idx = useMemo(() => indexSnapshot(s), [s]);
@@ -102,28 +103,24 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
   return (
     <>
       <PageHeader
-        crumbs={[{ label: 'Organisation' }, { label: 'Tribes', to: wsPath('org/tribes') }, { label: tribe.name }]}
+        breadcrumbs={[{ label: 'Organisation' }, { label: 'Tribes', to: wsPath('org/tribes') }, { label: tribe.name }]}
         title={tribe.name}
         description={`${tribe.leadName ? `Lead: ${tribe.leadName} · ` : ''}${view.projects.length} project${view.projects.length === 1 ? '' : 's'} · ${view.people.length} PMO people serving`}
-        basis
-        basisExclude={['today', 'window']}
+        timeBasis={<TimeBasisControl state={b} exclude={['today', 'window']} />}
         actions={
-          <Link
-            className="b2-btn b2-btn--secondary"
-            to={`${wsPath('plan/marketplace')}?tab=catalogue&tribe=${tribe.id}`}
-          >
+          <LinkButton variant="secondary" to={`${wsPath('plan/marketplace')}?tab=catalogue&tribe=${tribe.id}`}>
             Squad catalogue for {tribe.name}
-          </Link>
+          </LinkButton>
         }
       />
-      <div className="b2-stack">
-        <div className="b2-kpis" role="list" aria-label="Tribe figures">
+      <div className="pcp-stack">
+        <div className="pcp-kpi-grid" role="list" aria-label="Tribe figures">
           <div role="listitem">
             <KpiTile
               label="Demand"
               value={fmt.fte(view.demandFte[qi])}
               unit="FTE"
-              basis={b.caption}
+              caption={b.caption}
               delta={`${grid.reduce((x, d) => x + d.cells[qi].lines.length, 0)} craft lines`}
             />
           </div>
@@ -132,7 +129,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
               label="Staffed"
               value={fmt.fte(view.staffedFte[qi])}
               unit="FTE"
-              basis={b.caption}
+              caption={b.caption}
               delta="Confirmed bookings on tribe projects"
             />
           </div>
@@ -148,7 +145,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                   <StatusPill tone="success">Covered</StatusPill>
                 )
               }
-              basis={b.caption}
+              caption={b.caption}
             />
           </div>
           <div role="listitem">
@@ -156,15 +153,15 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
               label="People serving"
               value={view.people.filter((p) => (p.pctByQuarter[qi] ?? 0) > 0).length}
               unit="people"
-              basis={b.caption}
+              caption={b.caption}
               delta={`${fmt.fte(view.people.reduce((x, p) => x + (p.pctByQuarter[qi] ?? 0), 0) / 100)} FTE booked`}
             />
           </div>
         </div>
 
-        <div className="b2-grid-12">
-          <div className="b2-col-7">
-            <ChartFrame
+        <div className="pcp-grid-xl">
+          <div className="pcp-span-7">
+            <ChartPanel
               title="Demand vs staffed"
               caption="FTE per quarter across the tribe's projects"
               legend={[
@@ -172,14 +169,14 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                 { swatch: '1', label: 'Staffed (confirmed)' },
               ]}
               table={
-                <div className="b2-table-wrap">
-                  <table className="b2-table b2-table--compact">
-                    <caption className="b2-sr-only">Demand and staffed by craft</caption>
+                <div className="pcp-tbl-wrap">
+                  <table className="pcp-tbl pcp-tbl--compact">
+                    <caption className="pcp-sr-only">Demand and staffed by craft</caption>
                     <thead>
                       <tr>
                         <th scope="col">Craft</th>
                         {quarters.map((q) => (
-                          <th key={q.key} scope="col" className="b2-num">
+                          <th key={q.key} scope="col" className="pcp-num">
                             {q.label}
                           </th>
                         ))}
@@ -189,30 +186,30 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                       {byCraft.map(([craftId, vals]) => (
                         <tr key={craftId}>
                           <th scope="row">
-                            <span className="b2-row">
+                            <span className="pcp-row">
                               <CraftChip craft={idx.crafts.get(craftId)} />
                               {idx.crafts.get(craftId)?.name}
                             </span>
                           </th>
                           {vals.map((v, i) => (
-                            <td key={quarters[i].key} className="b2-num">
+                            <td key={quarters[i].key} className="pcp-num">
                               {fmt.fte(v)}
                             </td>
                           ))}
                         </tr>
                       ))}
-                      <tr className="b2-total">
+                      <tr className="pcp-tbl-total">
                         <th scope="row">Demand total</th>
                         {view.demandFte.map((v, i) => (
-                          <td key={quarters[i].key} className="b2-num">
+                          <td key={quarters[i].key} className="pcp-num">
                             {fmt.fte(v)}
                           </td>
                         ))}
                       </tr>
-                      <tr className="b2-total">
+                      <tr className="pcp-tbl-total">
                         <th scope="row">Staffed</th>
                         {view.staffedFte.map((v, i) => (
-                          <td key={quarters[i].key} className="b2-num">
+                          <td key={quarters[i].key} className="pcp-num">
                             {fmt.fte(v)}
                           </td>
                         ))}
@@ -232,41 +229,41 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                 ]}
                 format={(v) => fmt.fte(v)}
               />
-            </ChartFrame>
+            </ChartPanel>
           </div>
-          <div className="b2-col-5">
+          <div className="pcp-span-5">
             <Card
               title="Story-point calibration"
               subtitle="Points per sprint per FTE, used to turn Jira story points into FTE"
               actions={
                 cal &&
                 can('integrations.run') && (
-                  <Button size="sm" variant="subtle" icon={Pencil} onClick={() => setEditCal(true)}>
+                  <Button size="sm" variant="subtle" iconBefore={Pencil} onClick={() => setEditCal(true)}>
                     Edit
                   </Button>
                 )
               }
             >
               {cal ? (
-                <div className="b2-stack b2-stack--sm">
+                <div className="pcp-stack pcp-stack--md">
                   <div className="tr-cal">
                     <div>
-                      <div className="b2-caption">Current</div>
-                      <div className="tr-cal__value b2-tnum">{cal.pointsPerSprintPerFte}</div>
+                      <div className="pcp-caption pcp-text-tertiary">Current</div>
+                      <div className="tr-cal__value pcp-tnum">{cal.pointsPerSprintPerFte}</div>
                       {cal.isDefault && <StatusPill>Default</StatusPill>}
                     </div>
                     <div>
-                      <div className="b2-caption">Suggested</div>
-                      <div className="tr-cal__value b2-tnum">{cal.suggestedValue ?? '—'}</div>
+                      <div className="pcp-caption pcp-text-tertiary">Suggested</div>
+                      <div className="tr-cal__value pcp-tnum">{cal.suggestedValue ?? '—'}</div>
                       {cal.suggestedBasis && (
-                        <div className="b2-caption">
+                        <div className="pcp-caption pcp-text-tertiary">
                           Based on {cal.suggestedBasis.sprintNames.join(', ')}: {cal.suggestedBasis.points} pts,{' '}
                           {fmt.fte(cal.suggestedBasis.fte)} FTE
                         </div>
                       )}
                     </div>
                   </div>
-                  <dl className="b2-dl">
+                  <dl className="pcp-dl">
                     <dt>Sprint length</dt>
                     <dd>{cal.sprintLengthDays} days</dd>
                     <dt>Last changed</dt>
@@ -280,7 +277,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                   </dl>
                 </div>
               ) : (
-                <p className="b2-muted">
+                <p className="pcp-text-secondary">
                   No Jira data for this tribe yet; the workspace default (10 points per 14-day sprint per FTE) applies.
                 </p>
               )}
@@ -292,22 +289,22 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
           {grid.length === 0 ? (
             <EmptyState compact icon={Network} title="No projects in this tribe" />
           ) : (
-            <div className="b2-table-wrap">
-              <table className="b2-table">
-                <caption className="b2-sr-only">Projects in {tribe.name}</caption>
+            <div className="pcp-tbl-wrap">
+              <table className="pcp-tbl">
+                <caption className="pcp-sr-only">Projects in {tribe.name}</caption>
                 <thead>
                   <tr>
                     <th scope="col">Project</th>
                     <th scope="col">Stage</th>
                     <th scope="col">Dates</th>
                     <th scope="col">Demand lines</th>
-                    <th scope="col" className="b2-num">
+                    <th scope="col" className="pcp-num">
                       Demand
                     </th>
-                    <th scope="col" className="b2-num">
+                    <th scope="col" className="pcp-num">
                       Staffed
                     </th>
-                    <th scope="col" className="b2-num">
+                    <th scope="col" className="pcp-num">
                       Gap
                     </th>
                   </tr>
@@ -318,22 +315,25 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                     return (
                       <tr key={d.project.id}>
                         <th scope="row">
-                          <Link className="b2-link b2-strong" to={`${wsPath('org/projects')}?project=${d.project.id}`}>
+                          <Link
+                            className="pcp-link pcp-strong"
+                            to={`${wsPath('org/projects')}?project=${d.project.id}`}
+                          >
                             {d.project.name}
                           </Link>
                         </th>
                         <td>{d.project.stage && <StatusPill>{d.project.stage}</StatusPill>}</td>
-                        <td className="b2-tnum">{fmt.dateRange(d.project.startDate, d.project.endDate)}</td>
+                        <td className="pcp-tnum">{fmt.dateRange(d.project.startDate, d.project.endDate)}</td>
                         <td>
-                          <span className="b2-chips">
-                            {c.lines.length === 0 && <span className="b2-subtle">None</span>}
+                          <span className="pcp-chips">
+                            {c.lines.length === 0 && <span className="pcp-text-tertiary">None</span>}
                             {c.lines.map((l) => (
                               <span
                                 key={l.id}
                                 className={
                                   l.status === 'Confirmed'
-                                    ? 'b2-chip b2-chip--demand-confirmed'
-                                    : 'b2-chip b2-chip--demand-forecast'
+                                    ? 'pcp-craft-chip pcp-craft-chip--demand-confirmed'
+                                    : 'pcp-craft-chip pcp-craft-chip--demand-forecast'
                                 }
                               >
                                 {idx.crafts.get(l.craftId)?.short} {fmt.fte(l.fte)}
@@ -341,13 +341,13 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                             ))}
                           </span>
                         </td>
-                        <td className="b2-num">{fmt.fte(c.demandFte)}</td>
-                        <td className="b2-num">{fmt.fte(c.staffedFte)}</td>
-                        <td className="b2-num">
+                        <td className="pcp-num">{fmt.fte(c.demandFte)}</td>
+                        <td className="pcp-num">{fmt.fte(c.staffedFte)}</td>
+                        <td className="pcp-num">
                           {c.gapFte > 0.04 ? (
                             <span className="tr-gap">{fmt.fte(c.gapFte)}</span>
                           ) : (
-                            <span className="b2-subtle">0.0</span>
+                            <span className="pcp-text-tertiary">0.0</span>
                           )}
                         </td>
                       </tr>
@@ -363,15 +363,15 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
           {view.people.length === 0 ? (
             <EmptyState compact icon={Network} title="Nobody is booked on this tribe's projects" />
           ) : (
-            <div className="b2-table-wrap">
-              <table className="b2-table b2-table--compact">
-                <caption className="b2-sr-only">People serving {tribe.name}</caption>
+            <div className="pcp-tbl-wrap">
+              <table className="pcp-tbl pcp-tbl--compact">
+                <caption className="pcp-sr-only">People serving {tribe.name}</caption>
                 <thead>
                   <tr>
                     <th scope="col">Person</th>
                     <th scope="col">Above the table</th>
                     {quarters.map((q) => (
-                      <th key={q.key} scope="col" className="b2-num">
+                      <th key={q.key} scope="col" className="pcp-num">
                         {q.label}
                       </th>
                     ))}
@@ -383,7 +383,7 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                     .map((p) => (
                       <tr key={p.person.id}>
                         <th scope="row">
-                          <Link className="b2-rowlink" to={`${wsPath('org/people')}?person=${p.person.id}`}>
+                          <Link className="pcp-rowlink" to={`${wsPath('org/people')}?person=${p.person.id}`}>
                             <PersonLabel name={p.person.name} sub={p.person.role} />
                           </Link>
                         </th>
@@ -391,8 +391,8 @@ function TribeBody({ snapshot: s, tribe }: { snapshot: D.WorkspaceSnapshot; trib
                           <CraftChip craft={p.person.primaryCraft ? idx.crafts.get(p.person.primaryCraft) : null} />
                         </td>
                         {p.pctByQuarter.map((v, i) => (
-                          <td key={quarters[i].key} className="b2-num">
-                            {v > 0 ? fmt.pct(v) : <span className="b2-subtle">–</span>}
+                          <td key={quarters[i].key} className="pcp-num">
+                            {v > 0 ? fmt.pct(v) : <span className="pcp-text-tertiary">–</span>}
                           </td>
                         ))}
                       </tr>

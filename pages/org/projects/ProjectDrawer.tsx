@@ -1,6 +1,5 @@
 /** Project drawer (PPL-07#AC2–4, JI-06#AC1): Details, Demand, Staffing, Delivery, Links. `?project=<id>|new`. */
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Activity, CalendarRange, FolderKanban, Lock, Pencil, Users } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useMutations, useQuarters, useSession, useWorkspace } from '../../../state';
@@ -10,9 +9,12 @@ import {
   BookingStatePill,
   Button,
   CraftChip,
+  cx,
   Drawer,
   EmptyState,
+  fmt,
   FormField,
+  indexSnapshot,
   PersonLabel,
   ProvenanceTag,
   Select,
@@ -20,13 +22,12 @@ import {
   TabPanel,
   Tabs,
   TextField,
-  cx,
-  fmt,
-  indexSnapshot,
   useAction,
   useConfirm,
-  useWsPath,
-} from '../../plan/_kit';
+  Textarea,
+  LinkButton,
+} from '../../../components/ui';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { DemandCellDialog } from '../../plan/demand/DemandCellDialog';
 import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
 
@@ -78,7 +79,7 @@ export function ProjectDrawer({
         <EmptyState
           icon={FolderKanban}
           title="This project no longer exists"
-          body="It may have been removed. Close this panel to continue."
+          description="It may have been removed. Close this panel to continue."
         />
       </Drawer>
     );
@@ -90,7 +91,7 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
   const { me } = useSession();
   const m = useMutations();
   const { busy, run } = useAction();
-  const { confirm, dialog } = useConfirm();
+  const confirm = useConfirm();
   const isNew = !project;
   const canEdit = can('projects.write');
   const [tab, setTab] = useState<TabId>('details');
@@ -176,7 +177,7 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
                 .join(' · ')
         }
         onClose={() => void requestClose()}
-        tabs={<Tabs idPrefix="project" label="Project sections" items={tabs} value={tab} onChange={setTab} />}
+        tabs={<Tabs idBase="project" label="Project sections" tabs={tabs} value={tab} onChange={setTab} />}
         footer={
           canEdit && tab === 'details' ? (
             <>
@@ -188,65 +189,65 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
           ) : undefined
         }
       >
-        <TabPanel idPrefix="project" value={tab}>
+        <TabPanel idBase="project" tabId={tab}>
           {tab === 'details' && (
-            <div className="b2-stack">
+            <div className="pcp-stack">
               {lockedDates && (
                 <Banner tone="info" title="Imported from Planview">
                   Planview owns this project&apos;s existence and dates. Craft demand and PMO bookings are managed here.
                 </Banner>
               )}
-              <div className="b2-form">
-                <FormField label="Name" htmlFor="pj-name" error={tried ? errors.name : null} className="b2-form__full">
+              <div className="pcp-form-grid">
+                <FormField label="Name" id="pj-name" error={tried ? errors.name : null} className="pcp-form-grid__full">
                   <TextField
                     id="pj-name"
                     value={draft.name}
                     readOnly={ro}
                     invalid={tried && !!errors.name}
-                    onChange={(v) => setDraft({ ...draft, name: v })}
+                    onValueChange={(v) => setDraft({ ...draft, name: v })}
                   />
                 </FormField>
-                <FormField label="Tribe" htmlFor="pj-tribe" error={tried ? errors.tribeId : null}>
+                <FormField label="Tribe" id="pj-tribe" error={tried ? errors.tribeId : null}>
                   <Select
                     id="pj-tribe"
                     value={draft.tribeId}
                     disabled={ro}
                     placeholder="Choose a tribe"
                     invalid={tried && !!errors.tribeId}
-                    onChange={(v) => setDraft({ ...draft, tribeId: v })}
+                    onValueChange={(v) => setDraft({ ...draft, tribeId: v })}
                     options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: t.name }))}
                   />
                 </FormField>
-                <FormField label="Stage" htmlFor="pj-stage">
+                <FormField label="Stage" id="pj-stage">
                   <Select
                     id="pj-stage"
                     value={draft.stage}
                     disabled={ro}
-                    onChange={(v) => setDraft({ ...draft, stage: v })}
+                    onValueChange={(v) => setDraft({ ...draft, stage: v })}
                     options={fmt.STAGE_ORDER.map((x) => ({ value: x, label: x }))}
                   />
                 </FormField>
-                <FormField label="Status" htmlFor="pj-status">
+                <FormField label="Status" id="pj-status">
                   <Select
                     id="pj-status"
                     value={draft.status}
                     disabled={ro}
-                    onChange={(v) => setDraft({ ...draft, status: v as D.ProjectStatus })}
+                    onValueChange={(v) => setDraft({ ...draft, status: v as D.ProjectStatus })}
                     options={STATUSES.map((x) => ({ value: x, label: x }))}
                   />
                 </FormField>
-                <FormField label="Priority" htmlFor="pj-priority">
+                <FormField label="Priority" id="pj-priority">
                   <Select
                     id="pj-priority"
                     value={draft.priority}
                     disabled={ro}
-                    onChange={(v) => setDraft({ ...draft, priority: v as D.Priority })}
+                    onValueChange={(v) => setDraft({ ...draft, priority: v as D.Priority })}
                     options={PRIORITIES.map((x) => ({ value: x, label: x }))}
                   />
                 </FormField>
                 <FormField
                   label="Start date"
-                  htmlFor="pj-start"
+                  id="pj-start"
                   optional
                   help={lockedDates ? 'Managed in Planview' : undefined}
                 >
@@ -255,12 +256,12 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
                     type="date"
                     value={draft.startDate}
                     readOnly={ro || lockedDates}
-                    onChange={(v) => setDraft({ ...draft, startDate: v })}
+                    onValueChange={(v) => setDraft({ ...draft, startDate: v })}
                   />
                 </FormField>
                 <FormField
                   label="End date"
-                  htmlFor="pj-end"
+                  id="pj-end"
                   optional
                   error={tried ? errors.endDate : null}
                   help={lockedDates ? 'Managed in Planview' : undefined}
@@ -271,12 +272,12 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
                     value={draft.endDate}
                     readOnly={ro || lockedDates}
                     invalid={tried && !!errors.endDate}
-                    onChange={(v) => setDraft({ ...draft, endDate: v })}
+                    onValueChange={(v) => setDraft({ ...draft, endDate: v })}
                   />
                 </FormField>
                 <FormField
                   label="Initiated on"
-                  htmlFor="pj-init"
+                  id="pj-init"
                   optional
                   help="When the tribe initiated the project; drives demand capture alerts."
                 >
@@ -285,35 +286,35 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
                     type="date"
                     value={draft.initiatedOn}
                     readOnly={ro}
-                    onChange={(v) => setDraft({ ...draft, initiatedOn: v })}
+                    onValueChange={(v) => setDraft({ ...draft, initiatedOn: v })}
                   />
                 </FormField>
-                <FormField label="Owner" htmlFor="pj-owner" optional>
+                <FormField label="Owner" id="pj-owner" optional>
                   <Select
                     id="pj-owner"
                     value={draft.ownerUserId}
                     disabled={ro}
                     placeholder="No owner"
-                    onChange={(v) => setDraft({ ...draft, ownerUserId: v })}
+                    onValueChange={(v) => setDraft({ ...draft, ownerUserId: v })}
                     options={owners}
                   />
                 </FormField>
-                <FormField label="Jira project key" htmlFor="pj-jira" optional error={tried ? errors.jiraKey : null}>
+                <FormField label="Jira project key" id="pj-jira" optional error={tried ? errors.jiraKey : null}>
                   <TextField
                     id="pj-jira"
                     value={draft.jiraKey}
                     readOnly={ro}
                     invalid={tried && !!errors.jiraKey}
-                    onChange={(v) => setDraft({ ...draft, jiraKey: v.toUpperCase() })}
+                    onValueChange={(v) => setDraft({ ...draft, jiraKey: v.toUpperCase() })}
                   />
                 </FormField>
-                <FormField label="Description" htmlFor="pj-desc" optional className="b2-form__full">
-                  <TextField
+                <FormField label="Description" id="pj-desc" optional className="pcp-form-grid__full">
+                  <Textarea
                     id="pj-desc"
-                    multiline
+                    rows={3}
                     value={draft.description}
                     readOnly={ro}
-                    onChange={(v) => setDraft({ ...draft, description: v })}
+                    onValueChange={(v) => setDraft({ ...draft, description: v })}
                   />
                 </FormField>
               </div>
@@ -323,24 +324,27 @@ function Inner({ s, project, onClose }: { s: D.WorkspaceSnapshot; project: D.Pro
           {tab === 'staffing' && project && <StaffingTab s={s} project={project} />}
           {tab === 'delivery' && project && <DeliveryTab s={s} project={project} />}
           {tab === 'links' && project && (
-            <dl className="b2-dl">
+            <dl className="pcp-dl">
               <dt>Source</dt>
               <dd>
                 <ProvenanceTag source={project.source} />
               </dd>
               <dt>Planview id</dt>
-              <dd className="b2-tnum">{project.planviewId ?? <span className="b2-muted">Not linked</span>}</dd>
+              <dd className="pcp-tnum">
+                {project.planviewId ?? <span className="pcp-text-secondary">Not linked</span>}
+              </dd>
               <dt>Jira project</dt>
-              <dd className="b2-tnum">
+              <dd className="pcp-tnum">
                 {project.jiraKey ?? (
-                  <span className="b2-muted">Not linked. Add the key on Details, then map it in Jira & Planview.</span>
+                  <span className="pcp-text-secondary">
+                    Not linked. Add the key on Details, then map it in Jira & Planview.
+                  </span>
                 )}
               </dd>
             </dl>
           )}
         </TabPanel>
       </Drawer>
-      {dialog}
     </>
   );
 }
@@ -357,24 +361,24 @@ function DemandTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.ProjectD
   if (!row) return null;
   return (
     <>
-      <div className="b2-table-wrap">
-        <table className="b2-table">
-          <caption className="b2-sr-only">Demand by quarter</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl">
+          <caption className="pcp-sr-only">Demand by quarter</caption>
           <thead>
             <tr>
               <th scope="col">Quarter</th>
               <th scope="col">Craft lines</th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Demand
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Staffed
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Gap
               </th>
               <th scope="col">
-                <span className="b2-sr-only">Edit</span>
+                <span className="pcp-sr-only">Edit</span>
               </th>
             </tr>
           </thead>
@@ -382,17 +386,20 @@ function DemandTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.ProjectD
             {row.cells.map((c, i) => (
               <tr key={c.quarterKey}>
                 <th scope="row">
-                  {quarters[i]?.label} <span className="b2-caption">{quarters[i]?.calendarLabel}</span>
+                  {quarters[i]?.label}{' '}
+                  <span className="pcp-caption pcp-text-tertiary">{quarters[i]?.calendarLabel}</span>
                 </th>
                 <td>
-                  <span className="b2-chips">
-                    {c.lines.length === 0 && <span className="b2-subtle">None</span>}
+                  <span className="pcp-chips">
+                    {c.lines.length === 0 && <span className="pcp-text-tertiary">None</span>}
                     {c.lines.map((l) => (
                       <span
                         key={l.id}
                         className={cx(
-                          'b2-chip',
-                          l.status === 'Confirmed' ? 'b2-chip--demand-confirmed' : 'b2-chip--demand-forecast',
+                          'pcp-craft-chip',
+                          l.status === 'Confirmed'
+                            ? 'pcp-craft-chip--demand-confirmed'
+                            : 'pcp-craft-chip--demand-forecast',
                         )}
                         title={l.status}
                       >
@@ -401,18 +408,18 @@ function DemandTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.ProjectD
                     ))}
                   </span>
                 </td>
-                <td className="b2-num">{fmt.fte(c.demandFte)}</td>
-                <td className="b2-num">{fmt.fte(c.staffedFte)}</td>
-                <td className="b2-num">
+                <td className="pcp-num">{fmt.fte(c.demandFte)}</td>
+                <td className="pcp-num">{fmt.fte(c.staffedFte)}</td>
+                <td className="pcp-num">
                   {c.gapFte > 0.04 ? (
                     <span className="pj-gap">{fmt.fte(c.gapFte)}</span>
                   ) : (
-                    <span className="b2-subtle">0.0</span>
+                    <span className="pcp-text-tertiary">0.0</span>
                   )}
                 </td>
-                <td className="b2-num">
+                <td className="pcp-num">
                   {can('demand.write') && (
-                    <Button size="sm" variant="subtle" icon={Pencil} onClick={() => setEdit(c.quarterKey)}>
+                    <Button size="sm" variant="subtle" iconBefore={Pencil} onClick={() => setEdit(c.quarterKey)}>
                       Edit
                     </Button>
                   )}
@@ -445,19 +452,19 @@ function StaffingTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
       <EmptyState
         icon={Users}
         title="Nobody is booked yet"
-        body="Propose people from the Marketplace or add bookings on Allocations."
+        description="Propose people from the Marketplace or add bookings on Allocations."
       />
     );
   return (
-    <div className="b2-table-wrap">
-      <table className="b2-table b2-table--compact">
-        <caption className="b2-sr-only">People booked per quarter</caption>
+    <div className="pcp-tbl-wrap">
+      <table className="pcp-tbl pcp-tbl--compact">
+        <caption className="pcp-sr-only">People booked per quarter</caption>
         <thead>
           <tr>
             <th scope="col">Person</th>
             <th scope="col">Craft</th>
             {quarters.map((q) => (
-              <th key={q.key} scope="col" className="b2-num">
+              <th key={q.key} scope="col" className="pcp-num">
                 {q.label}
               </th>
             ))}
@@ -482,15 +489,15 @@ function StaffingTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
                   />
                 </td>
                 {r.cells.map((c) => (
-                  <td key={c.quarterKey} className="b2-num">
+                  <td key={c.quarterKey} className="pcp-num">
                     {c.pct > 0 ? (
-                      <span className="b2-row pj-cell">
-                        {c.partial && <CalendarRange size={12} aria-hidden="true" className="b2-subtle" />}
-                        {c.locked && <Lock size={12} aria-hidden="true" className="b2-subtle" />}
+                      <span className="pcp-row pj-cell">
+                        {c.partial && <CalendarRange size={12} aria-hidden="true" className="pcp-text-tertiary" />}
+                        {c.locked && <Lock size={12} aria-hidden="true" className="pcp-text-tertiary" />}
                         {fmt.pct(c.pct)}
                       </span>
                     ) : (
-                      <span className="b2-subtle">–</span>
+                      <span className="pcp-text-tertiary">–</span>
                     )}
                   </td>
                 ))}
@@ -519,50 +526,50 @@ function DeliveryTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
       <EmptyState
         icon={Activity}
         title="No Jira data for this project"
-        body={
+        description={
           can('integrations.run')
             ? 'Connect Jira and run a sync to see delivery.'
             : 'This project is not mapped to Jira yet.'
         }
         action={
           can('integrations.run') && (
-            <Link className="b2-btn b2-btn--secondary" to={`${wsPath('delivery/jira-planview')}?tab=mapping`}>
+            <LinkButton variant="secondary" to={`${wsPath('delivery/jira-planview')}?tab=mapping`}>
               Map Jira projects
-            </Link>
+            </LinkButton>
           )
         }
       />
     );
   const signal = deliverySignal(sig.plannedFte, sig.impliedFte);
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <div className="pj-signal">
         <div>
-          <div className="b2-caption">Planned FTE · QBR1</div>
-          <div className="pj-signal__value b2-tnum">{fmt.fte(sig.plannedFte)}</div>
+          <div className="pcp-caption pcp-text-tertiary">Planned FTE · QBR1</div>
+          <div className="pj-signal__value pcp-tnum">{fmt.fte(sig.plannedFte)}</div>
         </div>
         <div>
-          <div className="b2-caption">Jira-implied FTE · QBR1</div>
-          <div className="pj-signal__value b2-tnum">{fmt.fte(sig.impliedFte)}</div>
+          <div className="pcp-caption pcp-text-tertiary">Jira-implied FTE · QBR1</div>
+          <div className="pj-signal__value pcp-tnum">{fmt.fte(sig.impliedFte)}</div>
         </div>
         <StatusPill tone={signal.kind === 'inline' ? 'success' : 'info'}>{signal.label}</StatusPill>
       </div>
-      <p className="b2-caption">
+      <p className="pcp-caption pcp-text-tertiary">
         Signal, not a timesheet: story points ÷ the tribe&apos;s calibration (points per sprint per FTE).
       </p>
       {sprints.length > 0 && (
-        <table className="b2-table b2-table--compact">
-          <caption className="b2-caption">Last closed sprints for the tribe</caption>
+        <table className="pcp-tbl pcp-tbl--compact">
+          <caption className="pcp-caption pcp-text-tertiary">Last closed sprints for the tribe</caption>
           <thead>
             <tr>
               <th scope="col">Sprint</th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Points done
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Implied FTE
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Planned FTE
               </th>
             </tr>
@@ -572,13 +579,13 @@ function DeliveryTab({ s, project }: { s: D.WorkspaceSnapshot; project: D.Projec
               <tr key={r.key}>
                 <th scope="row">
                   {r.sprintName}{' '}
-                  <span className="b2-caption">
+                  <span className="pcp-caption pcp-text-tertiary">
                     {fmt.dateShort(r.from)} – {fmt.dateShort(r.to)}
                   </span>
                 </th>
-                <td className="b2-num">{r.pointsDone}</td>
-                <td className="b2-num">{fmt.fte(r.impliedFte)}</td>
-                <td className="b2-num">{fmt.fte(r.plannedFte)}</td>
+                <td className="pcp-num">{r.pointsDone}</td>
+                <td className="pcp-num">{fmt.fte(r.impliedFte)}</td>
+                <td className="pcp-num">{fmt.fte(r.plannedFte)}</td>
               </tr>
             ))}
           </tbody>

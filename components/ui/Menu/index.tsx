@@ -20,7 +20,8 @@ import './menu.css';
 export type MenuItem =
   | {
       type?: 'item';
-      id: string;
+      /** Stable key; defaults to the label. */
+      id?: string;
       label: string;
       icon?: LucideIcon;
       /** Called on Enter/click. Use `to` for navigation instead. */
@@ -38,6 +39,8 @@ export type MenuItem =
       description?: string;
       /** Shows a check mark (selected option). */
       selected?: boolean;
+      /** Draws a separator above this item. */
+      separatorBefore?: boolean;
     }
   | { type: 'separator'; id: string }
   | { type: 'header'; id: string; label: string; description?: string };
@@ -229,12 +232,13 @@ export function Menu({
                   </div>
                 );
               const needsDivider =
-                item.danger && index > 0 && items[index - 1].type !== 'separator' && !items[index - 1].type
+                (item.separatorBefore && index > 0) ||
+                (item.danger && index > 0 && items[index - 1].type !== 'separator' && !items[index - 1].type
                   ? !(items[index - 1] as ActionItem).danger
-                  : false;
+                  : false);
               return (
                 <MenuRow
-                  key={item.id}
+                  key={item.id ?? `${index}-${item.label}`}
                   item={item}
                   index={index}
                   active={index === active}

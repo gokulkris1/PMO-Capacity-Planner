@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useQuarters } from '../../../state';
 import { Activity } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { Card, ChartFrame, EmptyState, GroupedBarChart, StatusPill, fmt } from '../../plan/_kit';
+import { Card, ChartPanel, EmptyState, fmt, GroupedBarChart, StatusPill } from '../../../components/ui';
 import { deliverySignalOf as deliverySignal, type DeliverySource } from '../../../state';
 
 export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
@@ -24,13 +24,13 @@ export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
         <EmptyState
           icon={Activity}
           title="No delivery data yet"
-          body="Map Jira projects to planner projects and run a sync to see story points per tribe."
+          description="Map Jira projects to planner projects and run a sync to see story points per tribe."
         />
       </Card>
     );
   return (
-    <div className="b2-stack">
-      <ChartFrame
+    <div className="pcp-stack">
+      <ChartPanel
         title={`Planned vs Jira-implied FTE · ${qLabel(latestQ)}`}
         caption="Average per sprint in the quarter; implied FTE = points done ÷ tribe calibration · signal, not a timesheet"
         legend={[
@@ -49,7 +49,7 @@ export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
           ]}
           format={(v) => fmt.fte(v)}
         />
-      </ChartFrame>
+      </ChartPanel>
       <Card title="Story points by tribe and quarter" subtitle="From stored sync snapshots; no live Jira call" flush>
         <QuarterTable rows={rows} tribes={tribes} />
       </Card>
@@ -59,26 +59,26 @@ export function OverviewTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSn
 
 function QuarterTable({ rows, tribes }: { rows: D.DeliveryRowDTO[]; tribes: Map<string, string> }) {
   return (
-    <div className="b2-table-wrap">
-      <table className="b2-table b2-table--compact">
-        <caption className="b2-sr-only">Story points and implied FTE by tribe and quarter</caption>
+    <div className="pcp-tbl-wrap">
+      <table className="pcp-tbl pcp-tbl--compact">
+        <caption className="pcp-sr-only">Story points and implied FTE by tribe and quarter</caption>
         <thead>
           <tr>
             <th scope="col">Tribe</th>
             <th scope="col">Quarter</th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Points committed
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Points done
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Issues done
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Implied FTE
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Planned FTE
             </th>
             <th scope="col">Signal</th>
@@ -90,12 +90,12 @@ function QuarterTable({ rows, tribes }: { rows: D.DeliveryRowDTO[]; tribes: Map<
             return (
               <tr key={r.key}>
                 <th scope="row">{tribes.get(r.tribeId ?? '') ?? 'Unmapped'}</th>
-                <td className="b2-tnum">{qLabel(r.quarterKey)}</td>
-                <td className="b2-num">{r.pointsTotal}</td>
-                <td className="b2-num">{r.pointsDone}</td>
-                <td className="b2-num">{r.issuesDone}</td>
-                <td className="b2-num">{fmt.fte(r.impliedFte)}</td>
-                <td className="b2-num">{fmt.fte(r.plannedFte)}</td>
+                <td className="pcp-tnum">{qLabel(r.quarterKey)}</td>
+                <td className="pcp-num">{r.pointsTotal}</td>
+                <td className="pcp-num">{r.pointsDone}</td>
+                <td className="pcp-num">{r.issuesDone}</td>
+                <td className="pcp-num">{fmt.fte(r.impliedFte)}</td>
+                <td className="pcp-num">{fmt.fte(r.plannedFte)}</td>
                 <td>
                   <StatusPill tone={sig.kind === 'inline' ? 'success' : 'info'} title={sig.label}>
                     {sig.kind === 'inline' ? 'In line' : sig.kind === 'more' ? 'More effort' : 'Less effort'}

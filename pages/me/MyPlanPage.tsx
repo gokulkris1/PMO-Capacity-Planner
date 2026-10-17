@@ -18,25 +18,26 @@ import {
   CraftChip,
   Dialog,
   EmptyState,
+  fmt,
   FormField,
+  indexSnapshot,
   KpiTile,
-  PageBody,
   PageHeader,
   ProvenanceTag,
   QuarterLoadBar,
+  relativeLoadSplit,
   StatusPill,
-  TextField,
-  fmt,
-  indexSnapshot,
   useAction,
-} from '../plan/_kit';
+  Textarea,
+} from '../../components/ui';
+import { PageBody } from '../../components/shell/PageBody';
 import { PersonDrawer } from '../org/people/PersonDrawer';
 import { OfferDialog } from '../plan/marketplace/MarketplacePage';
 import './me.css';
 
 export default function MyPlanPage() {
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageBody skeleton="kpi" label="your plan">
         {(s) => <MyPlanBody snapshot={s} />}
       </PageBody>
@@ -59,12 +60,12 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   if (!person || !row) {
     return (
       <>
-        <PageHeader crumbs={[{ label: 'My plan' }]} title="My plan" />
+        <PageHeader breadcrumbs={[{ label: 'My plan' }]} title="My plan" />
         <Card>
           <EmptyState
             icon={CircleUserRound}
             title="Your login isn't linked to a person"
-            body="Your login isn't linked to a person in this workspace. Ask a Planner to link you."
+            description="Your login isn't linked to a person in this workspace. Ask a Planner to link you."
           />
         </Card>
       </>
@@ -88,19 +89,19 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   return (
     <>
       <PageHeader
-        crumbs={[{ label: 'My plan' }]}
+        breadcrumbs={[{ label: 'My plan' }]}
         title="My plan"
         description={`${person.name} · ${person.role}${chapter ? ` · ${chapter.name}` : ''} · target ${person.targetUtil}%`}
         actions={
           canOffer && (
-            <Button variant="primary" icon={Store} onClick={() => setOfferQ(quarters[0] ?? null)}>
+            <Button variant="primary" iconBefore={Store} onClick={() => setOfferQ(quarters[0] ?? null)}>
               Offer my capacity
             </Button>
           )
         }
       />
-      <div className="b2-stack">
-        <div className="b2-kpis" role="list" aria-label="My load by quarter">
+      <div className="pcp-stack">
+        <div className="pcp-kpi-grid" role="list" aria-label="My load by quarter">
           {row.quarters.map((q, i) => (
             <div role="listitem" key={q.key}>
               <KpiTile
@@ -108,14 +109,14 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 value={fmt.pct(q.relativePct)}
                 pill={<BandPill band={q.band} />}
                 delta={`${fmt.pct(q.loadPct)} booked of ${fmt.pct(person.targetUtil)} target`}
-                basis={fmt.quarterCaption(quarters[i])}
+                caption={fmt.quarterCaption(quarters[i])}
               />
             </div>
           ))}
         </div>
 
-        <div className="b2-grid-12">
-          <div className="b2-col-8 b2-stack">
+        <div className="pcp-grid-xl">
+          <div className="pcp-span-8 pcp-stack">
             <Card
               title="Proposed to you"
               subtitle="Accept to confirm the booking; decline with an optional reason"
@@ -129,17 +130,17 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   compact
                   icon={Inbox}
                   title="No confirmed bookings"
-                  body="Accepted proposals and planned work will show here."
+                  description="Accepted proposals and planned work will show here."
                 />
               ) : (
-                <div className="b2-table-wrap">
-                  <table className="b2-table b2-table--compact">
-                    <caption className="b2-sr-only">My confirmed bookings</caption>
+                <div className="pcp-tbl-wrap">
+                  <table className="pcp-tbl pcp-tbl--compact">
+                    <caption className="pcp-sr-only">My confirmed bookings</caption>
                     <thead>
                       <tr>
                         <th scope="col">Project</th>
                         <th scope="col">Craft</th>
-                        <th scope="col" className="b2-num">
+                        <th scope="col" className="pcp-num">
                           %
                         </th>
                         <th scope="col">Dates</th>
@@ -154,8 +155,10 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                         return (
                           <tr key={a.id}>
                             <th scope="row">
-                              <span className="b2-strong">{p?.name}</span>{' '}
-                              <span className="b2-caption">{idx.tribes.get(p?.tribeId ?? '')?.name}</span>
+                              <span className="pcp-strong">{p?.name}</span>{' '}
+                              <span className="pcp-caption pcp-text-tertiary">
+                                {idx.tribes.get(p?.tribeId ?? '')?.name}
+                              </span>
                             </th>
                             <td>
                               <CraftChip
@@ -164,8 +167,8 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                                 proficiency={sec?.proficiency}
                               />
                             </td>
-                            <td className="b2-num">{a.percentage}%</td>
-                            <td className="b2-tnum">
+                            <td className="pcp-num">{a.percentage}%</td>
+                            <td className="pcp-tnum">
                               {fmt.dateRange(a.startDate ?? p?.startDate, a.endDate ?? p?.endDate)}
                             </td>
                             <td>
@@ -180,7 +183,7 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               )}
             </Card>
           </div>
-          <div className="b2-col-4 b2-stack">
+          <div className="pcp-span-4 pcp-stack">
             <Card
               title="My crafts"
               actions={
@@ -188,7 +191,7 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <Button
                     size="sm"
                     variant="subtle"
-                    icon={Pencil}
+                    iconBefore={Pencil}
                     disabled={!!pending}
                     onClick={() => setDrawer('crafts')}
                   >
@@ -197,17 +200,17 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 )
               }
             >
-              <div className="b2-stack b2-stack--sm">
+              <div className="pcp-stack pcp-stack--md">
                 <div className="me-crafts">
-                  <span className="b2-field__label">Above the table</span>
-                  <span className="b2-row">
+                  <span className="pcp-field__label">Above the table</span>
+                  <span className="pcp-row">
                     <CraftChip craft={person.primaryCraft ? idx.crafts.get(person.primaryCraft) : null} />
                     <span>{person.primaryCraft ? idx.crafts.get(person.primaryCraft)?.name : 'Not set'}</span>
                   </span>
                 </div>
                 <div className="me-crafts">
-                  <span className="b2-field__label">Below the table</span>
-                  {person.secondaryCrafts.length === 0 && <span className="b2-muted">None yet</span>}
+                  <span className="pcp-field__label">Below the table</span>
+                  {person.secondaryCrafts.length === 0 && <span className="pcp-text-secondary">None yet</span>}
                   <ul className="me-craftlist">
                     {person.secondaryCrafts.map((c) => (
                       <li key={c.craftId}>
@@ -217,8 +220,8 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                           proficiency={c.proficiency}
                           maxPct={c.maxPct}
                         />
-                        <span className="b2-ellipsis">{idx.crafts.get(c.craftId)?.name}</span>
-                        <span className="b2-caption b2-tnum">up to {c.maxPct}%</span>
+                        <span className="pcp-truncate">{idx.crafts.get(c.craftId)?.name}</span>
+                        <span className="pcp-caption pcp-text-tertiary pcp-tnum">up to {c.maxPct}%</span>
                       </li>
                     ))}
                   </ul>
@@ -244,11 +247,8 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <li key={q.key}>
                     <span className="me-load__q">{quarters[i]?.label}</span>
                     <QuarterLoadBar
-                      above={q.above}
-                      below={q.below}
-                      undeclared={q.undeclared}
-                      target={person.targetUtil}
-                      label={quarters[i]?.label ?? q.key}
+                      quarterLabel={quarters[i]?.label ?? q.key}
+                      {...relativeLoadSplit(q, person.targetUtil)}
                     />
                   </li>
                 ))}
@@ -264,9 +264,9 @@ function MyPlanBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       {o ? (
                         <StatusPill tone="brand">Offered {o.pct}%</StatusPill>
                       ) : (
-                        <span className="b2-subtle">Not offered</span>
+                        <span className="pcp-text-tertiary">Not offered</span>
                       )}
-                      <span className="b2-spacer" />
+                      <span className="pcp-spacer" />
                       {canOffer && (
                         <Button size="sm" variant="subtle" onClick={() => setOfferQ(q)}>
                           {o ? 'Change' : 'Offer'}
@@ -314,12 +314,12 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
         compact
         icon={Send}
         title="Nothing proposed to you"
-        body="When a Planner proposes you for a project, you can accept or decline it here."
+        description="When a Planner proposes you for a project, you can accept or decline it here."
       />
     );
   return (
     <>
-      <ul className="b2-list me-proposals">
+      <ul className="pcp-list me-proposals">
         {proposals.map((a) => {
           const p = idx.projects.get(a.projectId);
           const person = idx.people.get(a.resourceId);
@@ -329,11 +329,11 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
             <li key={a.id}>
               <Avatar name={p?.name ?? '?'} size={32} />
               <div className="me-proposals__main">
-                <span className="b2-row">
-                  <span className="b2-strong">{p?.name}</span>
+                <span className="pcp-row">
+                  <span className="pcp-strong">{p?.name}</span>
                   <BookingStatePill state="tentative" />
                 </span>
-                <span className="b2-caption">
+                <span className="pcp-caption pcp-text-tertiary">
                   {idx.tribes.get(p?.tribeId ?? '')?.name ?? 'No tribe'} · {fmt.dateRange(a.startDate, a.endDate)} ·
                   proposed by {a.proposedBy?.name ?? 'a Planner'} {fmt.relative(a.proposedAt, s.serverTime)}
                 </span>
@@ -343,10 +343,10 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
                 via={craftId === person?.primaryCraft ? 'above' : sec ? 'below' : 'undeclared'}
                 proficiency={sec?.proficiency}
               />
-              <span className="b2-strong b2-tnum me-proposals__pct">{a.percentage}%</span>
+              <span className="pcp-strong pcp-tnum me-proposals__pct">{a.percentage}%</span>
               <Button
                 size="sm"
-                icon={X}
+                iconBefore={X}
                 disabled={busy !== null}
                 onClick={() => {
                   setReason('');
@@ -358,7 +358,7 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
               <Button
                 size="sm"
                 variant="primary"
-                icon={Check}
+                iconBefore={Check}
                 loading={busy === `a${a.id}`}
                 onClick={() =>
                   void run(`a${a.id}`, () => m.allocations.respond(a.id, { decision: 'accept' }), {
@@ -402,13 +402,8 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
           </>
         }
       >
-        <FormField
-          label="Reason"
-          htmlFor="me-reason"
-          optional
-          help="For example: already committed elsewhere that quarter."
-        >
-          <TextField id="me-reason" multiline value={reason} onChange={setReason} />
+        <FormField label="Reason" id="me-reason" optional help="For example: already committed elsewhere that quarter.">
+          <Textarea id="me-reason" rows={3} value={reason} onValueChange={setReason} />
         </FormField>
       </Dialog>
     </>

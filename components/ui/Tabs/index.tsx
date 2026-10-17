@@ -5,18 +5,18 @@ import { Icon } from '../Icon';
 import { cx } from '../internal/utils';
 import './tabs.css';
 
-export interface TabItem {
-  id: string;
+export interface TabItem<T extends string = string> {
+  id: T;
   label: string;
   /** Optional count badge after the label (primary-subtle). */
   count?: number;
   disabled?: boolean;
 }
 
-export interface TabsProps {
-  tabs: TabItem[];
-  value: string;
-  onChange: (id: string) => void;
+export interface TabsProps<T extends string = string> {
+  tabs: TabItem<NoInfer<T>>[];
+  value: T;
+  onChange: (id: NoInfer<T>) => void;
   /** Accessible name of the tab list. */
   label: string;
   /** Prefix for tab/panel ids; pass it when you render <TabPanel idBase=… /> (sets aria-controls). */
@@ -25,12 +25,12 @@ export interface TabsProps {
 }
 
 /** Underline tabs, the only tab style in the app (DESIGN_SYSTEM §8.5). Arrow keys move, Home/End jump. */
-export function Tabs({ tabs, value, onChange, label, idBase, className }: TabsProps) {
+export function Tabs<T extends string = string>({ tabs, value, onChange, label, idBase, className }: TabsProps<T>) {
   const gen = useId();
   const base = idBase ?? gen;
   const listRef = useRef<HTMLDivElement>(null);
 
-  const focusTab = (id: string) => {
+  const focusTab = (id: T) => {
     const el = listRef.current?.querySelector<HTMLButtonElement>(`[data-tab-id="${CSS.escape(id)}"]`);
     el?.focus();
   };
@@ -38,7 +38,7 @@ export function Tabs({ tabs, value, onChange, label, idBase, className }: TabsPr
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     const enabled = tabs.filter((t) => !t.disabled);
     const index = enabled.findIndex((t) => t.id === value);
-    let next: TabItem | undefined;
+    let next: TabItem<T> | undefined;
     if (e.key === 'ArrowRight') next = enabled[(index + 1) % enabled.length];
     else if (e.key === 'ArrowLeft') next = enabled[(index - 1 + enabled.length) % enabled.length];
     else if (e.key === 'Home') next = enabled[0];

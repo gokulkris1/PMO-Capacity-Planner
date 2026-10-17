@@ -65,6 +65,8 @@ export {
   Tag,
   Badge,
   Kbd,
+  BandCell,
+  BookingStatePill,
   type StatusTone,
   type StatusPillProps,
   type BandPillProps,
@@ -74,7 +76,7 @@ export {
   type TagProps,
   type BadgeProps,
 } from './StatusPill';
-export { Avatar, initials, type AvatarProps, type AvatarSize } from './Avatar';
+export { Avatar, PersonLabel, initials, type AvatarProps, type AvatarSize } from './Avatar';
 export { Card, Panel, type CardProps } from './Card';
 export { KpiTile, KpiGrid, type KpiTileProps, type KpiDelta } from './KpiTile';
 export { EmptyState, FilteredEmptyState, type EmptyStateProps } from './EmptyState';
@@ -94,7 +96,13 @@ export {
 } from './Dialog';
 export { Drawer, type DrawerProps } from './Drawer';
 export { ToastProvider, useToast, errorToastText, type ToastApi, type ToastOptions, type ToastTone } from './Toast';
-export { QuarterLoadBar, HeatStrip, type QuarterLoadBarProps, type HeatStripCell } from './QuarterLoadBar';
+export {
+  QuarterLoadBar,
+  HeatStrip,
+  relativeLoadSplit,
+  type QuarterLoadBarProps,
+  type HeatStripCell,
+} from './QuarterLoadBar';
 export {
   DataTable,
   CellButton,
@@ -115,5 +123,31 @@ export {
   type FilterChipProps,
   type SearchFieldProps,
 } from './FilterBar';
-export { useDocumentTitle, useUrlParam, useMediaQuery, formatPct, formatFte, formatDate, PRODUCT_NAME } from './hooks';
+export {
+  useDocumentTitle,
+  useUrlParam,
+  useQueryParam,
+  useElementWidth,
+  useMediaQuery,
+  formatPct,
+  formatFte,
+  formatDate,
+  PRODUCT_NAME,
+} from './hooks';
+export { useAction, type ActionOptions } from './useAction';
+export { useSort, SortTh, type TableSort } from './Table';
+export * as fmt from './format';
+export { indexSnapshot, toCsv, downloadText, errorMessage, numOrNull, numText, type SnapshotIndex } from './format';
+/** Lightweight charts (no Recharts). The Recharts kit stays in 'components/ui/charts'. */
+export {
+  ChartPanel,
+  Legend,
+  StackedBarChart,
+  GroupedBarChart,
+  TrendChart,
+  niceScale,
+  type SwatchKind,
+  type StackColumn,
+  type StackSegment,
+} from './charts/lite';
 export { cx } from './internal/utils';

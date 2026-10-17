@@ -4,7 +4,7 @@ import { CircleAlert, CircleCheck, Download, FileUp } from 'lucide-react';
 import type * as D from '../../../../shared/contracts/dto';
 import type { PeopleImportResponse } from '../../../../shared/contracts/api';
 import { useMutations } from '../../../../state';
-import { Banner, Button, Checkbox, Dialog, StatusPill, downloadText, errorMessage } from '../../../plan/_kit';
+import { Banner, Button, Checkbox, Dialog, downloadText, errorMessage, StatusPill } from '../../../../components/ui';
 import { peopleTemplateCsv, validatePeopleCsv } from '../../../../utils/csvPeople';
 
 export function ImportPeopleDialog({
@@ -72,13 +72,13 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
           </Button>
         }
       >
-        <div className="b2-stack b2-stack--sm">
+        <div className="pcp-stack pcp-stack--md">
           <Banner
             tone={result.errors.length ? 'warning' : 'success'}
             title={`${result.created} created, ${result.updated} updated, ${result.skipped} skipped`}
           />
           {result.errors.length > 0 && (
-            <ul className="b2-list">
+            <ul className="pcp-list">
               {result.errors.map((e) => (
                 <li key={e.row}>
                   Row {e.row}: {e.message}
@@ -111,32 +111,36 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
-        <p className="b2-muted">
+      <div className="pcp-stack pcp-stack--md">
+        <p className="pcp-text-secondary">
           People are matched by email, then by name, and updated; everyone else is created. Nothing is saved until you
           import.
         </p>
-        <div className="b2-row b2-row--wrap">
-          <Button size="sm" icon={Download} onClick={() => downloadText('people-template.csv', peopleTemplateCsv())}>
+        <div className="pcp-row pcp-row--wrap">
+          <Button
+            size="sm"
+            iconBefore={Download}
+            onClick={() => downloadText('people-template.csv', peopleTemplateCsv())}
+          >
             Download template
           </Button>
-          <label className="b2-btn b2-btn--secondary b2-btn--sm ip-file">
+          <label className="pcp-button pcp-button--secondary pcp-button--sm ip-file">
             <FileUp size={16} strokeWidth={1.75} aria-hidden="true" />
             {fileName ? 'Choose another file' : 'Choose CSV file'}
             <input
               type="file"
               accept=".csv,text/csv"
-              className="b2-sr-only"
+              className="pcp-sr-only"
               onChange={(e) => onFile(e.target.files?.[0])}
             />
           </label>
-          {fileName && <span className="b2-caption">{fileName}</span>}
+          {fileName && <span className="pcp-caption pcp-text-tertiary">{fileName}</span>}
         </div>
         {error && <Banner tone="danger">{error}</Banner>}
         {parsed?.headerError && <Banner tone="danger">{parsed.headerError}</Banner>}
         {parsed && !parsed.headerError && (
           <>
-            <div className="b2-row">
+            <div className="pcp-row">
               <StatusPill tone="success" icon={CircleCheck}>
                 {valid.length} valid
               </StatusPill>
@@ -146,12 +150,12 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
                 </StatusPill>
               )}
             </div>
-            <div className="b2-table-wrap ip-preview">
-              <table className="b2-table b2-table--compact">
-                <caption className="b2-sr-only">Import preview</caption>
+            <div className="pcp-tbl-wrap ip-preview">
+              <table className="pcp-tbl pcp-tbl--compact">
+                <caption className="pcp-sr-only">Import preview</caption>
                 <thead>
                   <tr>
-                    <th scope="col" className="b2-num">
+                    <th scope="col" className="pcp-num">
                       Row
                     </th>
                     <th scope="col">Name</th>
@@ -163,7 +167,7 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
                 <tbody>
                   {parsed.rows.map((r) => (
                     <tr key={r.line}>
-                      <td className="b2-num">{r.line}</td>
+                      <td className="pcp-num">{r.line}</td>
                       <th scope="row">{r.row.name || '—'}</th>
                       <td>{r.row.email ?? '—'}</td>
                       <td>{r.match === 'update' ? 'Update' : 'Create'}</td>
@@ -171,7 +175,7 @@ function Inner({ s, onClose }: { s: D.WorkspaceSnapshot; onClose(): void }) {
                         {r.errors.length === 0 ? (
                           <StatusPill tone="success">Valid</StatusPill>
                         ) : (
-                          <span className="b2-field__error">
+                          <span className="pcp-field__error">
                             <CircleAlert size={12} strokeWidth={2} aria-hidden="true" />
                             {r.errors.join('; ')}
                           </span>

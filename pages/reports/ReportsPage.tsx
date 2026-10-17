@@ -11,15 +11,15 @@ import {
   BandCell,
   Button,
   Card,
-  EmptyState,
-  PageBody,
-  PageHeader,
-  SegmentedControl,
   downloadText,
+  EmptyState,
   errorMessage,
   fmt,
-  toast,
-} from '../plan/_kit';
+  PageHeader,
+  SegmentedControl,
+  useToast,
+} from '../../components/ui';
+import { PageBody } from '../../components/shell/PageBody';
 import { useDelivery } from '../../state';
 import {
   bookingsCsv,
@@ -36,9 +36,9 @@ import './reports.css';
 export default function ReportsPage() {
   const { can } = useWorkspace();
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Reports' }]}
+        breadcrumbs={[{ label: 'Reports' }]}
         title="Reports"
         description="The QBR pack and CSV exports for the next four quarters, plus utilisation and demand at a glance."
       />
@@ -49,7 +49,7 @@ export default function ReportsPage() {
           <EmptyState
             icon={Lock}
             title="You don't have access to reports"
-            body="Ask a PMO Admin for a role that includes exports."
+            description="Ask a PMO Admin for a role that includes exports."
           />
         </Card>
       )}
@@ -58,6 +58,7 @@ export default function ReportsPage() {
 }
 
 function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
+  const toast = useToast();
   const { thresholds, org, workspace } = useWorkspace();
   const quarters = useQuarters();
   const delivery = useDelivery(s);
@@ -72,9 +73,9 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       downloadText(`${name}-${stamp}.csv`, make());
       // RP-04#AC4: exports are audited; a failed audit call never blocks the download.
       void recordExport({ kind: name, format: 'csv' }).catch(() => undefined);
-      toast({ tone: 'success', title: 'Download started', body: `${name}-${stamp}.csv` });
+      toast.show({ tone: 'success', title: 'Download started', body: `${name}-${stamp}.csv` });
     } catch (e) {
-      toast({ tone: 'error', title: 'Export failed', body: errorMessage(e) });
+      toast.show({ tone: 'error', title: 'Export failed', body: errorMessage(e) });
     }
   };
   const pdf = async () => {
@@ -88,9 +89,9 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         filename: `qbr-pack-${quarters[0]?.key ?? stamp}.pdf`,
       });
       void recordExport({ kind: 'qbr-pack', format: 'pdf' }).catch(() => undefined);
-      toast({ tone: 'success', title: 'QBR pack downloaded' });
+      toast.show({ tone: 'success', title: 'QBR pack downloaded' });
     } catch (e) {
-      toast({ tone: 'error', title: 'The QBR pack could not be generated', body: errorMessage(e) });
+      toast.show({ tone: 'error', title: 'The QBR pack could not be generated', body: errorMessage(e) });
     } finally {
       setBusy(null);
     }
@@ -157,7 +158,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const med = medianHours(tts);
 
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <div className="rp-grid" role="list" aria-label="Exports">
         {exports.map((e) => {
           const Icon = e.icon;
@@ -172,7 +173,7 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 <Button
                   variant={e.primary ? 'primary' : 'secondary'}
                   size="sm"
-                  icon={Download}
+                  iconBefore={Download}
                   loading={busy === e.key}
                   onClick={e.run}
                 >
@@ -189,34 +190,34 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         subtitle="Load as % of target per group and quarter"
         flush
         actions={
-          <SegmentedControl
+          <SegmentedControl<'tribe' | 'chapter' | 'craft'>
             size="sm"
             label="Group by"
             value={pivot}
             onChange={setPivot}
-            items={[
-              { id: 'tribe', label: 'Tribe' },
-              { id: 'chapter', label: 'Chapter' },
-              { id: 'craft', label: 'Craft' },
+            options={[
+              { value: 'tribe', label: 'Tribe' },
+              { value: 'chapter', label: 'Chapter' },
+              { value: 'craft', label: 'Craft' },
             ]}
           />
         }
       >
-        <div className="b2-table-wrap">
-          <table className="b2-table b2-table--compact">
-            <caption className="b2-sr-only">Utilisation by {pivot}</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl pcp-tbl--compact">
+            <caption className="pcp-sr-only">Utilisation by {pivot}</caption>
             <thead>
               <tr>
                 <th scope="col">{pivot[0].toUpperCase() + pivot.slice(1)}</th>
                 {quarters.map((q) => (
-                  <th key={q.key} scope="col" className="b2-num" title={fmt.quarterTooltip(q)}>
+                  <th key={q.key} scope="col" className="pcp-num" title={fmt.quarterTooltip(q)}>
                     {q.label}
                   </th>
                 ))}
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Supply {quarters[0]?.label}
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Demand {quarters[0]?.label}
                 </th>
               </tr>
@@ -226,15 +227,15 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 { id: '__squad', label: 'Squad', points: outlook.squad },
                 ...outlook.rows.filter((r) => r.points.some((p) => p.supplyFte > 0)),
               ].map((r) => (
-                <tr key={r.id} className={r.id === '__squad' ? 'b2-total' : undefined}>
+                <tr key={r.id} className={r.id === '__squad' ? 'pcp-tbl-total' : undefined}>
                   <th scope="row">{r.label}</th>
                   {r.points.map((p, i) => (
-                    <td key={p.quarterKey} className="b2-num rp-util">
+                    <td key={p.quarterKey} className="pcp-num rp-util">
                       <BandCell value={p.utilisationPct} band={p.band} label={`${r.label} ${quarters[i]?.label}`} />
                     </td>
                   ))}
-                  <td className="b2-num">{fmt.fte(r.points[0]?.supplyFte)}</td>
-                  <td className="b2-num">{fmt.fte(r.points[0]?.demandFte)}</td>
+                  <td className="pcp-num">{fmt.fte(r.points[0]?.supplyFte)}</td>
+                  <td className="pcp-num">{fmt.fte(r.points[0]?.demandFte)}</td>
                 </tr>
               ))}
             </tbody>
@@ -243,25 +244,25 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
       </Card>
 
       <Card title="Demand report" subtitle="Captured demand against confirmed staffing, all projects" flush>
-        <div className="b2-table-wrap">
-          <table className="b2-table b2-table--compact">
-            <caption className="b2-sr-only">Demand summary by quarter</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl pcp-tbl--compact">
+            <caption className="pcp-sr-only">Demand summary by quarter</caption>
             <thead>
               <tr>
                 <th scope="col">Quarter</th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Demand FTE
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Staffed FTE
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Proposed FTE
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Gap FTE
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Projects with a gap
                 </th>
               </tr>
@@ -273,27 +274,27 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 return (
                   <tr key={q.key}>
                     <th scope="row">
-                      {q.label} <span className="b2-caption">{q.calendarLabel}</span>
+                      {q.label} <span className="pcp-caption pcp-text-tertiary">{q.calendarLabel}</span>
                     </th>
-                    <td className="b2-num">{fmt.fte(cells.reduce((x, c) => x + c.demandFte, 0))}</td>
-                    <td className="b2-num">{fmt.fte(cells.reduce((x, c) => x + c.staffedFte, 0))}</td>
-                    <td className="b2-num">{fmt.fte(cells.reduce((x, c) => x + c.proposedFte, 0))}</td>
-                    <td className="b2-num">
+                    <td className="pcp-num">{fmt.fte(cells.reduce((x, c) => x + c.demandFte, 0))}</td>
+                    <td className="pcp-num">{fmt.fte(cells.reduce((x, c) => x + c.staffedFte, 0))}</td>
+                    <td className="pcp-num">{fmt.fte(cells.reduce((x, c) => x + c.proposedFte, 0))}</td>
+                    <td className="pcp-num">
                       {gap > 0.04 ? (
                         <span className="rp-gap">{fmt.fte(gap)}</span>
                       ) : (
-                        <span className="b2-subtle">0.0</span>
+                        <span className="pcp-text-tertiary">0.0</span>
                       )}
                     </td>
-                    <td className="b2-num">{cells.filter((c) => c.gapFte > 0.04).length}</td>
+                    <td className="pcp-num">{cells.filter((c) => c.gapFte > 0.04).length}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="b2-card__foot">
-          <span className="b2-caption">
+        <div className="pcp-card__footer">
+          <span className="pcp-caption pcp-text-tertiary">
             Time to staff:{' '}
             {med === null
               ? 'no proposals answered yet'

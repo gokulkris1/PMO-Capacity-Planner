@@ -9,14 +9,14 @@ import {
   CraftChip,
   Dialog,
   EmptyState,
+  fmt,
   FormField,
+  indexSnapshot,
   PersonLabel,
   StatusPill,
-  TextField,
-  fmt,
-  indexSnapshot,
   useAction,
-} from '../../../plan/_kit';
+  Textarea,
+} from '../../../../components/ui';
 
 export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const { workspace } = useWorkspace();
@@ -60,26 +60,26 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
   };
 
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <Card title="Craft changes waiting for approval" subtitle="Requests for chapters you lead are listed first" flush>
         {pending.length === 0 ? (
           <EmptyState
             icon={ListChecks}
             title="No requests waiting"
-            body="Squad members' craft suggestions will appear here."
+            description="Squad members' craft suggestions will appear here."
           />
         ) : (
-          <div className="b2-table-wrap">
-            <table className="b2-table">
-              <caption className="b2-sr-only">Pending craft change requests</caption>
+          <div className="pcp-tbl-wrap">
+            <table className="pcp-tbl">
+              <caption className="pcp-sr-only">Pending craft change requests</caption>
               <thead>
                 <tr>
                   <th scope="col">Person</th>
                   <th scope="col">Current below the table</th>
                   <th scope="col">Proposed change</th>
                   <th scope="col">Submitted</th>
-                  <th scope="col" className="b2-num">
-                    <span className="b2-sr-only">Decision</span>
+                  <th scope="col" className="pcp-num">
+                    <span className="pcp-sr-only">Decision</span>
                   </th>
                 </tr>
               </thead>
@@ -90,14 +90,14 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
                   return (
                     <tr key={r.id}>
                       <th scope="row">
-                        <span className="b2-row">
+                        <span className="pcp-row">
                           <PersonLabel name={p?.name ?? r.personId} sub={p?.role} />
                           {mine && <StatusPill tone="brand">Your chapter</StatusPill>}
                         </span>
                       </th>
                       <td>
-                        <span className="b2-chips">
-                          {r.current.length ? r.current.map(chip) : <span className="b2-subtle">None</span>}
+                        <span className="pcp-chips">
+                          {r.current.length ? r.current.map(chip) : <span className="pcp-text-tertiary">None</span>}
                         </span>
                       </td>
                       <td>
@@ -129,15 +129,15 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
                         </span>
                       </td>
                       <td>
-                        <span className="b2-caption" title={fmt.dateTime(r.submittedAt)}>
+                        <span className="pcp-caption pcp-text-tertiary" title={fmt.dateTime(r.submittedAt)}>
                           {r.submittedBy.name} · {fmt.relative(r.submittedAt, s.serverTime)}
                         </span>
                       </td>
-                      <td className="b2-num">
-                        <span className="b2-row cr-actions">
+                      <td className="pcp-num">
+                        <span className="pcp-row cr-actions">
                           <Button
                             size="sm"
-                            icon={X}
+                            iconBefore={X}
                             disabled={busy !== null}
                             onClick={() => {
                               setReason('');
@@ -150,7 +150,7 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
                           <Button
                             size="sm"
                             variant="primary"
-                            icon={Check}
+                            iconBefore={Check}
                             loading={busy === `a${r.id}`}
                             onClick={() =>
                               void run(`a${r.id}`, () => m.people.decideCraftChange(r.id, 'approve'), {
@@ -172,11 +172,11 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
       </Card>
       {decided.length > 0 && (
         <Card title="Recently decided" flush>
-          <ul className="b2-list cr-decided">
+          <ul className="pcp-list cr-decided">
             {decided.map((r) => (
               <li key={r.id}>
                 <PersonLabel name={idx.people.get(r.personId)?.name ?? r.personId} />
-                <span className="b2-spacer" />
+                <span className="pcp-spacer" />
                 {r.status === 'approved' ? (
                   <StatusPill tone="success">Approved by {r.decidedBy?.name ?? 'a Planner'}</StatusPill>
                 ) : (
@@ -184,7 +184,7 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
                     Rejected
                   </StatusPill>
                 )}
-                {r.reason && <span className="b2-caption">{r.reason}</span>}
+                {r.reason && <span className="pcp-caption pcp-text-tertiary">{r.reason}</span>}
               </li>
             ))}
           </ul>
@@ -220,10 +220,16 @@ export function CraftRequests({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }
       >
         <FormField
           label="Reason"
-          htmlFor="cr-reason"
+          id="cr-reason"
           error={tried && !reason.trim() ? 'Give a reason; the person will see it.' : null}
         >
-          <TextField id="cr-reason" multiline value={reason} invalid={tried && !reason.trim()} onChange={setReason} />
+          <Textarea
+            id="cr-reason"
+            rows={3}
+            value={reason}
+            invalid={tried && !reason.trim()}
+            onValueChange={setReason}
+          />
         </FormField>
       </Dialog>
     </div>

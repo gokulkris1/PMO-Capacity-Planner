@@ -1,12 +1,15 @@
 /**
- * Interim chart kit (DESIGN_SYSTEM §11): bars drawn to scale in HTML/CSS, lines in SVG; colours come only
- * from --chart-* tokens via classes. Every chart has a legend, hover + keyboard tooltips, and a table view
- * through ChartFrame. Swap: components/ui/charts (StackedCapacityChart, GroupedBarChart, TrendLine).
+ * Lightweight chart kit (DESIGN_SYSTEM §11): bars drawn to scale in HTML/CSS, lines in SVG; colours come only from
+ * --chart-* tokens via classes. No Recharts, so pages that use these stay small (SH-08). Every chart has a legend,
+ * hover and keyboard tooltips, and a table view through ChartPanel.
  */
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChartColumnStacked, Table2 } from 'lucide-react';
-import { Legend, SegmentedControl, cx, type SwatchKind } from './primitives';
-import { useElementWidth } from './hooks';
+import { Card } from '../Card';
+import { SegmentedControl } from '../Tabs';
+import { useElementWidth } from '../hooks';
+import { cx } from '../internal/utils';
+import './lite.css';
 
 /** "Nice" axis maximum and ticks (1, 2, 2.5, 5 × 10ⁿ steps). */
 export function niceScale(max: number, targetTicks = 5): { max: number; ticks: number[] } {
@@ -21,9 +24,28 @@ export function niceScale(max: number, targetTicks = 5): { max: number; ticks: n
 }
 const fmtTick = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
-/* ── ChartFrame ──────────────────────────────────────────────────────────────────── */
+/* ── Legend ──────────────────────────────────────────────────────────────────────── */
 
-export function ChartFrame({
+export type SwatchKind = '1' | '2' | '3' | '4' | 'other' | 'bench' | 'target' | 'demand' | 'dashed';
+
+/** Chart legend: swatch + label per series (never colour alone: labels are always shown). */
+export function Legend({ items }: { items: Array<{ swatch: SwatchKind; label: string }> }) {
+  return (
+    <ul className="pcp-legend" aria-label="Legend">
+      {items.map((i) => (
+        <li key={i.label}>
+          <span className={`pcp-swatch pcp-swatch--${i.swatch}`} aria-hidden="true" />
+          {i.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ── ChartPanel ──────────────────────────────────────────────────────────────────── */
+
+/** A Card with a Chart | Table switch, optional legend and actions (DESIGN_SYSTEM §11: every chart has a table). */
+export function ChartPanel({
   title,
   caption,
   legend,
@@ -42,35 +64,35 @@ export function ChartFrame({
 }) {
   const [view, setView] = useState<'chart' | 'table'>(initialView);
   return (
-    <section className="b2-card" aria-label={title}>
-      <div className="b2-card__head">
-        <div className="b2-card__titles">
-          <h2 className="b2-card__title">{title}</h2>
-          {caption && <p className="b2-card__sub">{caption}</p>}
-        </div>
-        <div className="b2-card__actions">
+    <Card
+      title={title}
+      subtitle={caption}
+      actions={
+        <>
           {actions}
-          <SegmentedControl
+          <SegmentedControl<'chart' | 'table'>
             size="sm"
             label={`${title}: view`}
             value={view}
             onChange={setView}
-            items={[
-              { id: 'chart', label: 'Chart', icon: ChartColumnStacked },
-              { id: 'table', label: 'Table', icon: Table2 },
+            options={[
+              { value: 'chart', label: 'Chart', icon: ChartColumnStacked },
+              { value: 'table', label: 'Table', icon: Table2 },
             ]}
           />
-        </div>
-      </div>
+        </>
+      }
+      flush={view === 'table'}
+    >
       {view === 'chart' ? (
-        <div className="b2-stack b2-stack--sm">
+        <div className="pcp-stack pcp-stack--md">
           {legend && <Legend items={legend} />}
           {children}
         </div>
       ) : (
         table
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -125,20 +147,20 @@ export function StackedBarChart({
   const y = (v: number) => `${(Math.max(0, v) / scale.max) * 100}%`;
   const tip = active !== null ? columns[active] : null;
   return (
-    <div className="b2-chart" role="group" aria-label={ariaLabel}>
-      <div className="b2-chart__yaxis" style={{ height }}>
-        <span className="b2-chart__ytitle">{unit}</span>
+    <div className="pcp-lchart" role="group" aria-label={ariaLabel}>
+      <div className="pcp-lchart__yaxis" style={{ height }}>
+        <span className="pcp-lchart__ytitle">{unit}</span>
         {scale.ticks.map((t) => (
-          <span key={t} className="b2-chart__ytick" style={{ bottom: y(t) }}>
+          <span key={t} className="pcp-lchart__ytick" style={{ bottom: y(t) }}>
             {fmtTick(t)}
           </span>
         ))}
       </div>
-      <div className="b2-chart__plot" style={{ height }}>
+      <div className="pcp-lchart__plot" style={{ height }}>
         {scale.ticks.slice(1).map((t) => (
-          <span key={t} className="b2-chart__grid" style={{ bottom: y(t) }} />
+          <span key={t} className="pcp-lchart__grid" style={{ bottom: y(t) }} />
         ))}
-        <div className="b2-chart__cols">
+        <div className="pcp-lchart__cols">
           {columns.map((c, i) => {
             const total = c.segments.reduce((s, x) => s + Math.max(0, x.value), 0);
             const summary = [
@@ -152,33 +174,36 @@ export function StackedBarChart({
               <button
                 key={c.key}
                 type="button"
-                className={cx('b2-chart__col', active === i && 'is-active')}
+                className={cx('pcp-lchart__col', active === i && 'is-active')}
                 aria-label={summary}
                 onMouseEnter={() => setActive(i)}
                 onMouseLeave={() => setActive(null)}
                 onFocus={() => setActive(i)}
                 onBlur={() => setActive(null)}
               >
-                <span className={cx('b2-chart__stack', wide && 'b2-chart__stack--wide')} style={{ height: y(total) }}>
+                <span
+                  className={cx('pcp-lchart__stack', wide && 'pcp-lchart__stack--wide')}
+                  style={{ height: y(total) }}
+                >
                   {c.segments
                     .filter((s) => s.value > 0)
                     .map((s) => (
                       <span
                         key={s.label}
-                        className={`b2-chart__seg b2-chart__seg--${s.kind}`}
+                        className={`pcp-lchart__seg pcp-lchart__seg--${s.kind}`}
                         style={{ height: `calc(${(s.value / Math.max(total, 1e-9)) * 100}% - 2px)` }}
                       />
                     ))}
                   {showTotals && (
-                    <span className="b2-chart__value" style={{ bottom: '100%' }}>
+                    <span className="pcp-lchart__value" style={{ bottom: '100%' }}>
                       {format(total)}
                     </span>
                   )}
                 </span>
-                {c.target && <span className="b2-chart__target" style={{ bottom: y(c.target.value) }} />}
+                {c.target && <span className="pcp-lchart__target" style={{ bottom: y(c.target.value) }} />}
                 {c.marker && (
                   <span
-                    className="b2-chart__marker"
+                    className="pcp-lchart__marker"
                     style={{ bottom: y(c.marker.value), left: 'calc(50% - 30px)', right: 'calc(50% - 30px)' }}
                   />
                 )}
@@ -188,7 +213,7 @@ export function StackedBarChart({
         </div>
         {tip && active !== null && (
           <div
-            className="b2-tip"
+            className="pcp-lchart-tip"
             style={{
               left: `${((active + 0.5) / columns.length) * 100}%`,
               top: 8,
@@ -196,13 +221,13 @@ export function StackedBarChart({
             }}
             aria-hidden="true"
           >
-            <div className="b2-tip__title">
+            <div className="pcp-lchart-tip__title">
               {tip.label}
               {tip.sublabel ? ` · ${tip.sublabel}` : ''}
             </div>
             {tip.segments.map((s) => (
-              <div className="b2-tip__row" key={s.label}>
-                <span className={`b2-swatch b2-swatch--${s.kind}`} />
+              <div className="pcp-lchart-tip__row" key={s.label}>
+                <span className={`pcp-swatch pcp-swatch--${s.kind}`} />
                 <span>{s.label}</span>
                 <b>
                   {format(s.value)} {unit}
@@ -210,8 +235,8 @@ export function StackedBarChart({
               </div>
             ))}
             {tip.marker && (
-              <div className="b2-tip__row">
-                <span className="b2-swatch b2-swatch--demand" />
+              <div className="pcp-lchart-tip__row">
+                <span className="pcp-swatch pcp-swatch--demand" />
                 <span>{tip.marker.label}</span>
                 <b>
                   {format(tip.marker.value)} {unit}
@@ -219,8 +244,8 @@ export function StackedBarChart({
               </div>
             )}
             {tip.target && (
-              <div className="b2-tip__row">
-                <span className="b2-swatch b2-swatch--target" />
+              <div className="pcp-lchart-tip__row">
+                <span className="pcp-swatch pcp-swatch--target" />
                 <span>{tip.target.label}</span>
                 <b>
                   {format(tip.target.value)} {unit}
@@ -228,8 +253,8 @@ export function StackedBarChart({
               </div>
             )}
             {(tip.extra ?? []).map((e) => (
-              <div className="b2-tip__row" key={e.label}>
-                <span className="b2-swatch" />
+              <div className="pcp-lchart-tip__row" key={e.label}>
+                <span className="pcp-swatch" />
                 <span>{e.label}</span>
                 <b>{e.value}</b>
               </div>
@@ -237,9 +262,9 @@ export function StackedBarChart({
           </div>
         )}
       </div>
-      <div className="b2-chart__xaxis" aria-hidden="true">
+      <div className="pcp-lchart__xaxis" aria-hidden="true">
         {columns.map((c) => (
-          <span key={c.key} className="b2-chart__xlabel">
+          <span key={c.key} className="pcp-lchart__xlabel">
             <strong>{c.label}</strong>
             {c.sublabel}
           </span>
@@ -270,35 +295,35 @@ export function GroupedBarChart({
   const scale = useMemo(() => niceScale(Math.max(0, ...series.flatMap((s) => s.values)) * 1.08), [series]);
   const y = (v: number) => `${(Math.max(0, v) / scale.max) * 100}%`;
   return (
-    <div className="b2-chart" role="group" aria-label={ariaLabel}>
-      <div className="b2-chart__yaxis" style={{ height }}>
-        <span className="b2-chart__ytitle">{unit}</span>
+    <div className="pcp-lchart" role="group" aria-label={ariaLabel}>
+      <div className="pcp-lchart__yaxis" style={{ height }}>
+        <span className="pcp-lchart__ytitle">{unit}</span>
         {scale.ticks.map((t) => (
-          <span key={t} className="b2-chart__ytick" style={{ bottom: y(t) }}>
+          <span key={t} className="pcp-lchart__ytick" style={{ bottom: y(t) }}>
             {fmtTick(t)}
           </span>
         ))}
       </div>
-      <div className="b2-chart__plot" style={{ height }}>
+      <div className="pcp-lchart__plot" style={{ height }}>
         {scale.ticks.slice(1).map((t) => (
-          <span key={t} className="b2-chart__grid" style={{ bottom: y(t) }} />
+          <span key={t} className="pcp-lchart__grid" style={{ bottom: y(t) }} />
         ))}
-        <div className="b2-chart__cols">
+        <div className="pcp-lchart__cols">
           {categories.map((c, i) => (
             <button
               key={c.key}
               type="button"
-              className={cx('b2-chart__col', active === i && 'is-active')}
+              className={cx('pcp-lchart__col', active === i && 'is-active')}
               aria-label={`${c.label}: ${series.map((s) => `${s.name} ${format(s.values[i] ?? 0)} ${unit}`).join('; ')}`}
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(i)}
               onBlur={() => setActive(null)}
             >
-              <span className="b2-chart__bars">
+              <span className="pcp-lchart__bars">
                 {series.map((s) => (
-                  <span key={s.name} className="b2-chart__stack" style={{ height: y(s.values[i] ?? 0), width: 20 }}>
-                    <span className={`b2-chart__seg b2-chart__seg--${s.kind}`} style={{ height: '100%' }} />
+                  <span key={s.name} className="pcp-lchart__stack" style={{ height: y(s.values[i] ?? 0), width: 20 }}>
+                    <span className={`pcp-lchart__seg pcp-lchart__seg--${s.kind}`} style={{ height: '100%' }} />
                   </span>
                 ))}
               </span>
@@ -307,7 +332,7 @@ export function GroupedBarChart({
         </div>
         {active !== null && (
           <div
-            className="b2-tip"
+            className="pcp-lchart-tip"
             style={{
               left: `${((active + 0.5) / categories.length) * 100}%`,
               top: 8,
@@ -315,13 +340,13 @@ export function GroupedBarChart({
             }}
             aria-hidden="true"
           >
-            <div className="b2-tip__title">
+            <div className="pcp-lchart-tip__title">
               {categories[active].label}
               {categories[active].sublabel ? ` · ${categories[active].sublabel}` : ''}
             </div>
             {series.map((s) => (
-              <div className="b2-tip__row" key={s.name}>
-                <span className={`b2-swatch b2-swatch--${s.kind}`} />
+              <div className="pcp-lchart-tip__row" key={s.name}>
+                <span className={`pcp-swatch pcp-swatch--${s.kind}`} />
                 <span>{s.name}</span>
                 <b>
                   {format(s.values[active] ?? 0)} {unit}
@@ -331,9 +356,9 @@ export function GroupedBarChart({
           </div>
         )}
       </div>
-      <div className="b2-chart__xaxis" aria-hidden="true">
+      <div className="pcp-lchart__xaxis" aria-hidden="true">
         {categories.map((c) => (
-          <span key={c.key} className="b2-chart__xlabel">
+          <span key={c.key} className="pcp-lchart__xlabel">
             <strong>{c.label}</strong>
             {c.sublabel}
           </span>
@@ -372,8 +397,8 @@ export function TrendChart({
   const yv = (v: number) => pad.t + ih - (Math.max(0, v) / scale.max) * ih;
   const band = n <= 1 ? iw : iw / (n - 1);
   return (
-    <div ref={wrap} className="b2-trend">
-      <svg className="b2-svgchart" width={width} height={height} role="group" aria-label={ariaLabel}>
+    <div ref={wrap} className="pcp-lchart-trend">
+      <svg className="pcp-lchart-svg" width={width} height={height} role="group" aria-label={ariaLabel}>
         <text x={4} y={10}>
           {unit}
         </text>
@@ -410,7 +435,7 @@ export function TrendChart({
           </g>
         ))}
       </svg>
-      <div className="b2-sr-only">
+      <div className="pcp-sr-only">
         {categories.map((c, i) => (
           <button
             key={c.key}
@@ -423,7 +448,7 @@ export function TrendChart({
       </div>
       {active !== null && (
         <div
-          className="b2-tip"
+          className="pcp-lchart-tip"
           aria-hidden="true"
           style={{
             left: x(active),
@@ -431,10 +456,10 @@ export function TrendChart({
             transform: active >= n / 2 ? 'translateX(calc(-100% - 16px))' : 'translateX(16px)',
           }}
         >
-          <div className="b2-tip__title">{categories[active].label}</div>
+          <div className="pcp-lchart-tip__title">{categories[active].label}</div>
           {series.map((s) => (
-            <div className="b2-tip__row" key={s.name}>
-              <span className={`b2-swatch b2-swatch--${s.kind}`} />
+            <div className="pcp-lchart-tip__row" key={s.name}>
+              <span className={`pcp-swatch pcp-swatch--${s.kind}`} />
               <span>{s.name}</span>
               <b>
                 {format(s.values[active] ?? 0)} {unit}

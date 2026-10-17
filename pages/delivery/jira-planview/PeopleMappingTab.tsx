@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, PersonLabel, Select, StatusPill, cx, fmt, useAction } from '../../plan/_kit';
+import { Button, Card, cx, fmt, PersonLabel, Select, StatusPill, useAction } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<D.IdentityMappingDTO['matchMethod'], string> = {
@@ -48,7 +48,7 @@ export function PeopleMappingTab({
           <>
             <Button
               size="sm"
-              icon={CheckCheck}
+              iconBefore={CheckCheck}
               disabled={exact.length === 0}
               loading={busy === 'exact'}
               onClick={() =>
@@ -62,7 +62,7 @@ export function PeopleMappingTab({
             <Button
               size="sm"
               variant="primary"
-              icon={Check}
+              iconBefore={Check}
               disabled={changed.length === 0}
               loading={busy === 'save'}
               onClick={async () => {
@@ -80,9 +80,9 @@ export function PeopleMappingTab({
         )
       }
     >
-      <div className="b2-table-wrap">
-        <table className="b2-table dl-map">
-          <caption className="b2-sr-only">Jira assignee mapping</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl dl-map">
+          <caption className="pcp-sr-only">Jira assignee mapping</caption>
           <thead>
             <tr>
               <th scope="col">Jira assignee</th>
@@ -97,17 +97,17 @@ export function PeopleMappingTab({
             {rows.map((r) => (
               <tr key={r.externalId} className={cx(!r.confirmed && 'dl-row--proposed')}>
                 <th scope="row">
-                  <PersonLabel name={r.displayName} sub={<span className="b2-tnum">{r.externalId.slice(-8)}</span>} />
+                  <PersonLabel name={r.displayName} sub={<span className="pcp-tnum">{r.externalId.slice(-8)}</span>} />
                 </th>
-                <td>{r.email ?? <span className="b2-subtle">Hidden by Jira</span>}</td>
+                <td>{r.email ?? <span className="pcp-text-tertiary">Hidden by Jira</span>}</td>
                 <td className="dl-map__select">
                   <Select
                     size="sm"
-                    ariaLabel={`Person for ${r.displayName}`}
+                    aria-label={`Person for ${r.displayName}`}
                     value={r.personId ?? ''}
                     placeholder="Not a squad member"
                     disabled={!canRun}
-                    onChange={(v) => setEdits((e) => ({ ...e, [r.externalId]: v || null }))}
+                    onValueChange={(v) => setEdits((e) => ({ ...e, [r.externalId]: v || null }))}
                     options={s.people.map((p) => ({ value: p.id, label: p.name }))}
                   />
                 </td>
@@ -123,7 +123,7 @@ export function PeopleMappingTab({
                     <StatusPill tone="outline">Suggested</StatusPill>
                   )}
                 </td>
-                <td className="b2-caption">{fmt.relative(r.lastSeenAt, s.serverTime)}</td>
+                <td className="pcp-caption pcp-text-tertiary">{fmt.relative(r.lastSeenAt, s.serverTime)}</td>
               </tr>
             ))}
           </tbody>

@@ -3,7 +3,19 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type * as D from '../../../../shared/contracts/dto';
 import { useMutations, useUndo, useWorkspaceData } from '../../../../state';
-import { Banner, Button, Dialog, FormField, NumberField, Select, errorMessage, fmt, toast } from '../../../plan/_kit';
+import {
+  Banner,
+  Button,
+  Dialog,
+  errorMessage,
+  fmt,
+  FormField,
+  NumberField,
+  Select,
+  useToast,
+  numOrNull,
+  numText,
+} from '../../../../components/ui';
 
 export type BulkKind = 'chapter' | 'team' | 'target' | 'craft';
 
@@ -40,6 +52,7 @@ function Inner({
   ids: string[];
   onClose(done: boolean): void;
 }) {
+  const toast = useToast();
   const m = useMutations();
   const undo = useUndo();
   const data = useWorkspaceData();
@@ -79,10 +92,10 @@ function Inner({
     setError(null);
     try {
       await m.people.bulk({ ids, patch });
-      toast({
+      toast.show({
         tone: 'success',
         title: `${ids.length} ${ids.length === 1 ? 'person' : 'people'} updated`,
-        action: { label: 'Undo', onClick: () => void undo.undo() },
+        action: { label: 'Undo', onAction: () => void undo.undo() },
       });
       onClose(true);
     } catch (e) {
@@ -114,13 +127,13 @@ function Inner({
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
+      <div className="pcp-stack pcp-stack--md">
         {error && (
           <Banner
             tone="danger"
-            action={
+            actionNode={
               error.conflict ? (
-                <Button size="sm" icon={RefreshCw} onClick={() => void data.reload()}>
+                <Button size="sm" iconBefore={RefreshCw} onClick={() => void data.reload()}>
                   Reload
                 </Button>
               ) : undefined
@@ -130,23 +143,23 @@ function Inner({
           </Banner>
         )}
         {kind === 'chapter' && (
-          <FormField label="Chapter" htmlFor="bulk-chapter">
+          <FormField label="Chapter" id="bulk-chapter">
             <Select
               id="bulk-chapter"
               value={value}
               placeholder="No chapter"
-              onChange={setValue}
+              onValueChange={setValue}
               options={s.chapters.filter((c) => !c.archived).map((c) => ({ value: c.id, label: c.name }))}
             />
           </FormField>
         )}
         {kind === 'team' && (
-          <FormField label="Team" htmlFor="bulk-team">
+          <FormField label="Team" id="bulk-team">
             <Select
               id="bulk-team"
               value={value}
               placeholder="No team"
-              onChange={setValue}
+              onValueChange={setValue}
               options={s.teams.filter((c) => !c.archived).map((c) => ({ value: c.id, label: c.name }))}
             />
           </FormField>
@@ -154,55 +167,63 @@ function Inner({
         {kind === 'target' && (
           <FormField
             label="Target utilisation"
-            htmlFor="bulk-target"
+            id="bulk-target"
             error={tried && invalid ? 'Enter 0–150' : null}
             help="100% means fully planned."
           >
             <NumberField
               id="bulk-target"
               unit="%"
-              value={value}
+              value={numOrNull(value)}
               min={0}
               max={150}
               step={5}
               invalid={tried && invalid}
-              onChange={setValue}
+              onChange={(n) => setValue(numText(n))}
             />
           </FormField>
         )}
         {kind === 'craft' && (
-          <div className="b2-form">
+          <div className="pcp-form-grid">
             <FormField
               label="Craft"
-              htmlFor="bulk-craft"
+              id="bulk-craft"
               error={tried && !value ? 'Choose a craft' : null}
-              className="b2-form__full"
+              className="pcp-form-grid__full"
             >
               <Select
                 id="bulk-craft"
                 value={value}
                 placeholder="Choose a craft"
                 invalid={tried && !value}
-                onChange={setValue}
+                onValueChange={setValue}
                 options={crafts.map((c) => ({ value: c.id, label: `${c.name} (${c.short})` }))}
               />
             </FormField>
-            <FormField label="Proficiency" htmlFor="bulk-level">
+            <FormField label="Proficiency" id="bulk-level">
               <Select
                 id="bulk-level"
                 value={level}
-                onChange={setLevel}
+                onValueChange={setLevel}
                 options={([1, 2, 3] as D.Proficiency[]).map((l) => ({
                   value: String(l),
                   label: `L${l} · ${fmt.PROFICIENCY_LABEL[l]}`,
                 }))}
               />
             </FormField>
-            <FormField label="Cap" htmlFor="bulk-cap" help="Most of their week this craft may take.">
-              <NumberField id="bulk-cap" unit="%" value={cap} min={0} max={100} step={5} onChange={setCap} />
+            <FormField label="Cap" id="bulk-cap" help="Most of their week this craft may take.">
+              <NumberField
+                id="bulk-cap"
+                unit="%"
+                value={numOrNull(cap)}
+                min={0}
+                max={100}
+                step={5}
+                onChange={(n) => setCap(numText(n))}
+              />
             </FormField>
             {skippedAbove > 0 && (
-              <p className="b2-caption b2-form__full">
+              <p className="pcp-caption pcp-text-tertiary pcp-form-grid__full">
                 {skippedAbove} selected {skippedAbove === 1 ? 'person has' : 'people have'} this as their
                 above-the-table craft and will be skipped.
               </p>

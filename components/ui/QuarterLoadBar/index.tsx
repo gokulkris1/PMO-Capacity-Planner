@@ -48,7 +48,8 @@ export function QuarterLoadBar({
   const segUndeclared = clip(undeclared, segAbove + segBelow);
   const segFree = clip(free, segAbove + segBelow + segUndeclared);
   const aria = `${quarterLabel}: ${r(above)}% above the table, ${r(below)}% below, ${r(undeclared)}% undeclared, ${r(free)}% free`;
-  const text = `${r(load)}% of ${r(target)}%`;
+  // Values are % of target; the text shows the absolute load against the target, e.g. "96% of 80%".
+  const text = `${r((load * target) / 100)}% of ${r(target)}%`;
   return (
     <div className={cx('pcp-load', `pcp-load--${size}`, className)}>
       <Tooltip content={`${aria}. ${text}.`}>
@@ -70,6 +71,20 @@ export function QuarterLoadBar({
       {showLabel ? <span className="pcp-load__text pcp-tnum">{text}</span> : null}
     </div>
   );
+}
+
+/** Converts absolute load % (of capacity) to the % of target the bar expects, with free capacity. */
+export function relativeLoadSplit(abs: { above: number; below: number; undeclared: number }, target: number) {
+  const t = target > 0 ? target : 100;
+  const rel = (v: number) => (v * 100) / t;
+  const load = rel(abs.above + abs.below + abs.undeclared);
+  return {
+    above: rel(abs.above),
+    below: rel(abs.below),
+    undeclared: rel(abs.undeclared),
+    free: Math.max(0, 100 - load),
+    target: t,
+  };
 }
 
 export interface HeatStripCell {

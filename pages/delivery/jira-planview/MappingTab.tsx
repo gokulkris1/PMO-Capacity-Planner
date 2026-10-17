@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Check, WandSparkles } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, Checkbox, Select, StatusPill, cx, useAction } from '../../plan/_kit';
+import { Button, Card, Checkbox, cx, Select, StatusPill, useAction } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 const METHOD: Record<
@@ -54,7 +54,7 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
           <>
             <Button
               size="sm"
-              icon={WandSparkles}
+              iconBefore={WandSparkles}
               loading={busy === 'auto'}
               onClick={() =>
                 void run('auto', () => delivery.autoMatch(), {
@@ -68,7 +68,7 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
             <Button
               size="sm"
               variant="primary"
-              icon={Check}
+              iconBefore={Check}
               disabled={selected.size === 0}
               loading={busy === 'confirm'}
               onClick={() => void confirmSelected()}
@@ -79,16 +79,15 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
         )
       }
     >
-      <div className="b2-table-wrap">
-        <table className="b2-table dl-map">
-          <caption className="b2-sr-only">Jira project mapping</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl dl-map">
+          <caption className="pcp-sr-only">Jira project mapping</caption>
           <thead>
             <tr>
               {canRun && (
-                <th scope="col" className="b2-cell-check">
+                <th scope="col" className="pcp-tbl-check">
                   <Checkbox
-                    label="Select all unconfirmed"
-                    hideLabel
+                    aria-label="Select all unconfirmed"
                     checked={selectable.length > 0 && selectable.every((r) => selected.has(r.jiraKey))}
                     onChange={(v) => setSelected(v ? new Set(selectable.map((r) => r.jiraKey)) : new Set())}
                   />
@@ -109,10 +108,9 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
                 className={cx(!r.confirmed && 'dl-row--proposed', selected.has(r.jiraKey) && 'is-selected')}
               >
                 {canRun && (
-                  <td className="b2-cell-check">
+                  <td className="pcp-tbl-check">
                     <Checkbox
-                      label={`Select ${r.jiraKey}`}
-                      hideLabel
+                      aria-label={`Select ${r.jiraKey}`}
                       checked={selected.has(r.jiraKey)}
                       onChange={(v) =>
                         setSelected((cur) => {
@@ -126,18 +124,18 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
                   </td>
                 )}
                 <th scope="row">
-                  <span className="b2-strong b2-tnum">{r.jiraKey}</span>{' '}
-                  <span className="b2-caption">{r.jiraName}</span>
+                  <span className="pcp-strong pcp-tnum">{r.jiraKey}</span>{' '}
+                  <span className="pcp-caption pcp-text-tertiary">{r.jiraName}</span>
                 </th>
-                <td className="b2-tnum">{r.boardIds.join(', ') || '—'}</td>
+                <td className="pcp-tnum">{r.boardIds.join(', ') || '—'}</td>
                 <td className="dl-map__select">
                   <Select
                     size="sm"
-                    ariaLabel={`Planner project for ${r.jiraKey}`}
+                    aria-label={`Planner project for ${r.jiraKey}`}
                     value={r.projectId ?? ''}
                     placeholder="Not mapped"
                     disabled={!canRun}
-                    onChange={(v) =>
+                    onValueChange={(v) =>
                       edit(r.jiraKey, {
                         projectId: v || null,
                         tribeId: s.projects.find((p) => p.id === v)?.tribeId ?? r.tribeId,
@@ -149,11 +147,11 @@ export function MappingTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSna
                 <td className="dl-map__select">
                   <Select
                     size="sm"
-                    ariaLabel={`Tribe for ${r.jiraKey}`}
+                    aria-label={`Tribe for ${r.jiraKey}`}
                     value={r.tribeId ?? ''}
                     placeholder="No tribe"
                     disabled={!canRun}
-                    onChange={(v) => edit(r.jiraKey, { tribeId: v || null })}
+                    onValueChange={(v) => edit(r.jiraKey, { tribeId: v || null })}
                     options={tribes}
                   />
                 </td>

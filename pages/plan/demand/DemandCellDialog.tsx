@@ -6,16 +6,18 @@ import { useMutations, useQuarters, useSession } from '../../../state';
 import {
   Button,
   Dialog,
+  errorMessage,
+  fmt,
   FormField,
   IconButton,
   NumberField,
   SegmentedControl,
   Select,
   TextField,
-  errorMessage,
-  fmt,
-  toast,
-} from '../_kit';
+  useToast,
+  numOrNull,
+  numText,
+} from '../../../components/ui';
 
 interface LineDraft {
   key: string;
@@ -39,6 +41,7 @@ export function DemandCellDialog({
   quarterKey: string;
   onClose(): void;
 }) {
+  const toast = useToast();
   const quarters = useQuarters();
   const m = useMutations();
   const { me } = useSession();
@@ -117,10 +120,10 @@ export function DemandCellDialog({
             await m.demand.update(l.id, { ...patch, version: l.version });
         }
       }
-      toast({ tone: 'success', title: 'Demand saved', body: `${project?.name ?? ''} · ${quarter?.label ?? ''}` });
+      toast.show({ tone: 'success', title: 'Demand saved', body: `${project?.name ?? ''} · ${quarter?.label ?? ''}` });
       onClose();
     } catch (e) {
-      toast({ tone: 'error', title: 'Demand not saved', body: errorMessage(e) });
+      toast.show({ tone: 'error', title: 'Demand not saved', body: errorMessage(e) });
     } finally {
       setBusy(false);
     }
@@ -133,12 +136,12 @@ export function DemandCellDialog({
         l.id,
         later.map((q) => q.key),
       );
-      toast({
+      toast.show({
         tone: 'success',
         title: `Copied to ${later[0].label}${later.length > 1 ? `–${later[later.length - 1].label}` : ''}`,
       });
     } catch (e) {
-      toast({ tone: 'error', title: 'Not copied', body: errorMessage(e) });
+      toast.show({ tone: 'error', title: 'Not copied', body: errorMessage(e) });
     }
   };
 
@@ -158,15 +161,15 @@ export function DemandCellDialog({
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
-        <div className="b2-form">
-          <FormField label="Project" htmlFor="dc-project" error={tried && !projectId ? 'Choose a project' : null}>
+      <div className="pcp-stack pcp-stack--md">
+        <div className="pcp-form-grid">
+          <FormField label="Project" id="dc-project" error={tried && !projectId ? 'Choose a project' : null}>
             <Select
               id="dc-project"
               value={projectId}
               placeholder="Choose a project"
               invalid={tried && !projectId}
-              onChange={(v) => switchTo(v, quarterKey)}
+              onValueChange={(v) => switchTo(v, quarterKey)}
               options={s.projects
                 .filter((p) => p.status !== 'Completed')
                 .map((p) => ({
@@ -177,52 +180,52 @@ export function DemandCellDialog({
                 .sort((a, z) => a.group.localeCompare(z.group) || a.label.localeCompare(z.label))}
             />
           </FormField>
-          <FormField label="Quarter" htmlFor="dc-quarter">
+          <FormField label="Quarter" id="dc-quarter">
             <Select
               id="dc-quarter"
               value={quarterKey}
-              onChange={(v) => switchTo(projectId, v)}
+              onValueChange={(v) => switchTo(projectId, v)}
               options={quarters.map((q) => ({ value: q.key, label: `${q.label} · ${q.calendarLabel}` }))}
             />
           </FormField>
         </div>
         <div className="dc-lines" role="list" aria-label="Craft lines">
-          {lines.length === 0 && <p className="b2-muted">No demand captured for this quarter yet.</p>}
+          {lines.length === 0 && <p className="pcp-text-secondary">No demand captured for this quarter yet.</p>}
           {lines.map((l, i) => (
             <div key={l.key} className="dc-line" role="listitem">
               <Select
-                ariaLabel={`Craft for line ${i + 1}`}
+                aria-label={`Craft for line ${i + 1}`}
                 value={l.craftId}
                 placeholder="Craft"
                 invalid={tried && !!errors[i]}
-                onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, craftId: v } : x)))}
+                onValueChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, craftId: v } : x)))}
                 options={crafts.map((c) => ({ value: c.id, label: `${c.short} · ${c.name}` }))}
               />
               <NumberField
                 id={`dc-fte-${l.key}`}
-                ariaLabel={`FTE for line ${i + 1}`}
+                aria-label={`FTE for line ${i + 1}`}
                 unit="FTE"
                 step={0.1}
                 min={0}
                 max={50}
-                value={l.fte}
-                onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, fte: v } : x)))}
+                value={numOrNull(l.fte)}
+                onChange={(n) => setLines(lines.map((x) => (x.key === l.key ? { ...x, fte: numText(n) } : x)))}
               />
               <SegmentedControl
                 size="sm"
                 label={`Status for line ${i + 1}`}
                 value={l.status}
                 onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, status: v } : x)))}
-                items={[
-                  { id: 'Forecast', label: 'Forecast' },
-                  { id: 'Confirmed', label: 'Confirmed' },
+                options={[
+                  { value: 'Forecast', label: 'Forecast' },
+                  { value: 'Confirmed', label: 'Confirmed' },
                 ]}
               />
               <Select
-                ariaLabel={`Owner for line ${i + 1}`}
+                aria-label={`Owner for line ${i + 1}`}
                 value={l.ownerUserId}
                 placeholder="No owner"
-                onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, ownerUserId: v } : x)))}
+                onValueChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, ownerUserId: v } : x)))}
                 options={owners}
               />
               <span className="dc-line__actions">
@@ -248,18 +251,18 @@ export function DemandCellDialog({
                   size="sm"
                   value={l.note}
                   placeholder="Note (optional)"
-                  ariaLabel={`Note for line ${i + 1}`}
-                  onChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, note: v } : x)))}
+                  aria-label={`Note for line ${i + 1}`}
+                  onValueChange={(v) => setLines(lines.map((x) => (x.key === l.key ? { ...x, note: v } : x)))}
                 />
               </span>
-              {tried && errors[i] && <span className="b2-field__error dc-line__err">{errors[i]}</span>}
+              {tried && errors[i] && <span className="pcp-field__error dc-line__err">{errors[i]}</span>}
             </div>
           ))}
         </div>
         <div>
           <Button
             size="sm"
-            icon={Plus}
+            iconBefore={Plus}
             onClick={() =>
               setLines([
                 ...lines,
@@ -279,7 +282,7 @@ export function DemandCellDialog({
             Add craft line
           </Button>
         </div>
-        <p className="b2-caption">
+        <p className="pcp-caption pcp-text-tertiary">
           Forecast lines are shown dashed on the roadmap; Confirmed lines are solid. Copy to later quarters applies
           after saving.
         </p>

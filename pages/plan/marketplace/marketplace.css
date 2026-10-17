@@ -53,7 +53,7 @@
   padding: 0 var(--space-300) var(--space-200) var(--space-600);
   background: var(--color-surface);
 }
-.mk-matches .b2-table {
+.mk-matches .pcp-tbl {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }

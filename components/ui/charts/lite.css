@@ -1,0 +1,320 @@
+/* Lightweight charts (HTML bars drawn to scale, SVG lines); colours from --chart-* tokens only (DESIGN_SYSTEM §11). */
+/* ── legend ─────────────────────────────────────────────────────────────────── */
+.pcp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-100) var(--space-200);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+}
+.pcp-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-075);
+}
+.pcp-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.pcp-swatch--1 {
+  background: var(--chart-1);
+}
+.pcp-swatch--2 {
+  background: var(--chart-2);
+}
+.pcp-swatch--3 {
+  background: var(--chart-3);
+}
+.pcp-swatch--4 {
+  background: var(--chart-4);
+}
+.pcp-swatch--other {
+  background: var(--chart-other);
+}
+.pcp-swatch--bench {
+  background-color: var(--chart-bench);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--chart-bench-hatch) 0,
+    var(--chart-bench-hatch) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  box-shadow: inset 0 0 0 1px var(--chart-bench-hatch);
+}
+.pcp-swatch--target {
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed var(--chart-target);
+}
+.pcp-swatch--demand {
+  height: 0;
+  width: 14px;
+  border-radius: 0;
+  border-top: 3px solid var(--chart-4);
+}
+.pcp-swatch--dashed {
+  background: transparent;
+  border: 1px dashed var(--color-border-input);
+}
+
+/* ── charts (§11) ───────────────────────────────────────────────────────────── */
+.pcp-lchart {
+  position: relative;
+  margin-top: var(--space-400);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--space-100);
+  user-select: none;
+}
+.pcp-lchart__yaxis {
+  position: relative;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--chart-axis);
+  font-variant-numeric: tabular-nums;
+}
+.pcp-lchart__ytick {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+}
+.pcp-lchart__ytitle {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  font-size: var(--text-caption-size);
+  color: var(--chart-axis);
+}
+.pcp-lchart__plot {
+  position: relative;
+  border-bottom: 1px solid var(--chart-axis);
+}
+.pcp-lchart__grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--chart-grid);
+}
+.pcp-lchart__cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+}
+.pcp-lchart__col {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: default;
+  min-width: 0;
+}
+.pcp-lchart__col:hover,
+.pcp-lchart__col.is-active {
+  background: var(--color-surface-hover);
+}
+.pcp-lchart__col:focus-visible {
+  outline-offset: -2px;
+}
+.pcp-lchart__bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100%;
+}
+.pcp-lchart__stack {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: 32px;
+  max-width: 100%;
+}
+.pcp-lchart__stack--wide {
+  width: 56px;
+}
+.pcp-lchart__seg {
+  width: 100%;
+  flex: 0 0 auto;
+}
+.pcp-lchart__stack > .pcp-lchart__seg:last-child {
+  border-radius: 4px 4px 0 0;
+}
+.pcp-lchart__seg--1 {
+  background: var(--chart-1);
+}
+.pcp-lchart__seg--2 {
+  background: var(--chart-2);
+}
+.pcp-lchart__seg--3 {
+  background: var(--chart-3);
+}
+.pcp-lchart__seg--4 {
+  background: var(--chart-4);
+}
+.pcp-lchart__seg--other {
+  background: var(--chart-other);
+}
+.pcp-lchart__seg--bench {
+  background-color: var(--chart-bench);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--chart-bench-hatch) 0,
+    var(--chart-bench-hatch) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+.pcp-lchart__marker {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  height: 0;
+  border-top: 3px solid var(--chart-4);
+  pointer-events: none;
+}
+.pcp-lchart__marker::before,
+.pcp-lchart__marker::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  width: 3px;
+  height: 9px;
+  background: var(--chart-4);
+}
+.pcp-lchart__marker::before {
+  left: 0;
+}
+.pcp-lchart__marker::after {
+  right: 0;
+}
+.pcp-lchart__target {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed var(--chart-target);
+  pointer-events: none;
+}
+.pcp-lchart__xaxis {
+  grid-column: 2;
+  display: flex;
+  padding-top: var(--space-100);
+}
+.pcp-lchart__xlabel {
+  flex: 1 1 0;
+  text-align: center;
+  min-width: 0;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--chart-axis);
+}
+.pcp-lchart__xlabel strong {
+  display: block;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.pcp-lchart__value {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding-bottom: var(--space-050);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pcp-lchart-tip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  min-width: 200px;
+  max-width: 280px;
+  padding: var(--space-100) var(--space-150);
+  border-radius: var(--radius-sm);
+  background: var(--color-tooltip-bg);
+  color: var(--color-tooltip-text);
+  box-shadow: var(--elevation-2);
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.pcp-lchart-tip__title {
+  font-weight: 600;
+  margin-bottom: var(--space-050);
+}
+.pcp-lchart-tip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+}
+.pcp-lchart-tip__row span:nth-child(2) {
+  flex: 1 1 auto;
+}
+.pcp-lchart-tip__row b {
+  font-weight: 600;
+}
+.pcp-lchart-svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.pcp-lchart-svg text {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  fill: var(--chart-axis);
+  font-variant-numeric: tabular-nums;
+}
+.pcp-lchart-svg .grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+.pcp-lchart-svg .axis {
+  stroke: var(--chart-axis);
+  stroke-width: 1;
+}
+.pcp-lchart-svg .line-1 {
+  fill: none;
+  stroke: var(--chart-1);
+  stroke-width: 2;
+}
+.pcp-lchart-svg .line-2 {
+  fill: none;
+  stroke: var(--chart-2);
+  stroke-width: 2;
+}
+.pcp-lchart-svg .dot-1 {
+  fill: var(--chart-1);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+.pcp-lchart-svg .dot-2 {
+  fill: var(--chart-2);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+.pcp-lchart-svg .hit {
+  fill: transparent;
+}
+.pcp-lchart-svg .hit:hover,
+.pcp-lchart-svg .hit.is-active {
+  fill: var(--color-surface-hover);
+}

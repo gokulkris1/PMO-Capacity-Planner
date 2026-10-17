@@ -1,7 +1,7 @@
 /** Edit a tribe's points-per-sprint-per-FTE calibration (JI-04#AC2): note required, "Use suggested" shortcut. */
 import { useState } from 'react';
 import type * as D from '../../../shared/contracts/dto';
-import { Button, Dialog, FormField, NumberField, TextField, useAction } from '../../plan/_kit';
+import { Button, Dialog, FormField, NumberField, useAction, Textarea } from '../../../components/ui';
 import { useDelivery } from '../../../state';
 
 export function CalibrationDialog({
@@ -16,10 +16,10 @@ export function CalibrationDialog({
   const delivery = useDelivery(s);
   const { run, busy } = useAction();
   const tribe = s.tribes.find((t) => t.id === calibration.tribeId);
-  const [value, setValue] = useState(String(calibration.pointsPerSprintPerFte));
+  const [value, setValue] = useState<number | null>(calibration.pointsPerSprintPerFte);
   const [note, setNote] = useState('');
   const [tried, setTried] = useState(false);
-  const n = Number(value);
+  const n = value ?? Number.NaN;
   const valueError = !(n > 0 && n <= 100) ? 'Enter a value above 0 and at most 100' : null;
   const noteError = !note.trim() ? 'Say why you are changing it; the note is kept in the history.' : null;
   const save = async () => {
@@ -45,10 +45,10 @@ export function CalibrationDialog({
         </>
       }
     >
-      <div className="b2-stack b2-stack--sm">
+      <div className="pcp-stack pcp-stack--md">
         <FormField
           label="Points per sprint per FTE"
-          htmlFor="cal-value"
+          id="cal-value"
           error={tried ? valueError : null}
           help={`Sprint length ${calibration.sprintLengthDays} days. Completed points of the last 3 closed sprints ÷ mapped FTE.`}
         >
@@ -63,20 +63,20 @@ export function CalibrationDialog({
           />
         </FormField>
         {calibration.suggestedValue !== null && (
-          <div className="b2-row">
-            <span className="b2-caption">
+          <div className="pcp-row">
+            <span className="pcp-caption pcp-text-tertiary">
               Suggested {calibration.suggestedValue}
               {calibration.suggestedBasis
                 ? ` (based on ${calibration.suggestedBasis.sprintNames.join(', ')}: ${calibration.suggestedBasis.points} pts, ${calibration.suggestedBasis.fte} FTE)`
                 : ''}
             </span>
-            <Button size="sm" variant="link" onClick={() => setValue(String(calibration.suggestedValue))}>
+            <Button size="sm" variant="link" onClick={() => setValue(calibration.suggestedValue)}>
               Use suggested
             </Button>
           </div>
         )}
-        <FormField label="Why are you changing this?" htmlFor="cal-note" error={tried ? noteError : null}>
-          <TextField id="cal-note" multiline value={note} invalid={tried && !!noteError} onChange={setNote} />
+        <FormField label="Why are you changing this?" id="cal-note" error={tried ? noteError : null}>
+          <Textarea id="cal-note" rows={3} value={note} invalid={tried && !!noteError} onValueChange={setNote} />
         </FormField>
       </div>
     </Dialog>

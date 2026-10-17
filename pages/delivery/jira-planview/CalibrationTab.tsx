@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pencil, Sparkles } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useWorkspace } from '../../../state';
-import { Button, Card, StatusPill, fmt } from '../../plan/_kit';
+import { Button, Card, fmt, StatusPill } from '../../../components/ui';
 import { CalibrationDialog } from '../_parts/CalibrationDialog';
 import type { DeliverySource } from '../../../state';
 
@@ -15,31 +15,31 @@ export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.Workspac
     (tribes.get(a.tribeId) ?? '').localeCompare(tribes.get(z.tribeId) ?? ''),
   );
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <Card
         flush
         title="Story points per sprint per FTE"
         subtitle="How to calibrate: take a tribe's last three closed sprints and divide the completed points by the full-time people on its boards. Re-check every QBR."
       >
-        <div className="b2-table-wrap">
-          <table className="b2-table">
-            <caption className="b2-sr-only">Calibration by tribe</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl">
+            <caption className="pcp-sr-only">Calibration by tribe</caption>
             <thead>
               <tr>
                 <th scope="col">Tribe</th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Current
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Suggested
                 </th>
                 <th scope="col">Basis</th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Sprint length
                 </th>
                 <th scope="col">Last changed</th>
                 <th scope="col">
-                  <span className="b2-sr-only">Actions</span>
+                  <span className="pcp-sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -48,38 +48,38 @@ export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.Workspac
                 const differs = c.suggestedValue !== null && c.suggestedValue !== c.pointsPerSprintPerFte;
                 return (
                   <tr key={c.tribeId}>
-                    <th scope="row" className="b2-strong">
+                    <th scope="row" className="pcp-strong">
                       {tribes.get(c.tribeId) ?? c.tribeId}
                     </th>
-                    <td className="b2-num">
-                      <span className="b2-row dl-cal-cur">
+                    <td className="pcp-num">
+                      <span className="pcp-row dl-cal-cur">
                         {c.isDefault && <StatusPill>Default</StatusPill>}
-                        <span className="b2-strong">{c.pointsPerSprintPerFte}</span>
+                        <span className="pcp-strong">{c.pointsPerSprintPerFte}</span>
                       </span>
                     </td>
-                    <td className="b2-num">{c.suggestedValue ?? <span className="b2-subtle">—</span>}</td>
-                    <td className="b2-caption">
+                    <td className="pcp-num">{c.suggestedValue ?? <span className="pcp-text-tertiary">—</span>}</td>
+                    <td className="pcp-caption pcp-text-tertiary">
                       {c.suggestedBasis
                         ? `Based on ${c.suggestedBasis.sprintNames[0]}–${c.suggestedBasis.sprintNames[c.suggestedBasis.sprintNames.length - 1]?.replace('Sprint ', '')}: ${c.suggestedBasis.points} pts, ${fmt.fte(c.suggestedBasis.fte)} FTE`
                         : 'No closed sprints on mapped boards yet'}
                     </td>
-                    <td className="b2-num">{c.sprintLengthDays} days</td>
-                    <td className="b2-caption">
+                    <td className="pcp-num">{c.sprintLengthDays} days</td>
+                    <td className="pcp-caption pcp-text-tertiary">
                       {c.updatedBy ? `${c.updatedBy.name} · ${fmt.date(c.updatedAt)}` : 'Never'}
                     </td>
-                    <td className="b2-num">
+                    <td className="pcp-num">
                       {can('integrations.run') && (
-                        <span className="b2-row dl-actions">
+                        <span className="pcp-row dl-actions">
                           {differs && (
                             <Button
                               size="sm"
-                              icon={Sparkles}
+                              iconBefore={Sparkles}
                               onClick={() => setEditing({ cal: c, value: c.suggestedValue ?? undefined })}
                             >
                               Use suggested
                             </Button>
                           )}
-                          <Button size="sm" variant="subtle" icon={Pencil} onClick={() => setEditing({ cal: c })}>
+                          <Button size="sm" variant="subtle" iconBefore={Pencil} onClick={() => setEditing({ cal: c })}>
                             Edit
                           </Button>
                         </span>
@@ -91,8 +91,8 @@ export function CalibrationTab({ snapshot: s, delivery }: { snapshot: D.Workspac
             </tbody>
           </table>
         </div>
-        <div className="b2-card__foot">
-          <span className="b2-caption">
+        <div className="pcp-card__footer">
+          <span className="pcp-caption pcp-text-tertiary">
             Tribes without calibration use the workspace default: 10 points per 14-day sprint per FTE. Changes are
             audited with your note.
           </span>

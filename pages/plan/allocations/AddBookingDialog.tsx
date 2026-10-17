@@ -2,7 +2,17 @@
 import { useMemo, useState } from 'react';
 import type * as D from '../../../shared/contracts/dto';
 import { useMutations, useQuarters } from '../../../state';
-import { Button, Dialog, FormField, NumberField, Select, useAction, type SelectOption } from '../_kit';
+import {
+  Button,
+  Dialog,
+  FormField,
+  NumberField,
+  Select,
+  type SelectOption,
+  useAction,
+  numOrNull,
+  numText,
+} from '../../../components/ui';
 
 export function AddBookingDialog({
   snapshot: s,
@@ -112,14 +122,14 @@ function Inner({
         </>
       }
     >
-      <div className="b2-form">
-        <FormField label="Person" htmlFor="ab-person" error={tried ? errors.person : null} className="b2-form__full">
+      <div className="pcp-form-grid">
+        <FormField label="Person" id="ab-person" error={tried ? errors.person : null} className="pcp-form-grid__full">
           <Select
             id="ab-person"
             value={personId}
             placeholder="Choose a person"
             invalid={tried && !!errors.person}
-            onChange={(v) => {
+            onValueChange={(v) => {
               setPersonId(v);
               setCraftId(s.people.find((p) => p.id === v)?.primaryCraft ?? '');
             }}
@@ -128,13 +138,18 @@ function Inner({
               .map((p) => ({ value: p.id, label: `${p.name} · ${p.role}` }))}
           />
         </FormField>
-        <FormField label="Project" htmlFor="ab-project" error={tried ? errors.project : null} className="b2-form__full">
+        <FormField
+          label="Project"
+          id="ab-project"
+          error={tried ? errors.project : null}
+          className="pcp-form-grid__full"
+        >
           <Select
             id="ab-project"
             value={projectId}
             placeholder="Choose a project"
             invalid={tried && !!errors.project}
-            onChange={setProjectId}
+            onValueChange={setProjectId}
             options={s.projects
               .filter((p) => p.status !== 'Completed')
               .sort((a, b) => a.name.localeCompare(b.name))
@@ -148,40 +163,40 @@ function Inner({
         </FormField>
         <FormField
           label="Craft"
-          htmlFor="ab-craft"
+          id="ab-craft"
           help="Defaults to their above-the-table craft."
-          className="b2-form__full"
+          className="pcp-form-grid__full"
         >
           <Select
             id="ab-craft"
             value={craftId}
             placeholder="Their above-the-table craft"
-            onChange={setCraftId}
+            onValueChange={setCraftId}
             options={craftOptions}
           />
         </FormField>
         <FormField
           label="Quarter"
-          htmlFor="ab-quarter"
+          id="ab-quarter"
           help={outside ? 'The project does not run in this quarter, so nothing will be booked.' : undefined}
         >
           <Select
             id="ab-quarter"
             value={quarterKey}
-            onChange={setQuarterKey}
+            onValueChange={setQuarterKey}
             options={quarters.map((x) => ({ value: x.key, label: `${x.label} · ${x.calendarLabel}` }))}
           />
         </FormField>
-        <FormField label="Allocation" htmlFor="ab-pct" error={tried ? errors.pct : null}>
+        <FormField label="Allocation" id="ab-pct" error={tried ? errors.pct : null}>
           <NumberField
             id="ab-pct"
             unit="%"
-            value={pct}
+            value={numOrNull(pct)}
             min={0}
             max={200}
             step={5}
             invalid={tried && !!errors.pct}
-            onChange={setPct}
+            onChange={(n) => setPct(numText(n))}
           />
         </FormField>
       </div>

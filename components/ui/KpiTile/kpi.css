@@ -48,6 +48,15 @@
   white-space: nowrap;
 }
 
+.pcp-kpi__unit {
+  margin-left: var(--space-050);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-text-secondary);
+}
+
 .pcp-kpi__delta {
   display: inline-flex;
   align-items: center;

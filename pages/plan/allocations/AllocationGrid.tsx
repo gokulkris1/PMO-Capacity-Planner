@@ -5,11 +5,22 @@
  * are delegated to the page through callbacks.
  */
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { CalendarRange, ChevronDown, ChevronRight, Lock, TriangleAlert } from 'lucide-react';
+import { CalendarRange, ChevronDown, ChevronRight, Lock, TriangleAlert, Ellipsis } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { BAND_LABEL, type UtilBand } from '../../../shared/utilisation';
 import type { GridCell, GridModel, GridRow } from '../../../utils/viewModels';
-import { BAND_ICON, BookingStatePill, Checkbox, CraftChip, Menu, ProvenanceTag, cx, fmt, type MenuItem } from '../_kit';
+import {
+  BandCell,
+  BookingStatePill,
+  Checkbox,
+  CraftChip,
+  cx,
+  fmt,
+  Menu,
+  type MenuItem,
+  ProvenanceTag,
+  IconButton,
+} from '../../../components/ui';
 
 export interface FlatRow {
   kind: 'group' | 'person' | 'project' | 'booking';
@@ -284,7 +295,7 @@ export function AllocationGrid({
   return (
     <table
       ref={tableRef}
-      className={cx('b2-table', 'b2-table--compact', 'al-grid', pivot === 'project' && 'al-grid--project')}
+      className={cx('pcp-tbl', 'pcp-tbl--compact', 'al-grid', pivot === 'project' && 'al-grid--project')}
       role="grid"
       aria-label={pivot === 'person' ? 'Allocations by person and quarter' : 'Allocations by project and quarter'}
       aria-rowcount={rows.length + 1}
@@ -294,7 +305,7 @@ export function AllocationGrid({
     >
       <thead>
         <tr role="row" aria-rowindex={1}>
-          <th scope="col" role="columnheader" aria-colindex={1} className="b2-sticky-col al-col-name">
+          <th scope="col" role="columnheader" aria-colindex={1} className="pcp-tbl-sticky al-col-name">
             {pivot === 'person' ? 'Person · project' : 'Project · person'}
           </th>
           {quarters.map((q, i) => (
@@ -303,7 +314,7 @@ export function AllocationGrid({
               scope="col"
               role="columnheader"
               aria-colindex={i + 2}
-              className="b2-num al-col-q"
+              className="pcp-num al-col-q"
               title={fmt.quarterTooltip(q)}
             >
               <span className="al-qhead">
@@ -312,8 +323,8 @@ export function AllocationGrid({
               </span>
             </th>
           ))}
-          <th scope="col" role="columnheader" aria-colindex={nCols} className="b2-cell-menu">
-            <span className="b2-sr-only">Actions</span>
+          <th scope="col" role="columnheader" aria-colindex={nCols} className="pcp-tbl-menu">
+            <span className="pcp-sr-only">Actions</span>
           </th>
         </tr>
       </thead>
@@ -322,12 +333,12 @@ export function AllocationGrid({
           const rowIndex = ri + 2;
           if (r.kind === 'group') {
             return (
-              <tr key={r.key} role="row" aria-rowindex={rowIndex} className="b2-group al-row--group">
+              <tr key={r.key} role="row" aria-rowindex={rowIndex} className="pcp-tbl-group al-row--group">
                 <th
                   scope="rowgroup"
                   role="rowheader"
                   aria-colindex={1}
-                  className="b2-sticky-col"
+                  className="pcp-tbl-sticky"
                   tabIndex={cellKey(r, 0) ? 0 : -1}
                   data-active={cellKey(r, 0)}
                   onFocus={() => setActive({ key: r.key, col: 0 })}
@@ -340,7 +351,7 @@ export function AllocationGrid({
                     role="gridcell"
                     aria-colindex={i + 2}
                     aria-readonly="true"
-                    className="b2-num"
+                    className="pcp-num"
                     tabIndex={cellKey(r, i + 1) ? 0 : -1}
                     data-active={cellKey(r, i + 1)}
                     onFocus={() => setActive({ key: r.key, col: i + 1 })}
@@ -389,7 +400,7 @@ export function AllocationGrid({
                 scope="row"
                 role="rowheader"
                 aria-colindex={1}
-                className="b2-sticky-col al-col-name"
+                className="pcp-tbl-sticky al-col-name"
                 tabIndex={cellKey(r, 0) ? 0 : -1}
                 data-active={cellKey(r, 0)}
                 onFocus={() => setActive({ key: r.key, col: 0 })}
@@ -410,10 +421,10 @@ export function AllocationGrid({
                       )}
                     </button>
                     <span className="al-name__text">
-                      <span className="b2-strong b2-ellipsis" title={r.label}>
+                      <span className="pcp-strong pcp-truncate" title={r.label}>
                         {r.label}
                       </span>
-                      <span className="b2-caption b2-ellipsis">
+                      <span className="pcp-caption pcp-text-tertiary pcp-truncate">
                         {r.kind === 'person'
                           ? (person?.role ?? '')
                           : [project?.stage, project ? fmt.dateRange(project.startDate, project.endDate) : null]
@@ -426,13 +437,12 @@ export function AllocationGrid({
                   <span className="al-name al-name--sub">
                     {canEdit && (
                       <Checkbox
-                        label={`Select ${r.label}`}
-                        hideLabel
+                        aria-label={`Select ${r.label}`}
                         checked={selected.has(r.key)}
                         onChange={(v) => onSelect(r.key, v)}
                       />
                     )}
-                    <span className="b2-ellipsis al-name__label" title={r.label}>
+                    <span className="pcp-truncate al-name__label" title={r.label}>
                       {r.label}
                     </span>
                     <CraftChip craft={craft} via={via} proficiency={prof} />
@@ -475,7 +485,7 @@ export function AllocationGrid({
                     aria-label={label}
                     aria-selected={isActive}
                     className={cx(
-                      'b2-num al-cell',
+                      'pcp-num al-cell',
                       editable && 'is-editable',
                       isActive && 'is-active',
                       c.locked && 'is-locked',
@@ -504,9 +514,14 @@ export function AllocationGrid({
                     }}
                   >
                     {isEditing ? (
-                      <span className="al-edit">
+                      <span
+                        className={cx(
+                          'al-edit pcp-control pcp-control--sm pcp-control--number',
+                          editing.error && 'pcp-control--invalid',
+                        )}
+                      >
                         <input
-                          className="b2-input b2-input--sm b2-input--num al-edit__input"
+                          className="pcp-control__input al-edit__input"
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- grid edit mode starts in the cell input
                           autoFocus
                           inputMode="decimal"
@@ -531,16 +546,18 @@ export function AllocationGrid({
                       </span>
                     ) : r.kind === 'booking' ? (
                       <span className={cx('al-val', tentative && c.pct > 0 && 'al-val--tentative')}>
-                        {c.locked && <Lock size={12} strokeWidth={2} aria-hidden="true" className="b2-subtle" />}
+                        {c.locked && (
+                          <Lock size={12} strokeWidth={2} aria-hidden="true" className="pcp-text-tertiary" />
+                        )}
                         {c.partial && (
-                          <CalendarRange size={12} strokeWidth={2} aria-hidden="true" className="b2-subtle" />
+                          <CalendarRange size={12} strokeWidth={2} aria-hidden="true" className="pcp-text-tertiary" />
                         )}
                         {over && over.band === 'over' && (
                           <TriangleAlert
                             size={12}
                             strokeWidth={2}
                             aria-hidden="true"
-                            className="b2-icon-status--danger"
+                            className="pcp-icon-status--danger"
                             aria-label={`Takes ${person?.name ?? 'them'} to ${fmt.pct(over.pct)} in ${quarters[i].label}`}
                           />
                         )}
@@ -560,16 +577,19 @@ export function AllocationGrid({
                       <ValueCell cell={c} pivot={pivot} label={label} />
                     )}
                     {over && over.band === 'over' && !isEditing && (
-                      <span className="b2-sr-only">
+                      <span className="pcp-sr-only">
                         Takes {person?.name} to {fmt.pct(over.pct)} in {quarters[i].label}
                       </span>
                     )}
                   </td>
                 );
               })}
-              <td role="gridcell" aria-colindex={nCols} className="b2-cell-menu">
+              <td role="gridcell" aria-colindex={nCols} className="pcp-tbl-menu">
                 {r.row && r.kind === 'booking' && (canEdit || r.cells.some((c) => c.state === 'tentative')) && (
-                  <Menu label={`Actions for ${r.label}`} size="sm" items={rowMenu(r.row)} />
+                  <Menu
+                    trigger={<IconButton icon={Ellipsis} label={`Actions for ${r.label}`} size="sm" />}
+                    items={rowMenu(r.row)}
+                  />
                 )}
               </td>
             </tr>
@@ -593,18 +613,12 @@ function ValueCell({
 }) {
   if (pivot === 'project' || cell.band === null) {
     return (
-      <span className={cx('al-val', total && 'b2-strong')} aria-label={label}>
+      <span className={cx('al-val', total && 'pcp-strong')} aria-label={label}>
         {pivot === 'project' ? `${fmt.fte(cell.pct / 100)}` : fmt.pct(cell.pct)}
       </span>
     );
   }
-  const Icon = cell.band === 'over' || cell.band === 'under' ? BAND_ICON[cell.band] : null;
-  return (
-    <span className={cx('b2-band', `b2-band--${cell.band}`)} title={`${label}`}>
-      {Icon && <Icon size={12} strokeWidth={2} aria-hidden="true" />}
-      {fmt.pct(cell.pct)}
-    </span>
-  );
+  return <BandCell value={cell.pct} band={cell.band} label={label} />;
 }
 
 function ProjectCell({ pct, demand }: { pct: number; demand: number }) {
@@ -612,8 +626,8 @@ function ProjectCell({ pct, demand }: { pct: number; demand: number }) {
   const gap = Math.round((demand - staffed) * 10) / 10;
   return (
     <span className="al-proj" title={`Staffed ${fmt.fte(staffed)} of ${fmt.fte(demand)} FTE demand`}>
-      <span className="b2-strong">{fmt.fte(staffed)}</span>
-      <span className="b2-caption"> / {fmt.fte(demand)}</span>
+      <span className="pcp-strong">{fmt.fte(staffed)}</span>
+      <span className="pcp-caption pcp-text-tertiary"> / {fmt.fte(demand)}</span>
       {gap > 0.04 && (
         <span className="al-gap" aria-label={`Gap ${fmt.fte(gap)} FTE`}>
           −{fmt.fte(gap)}

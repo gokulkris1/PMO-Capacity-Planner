@@ -11,6 +11,7 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { ProductMark, Wordmark } from './ProductMark';
 export { useNavGroups, AREA_LABEL, type NavGroup, type NavItem } from './nav';
 export { useEmbedded } from './embedded';
+export { PageBody } from './PageBody';
 export { useTimeBasis, TimeBasisControl, BASIS_KEYS, type BasisKey, type TimeBasisState } from './TimeBasis';
 export {
   useWsPath,

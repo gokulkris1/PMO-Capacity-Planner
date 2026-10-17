@@ -53,3 +53,31 @@
   background: var(--color-info);
   box-shadow: 0 0 0 2px var(--color-surface);
 }
+
+/* PersonLabel */
+.pcp-person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  min-width: 0;
+}
+.pcp-person__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pcp-person__name {
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pcp-person__sub {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-line);
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

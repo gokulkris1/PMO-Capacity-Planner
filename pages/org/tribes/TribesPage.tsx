@@ -8,15 +8,17 @@ import { Network } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useQuarters } from '../../../state';
 import { buildTribeView } from '../../../utils/viewModels';
-import { Card, EmptyState, PageBody, PageHeader, StatusPill, fmt, useWsPath } from '../../plan/_kit';
+import { Card, EmptyState, fmt, PageHeader, StatusPill } from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
 import './tribes.css';
 
 export default function TribesPage() {
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Organisation' }, { label: 'Tribes' }]}
+        breadcrumbs={[{ label: 'Organisation' }, { label: 'Tribes' }]}
         title="Tribes"
         description="Demand, PMO staffing and delivery signal per tribe for the next four quarters."
       />
@@ -41,20 +43,24 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   if (views.length === 0)
     return (
       <Card>
-        <EmptyState icon={Network} title="No tribes yet" body="A PMO Admin adds tribes in Settings › Structure." />
+        <EmptyState
+          icon={Network}
+          title="No tribes yet"
+          description="A PMO Admin adds tribes in Settings › Structure."
+        />
       </Card>
     );
   return (
     <Card flush>
-      <div className="b2-table-wrap">
-        <table className="b2-table tr-table">
-          <caption className="b2-sr-only">Tribes</caption>
+      <div className="pcp-tbl-wrap">
+        <table className="pcp-tbl tr-table">
+          <caption className="pcp-sr-only">Tribes</caption>
           <thead>
             <tr>
-              <th scope="col" rowSpan={2} className="b2-sticky-col tr-col-name">
+              <th scope="col" rowSpan={2} className="pcp-tbl-sticky tr-col-name">
                 Tribe
               </th>
-              <th scope="col" rowSpan={2} className="b2-num">
+              <th scope="col" rowSpan={2} className="pcp-num">
                 Projects
               </th>
               <th scope="colgroup" colSpan={quarters.length} className="tr-group">
@@ -63,7 +69,7 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               <th scope="colgroup" colSpan={2} className="tr-group">
                 {fmt.quarterCaption(q1)}
               </th>
-              <th scope="col" rowSpan={2} className="b2-num">
+              <th scope="col" rowSpan={2} className="pcp-num">
                 People serving
               </th>
               <th scope="col" rowSpan={2}>
@@ -75,16 +81,16 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 <th
                   key={q.key}
                   scope="col"
-                  className={i === 0 ? 'b2-num tr-first' : 'b2-num'}
+                  className={i === 0 ? 'pcp-num tr-first' : 'pcp-num'}
                   title={fmt.quarterTooltip(q)}
                 >
                   {q.label}
                 </th>
               ))}
-              <th scope="col" className="b2-num tr-first">
+              <th scope="col" className="pcp-num tr-first">
                 Staffed
               </th>
-              <th scope="col" className="b2-num">
+              <th scope="col" className="pcp-num">
                 Gap
               </th>
             </tr>
@@ -99,31 +105,31 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               const gap = Math.max(0, v.gapFte[0] ?? 0);
               return (
                 <tr key={v.tribe.id}>
-                  <th scope="row" className="b2-sticky-col tr-col-name">
-                    <Link className="b2-link b2-strong" to={wsPath(`org/tribes/${v.tribe.id}`)}>
+                  <th scope="row" className="pcp-tbl-sticky tr-col-name">
+                    <Link className="pcp-link pcp-strong" to={wsPath(`org/tribes/${v.tribe.id}`)}>
                       {v.tribe.name}
                     </Link>
-                    <span className="b2-caption tr-lead">
+                    <span className="pcp-caption pcp-text-tertiary tr-lead">
                       {v.tribe.leadName ? `Lead: ${v.tribe.leadName}` : 'No lead set'}
                     </span>
                   </th>
-                  <td className="b2-num">{v.projects.length}</td>
+                  <td className="pcp-num">{v.projects.length}</td>
                   {v.demandFte.map((d, i) => (
-                    <td key={quarters[i].key} className={i === 0 ? 'b2-num tr-first' : 'b2-num'}>
+                    <td key={quarters[i].key} className={i === 0 ? 'pcp-num tr-first' : 'pcp-num'}>
                       {fmt.fte(d)}
                     </td>
                   ))}
-                  <td className="b2-num tr-first">{fmt.fte(v.staffedFte[0])}</td>
-                  <td className="b2-num">
+                  <td className="pcp-num tr-first">{fmt.fte(v.staffedFte[0])}</td>
+                  <td className="pcp-num">
                     {gap > 0.04 ? (
                       <StatusPill tone="danger" title={`${fmt.fte(gap)} FTE of demand is not staffed`}>
                         Gap {fmt.fte(gap)}
                       </StatusPill>
                     ) : (
-                      <span className="b2-subtle">0.0</span>
+                      <span className="pcp-text-tertiary">0.0</span>
                     )}
                   </td>
-                  <td className="b2-num">{v.people.length}</td>
+                  <td className="pcp-num">{v.people.length}</td>
                   <td>
                     {signal ? (
                       <span className="tr-signal">
@@ -134,12 +140,12 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                               ? 'More effort'
                               : 'Less effort'}
                         </StatusPill>
-                        <span className="b2-caption b2-tnum">
+                        <span className="pcp-caption pcp-text-tertiary pcp-tnum">
                           {fmt.fte(planned)} planned · {fmt.fte(implied)} implied
                         </span>
                       </span>
                     ) : (
-                      <span className="b2-subtle">No Jira mapping</span>
+                      <span className="pcp-text-tertiary">No Jira mapping</span>
                     )}
                   </td>
                 </tr>
@@ -148,8 +154,8 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           </tbody>
         </table>
       </div>
-      <div className="b2-card__foot">
-        <span className="b2-caption">
+      <div className="pcp-card__footer">
+        <span className="pcp-caption pcp-text-tertiary">
           Staffed = confirmed bookings on the tribe&apos;s projects. Delivery signal compares planned with Jira-implied
           FTE (signal, not a timesheet).
         </span>

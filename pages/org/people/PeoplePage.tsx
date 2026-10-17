@@ -17,21 +17,25 @@ import {
   Upload,
   Users,
   X,
+  Ellipsis,
 } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { bandFor, BAND_LABEL, type UtilBand } from '../../../shared/utilisation';
 import { useEntitlements, useMutations, useQuarters, useRecordExport, useWorkspace } from '../../../state';
 import { buildPeopleRows, type PersonRow } from '../../../utils/viewModels';
 import {
-  Banner,
   BandCell,
+  Banner,
   Button,
   Card,
   Checkbox,
   CraftChip,
+  cx,
+  downloadText,
   EmptyState,
+  fmt,
+  indexSnapshot,
   Menu,
-  PageBody,
   PageHeader,
   PersonLabel,
   Select,
@@ -39,16 +43,14 @@ import {
   TabPanel,
   Tabs,
   TextField,
-  cx,
-  downloadText,
-  fmt,
-  indexSnapshot,
   useAction,
-  useBasis,
   useConfirm,
   useQueryParam,
   useSort,
-} from '../../plan/_kit';
+  IconButton,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
 import { PersonDrawer } from './PersonDrawer';
 import { BulkEditDialog, type BulkKind } from './_parts/BulkEditDialog';
 import { ImportPeopleDialog } from './_parts/ImportPeopleDialog';
@@ -57,6 +59,7 @@ import { peopleToCsv } from '../../../utils/csvPeople';
 import './people.css';
 
 export default function PeoplePage() {
+  const basis = useTimeBasis('qbr1');
   const { can } = useWorkspace();
   const ent = useEntitlements();
   const [, setPerson] = useQueryParam('person');
@@ -69,21 +72,22 @@ export default function PeoplePage() {
     ...(can('export') ? [{ label: 'Export CSV', icon: Download, onSelect: () => setExportReq((n) => n + 1) }] : []),
   ];
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Organisation' }, { label: 'People' }]}
+        breadcrumbs={[{ label: 'Organisation' }, { label: 'People' }]}
         title="People"
         description="The PMO squad with above-the-table and below-the-table crafts and their load for the next four quarters."
-        basis
-        basisExclude={['today', 'window']}
+        timeBasis={<TimeBasisControl state={basis} exclude={['today', 'window']} />}
         actions={
           <>
             {can('people.write') && (
-              <Button variant="primary" icon={Plus} onClick={() => setPerson('new')}>
+              <Button variant="primary" iconBefore={Plus} onClick={() => setPerson('new')}>
                 Add person
               </Button>
             )}
-            {overflow.length > 0 && <Menu label="More actions" items={overflow} />}
+            {overflow.length > 0 && (
+              <Menu trigger={<IconButton icon={Ellipsis} label="More actions" />} items={overflow} />
+            )}
           </>
         }
       />
@@ -117,10 +121,10 @@ function PeopleBody({
   const { can, thresholds } = useWorkspace();
   const quarters = useQuarters();
   const recordExport = useRecordExport();
-  const b = useBasis();
+  const b = useTimeBasis('qbr1');
   const m = useMutations();
   const { run } = useAction();
-  const { confirm, dialog } = useConfirm();
+  const confirm = useConfirm();
   const idx = useMemo(() => indexSnapshot(s), [s]);
   const [personId, setPerson] = useQueryParam('person');
   const [tab, setTab] = useQueryParam('tab', 'people');
@@ -240,8 +244,8 @@ function PeopleBody({
           <Banner
             tone="info"
             title={`${pending.length} craft change${pending.length === 1 ? '' : 's'} waiting for approval`}
-            action={
-              <Button size="sm" variant="secondary" icon={ListChecks} onClick={() => setTab('requests')}>
+            actionNode={
+              <Button size="sm" variant="secondary" iconBefore={ListChecks} onClick={() => setTab('requests')}>
                 Review requests
               </Button>
             }
@@ -251,25 +255,25 @@ function PeopleBody({
       {canApprove && (
         <div className="pp-tabs">
           <Tabs
-            idPrefix="people"
+            idBase="people"
             label="People views"
             value={tab === 'requests' ? 'requests' : 'people'}
             onChange={(v) => setTab(v)}
-            items={[
+            tabs={[
               { id: 'people', label: 'Directory' },
               { id: 'requests', label: 'Requests', count: pending.length },
             ]}
           />
         </div>
       )}
-      <TabPanel idPrefix="people" value={tab === 'requests' ? 'requests' : 'people'}>
+      <TabPanel idBase="people" tabId={tab === 'requests' ? 'requests' : 'people'}>
         {tab === 'requests' && canApprove ? (
           <CraftRequests snapshot={s} />
         ) : (
           <Card flush>
             {someSelected && canWrite ? (
-              <div className="b2-toolbar b2-toolbar--bulk" role="region" aria-label="Bulk actions">
-                <span className="b2-toolbar__count">
+              <div className="pcp-tbl-toolbar pcp-tbl-toolbar--bulk" role="region" aria-label="Bulk actions">
+                <span className="pcp-tbl-toolbar__count">
                   {[...selected].filter((id) => sorted.some((r) => r.person.id === id)).length} selected
                 </span>
                 <Button size="sm" onClick={() => setBulk('chapter')}>
@@ -284,31 +288,31 @@ function PeopleBody({
                 <Button size="sm" onClick={() => setBulk('craft')}>
                   Add below-the-table craft
                 </Button>
-                <span className="b2-spacer" />
+                <span className="pcp-spacer" />
                 <Button variant="link" onClick={() => setSelected(new Set())}>
                   Clear
                 </Button>
               </div>
             ) : (
-              <div className="b2-toolbar" role="search" aria-label="Filter people">
+              <div className="pcp-tbl-toolbar" role="search" aria-label="Filter people">
                 <span className="pp-search">
                   <TextField
                     id="pp-q"
-                    icon={Search}
+                    leadingIcon={Search}
                     size="sm"
                     value={q}
                     placeholder="Search name, title or skill"
-                    ariaLabel="Search people"
-                    onChange={(v) => setQ(v)}
+                    aria-label="Search people"
+                    onValueChange={(v) => setQ(v)}
                   />
                 </span>
                 <span className="pp-filter">
                   <Select
                     size="sm"
-                    ariaLabel="Filter by craft"
+                    aria-label="Filter by craft"
                     value={craft}
                     placeholder="Craft: all"
-                    onChange={setCraft}
+                    onValueChange={setCraft}
                     options={s.crafts
                       .filter((c) => !c.archived)
                       .map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))}
@@ -317,10 +321,10 @@ function PeopleBody({
                 <span className="pp-filter">
                   <Select
                     size="sm"
-                    ariaLabel="Filter by chapter"
+                    aria-label="Filter by chapter"
                     value={chapter}
                     placeholder="Chapter: all"
-                    onChange={setChapter}
+                    onValueChange={setChapter}
                     options={s.chapters
                       .filter((c) => !c.archived)
                       .map((c) => ({ value: c.id, label: `Chapter: ${c.name}` }))}
@@ -329,10 +333,10 @@ function PeopleBody({
                 <span className="pp-filter">
                   <Select
                     size="sm"
-                    ariaLabel="Filter by tribe affinity"
+                    aria-label="Filter by tribe affinity"
                     value={tribe}
                     placeholder="Tribe: all"
-                    onChange={setTribe}
+                    onValueChange={setTribe}
                     options={s.tribes
                       .filter((c) => !c.archived)
                       .map((c) => ({ value: c.id, label: `Tribe: ${c.name}` }))}
@@ -341,10 +345,10 @@ function PeopleBody({
                 <span className="pp-filter pp-filter--sm">
                   <Select
                     size="sm"
-                    ariaLabel={`Filter by band in ${b.quarter?.label ?? 'QBR1'}`}
+                    aria-label={`Filter by band in ${b.quarter?.label ?? 'QBR1'}`}
                     value={band}
                     placeholder={`Band (${b.quarter?.label ?? 'QBR1'}): all`}
-                    onChange={setBand}
+                    onValueChange={setBand}
                     options={(['over', 'on-target', 'under', 'bench'] as UtilBand[]).map((x) => ({
                       value: x,
                       label: `${b.quarter?.label}: ${BAND_LABEL[x]}`,
@@ -355,26 +359,26 @@ function PeopleBody({
                   <span className="pp-filter pp-filter--sm">
                     <Select
                       size="sm"
-                      ariaLabel="Filter by skill"
+                      aria-label="Filter by skill"
                       value={skill}
                       placeholder="Skill: all"
-                      onChange={setSkill}
+                      onValueChange={setSkill}
                       options={skills.map((x) => ({ value: x, label: `Skill: ${x}` }))}
                     />
                   </span>
                 )}
                 {activeFilters > 0 && (
-                  <Button size="sm" variant="subtle" icon={X} onClick={clearFilters}>
+                  <Button size="sm" variant="subtle" iconBefore={X} onClick={clearFilters}>
                     Clear filters
                   </Button>
                 )}
-                <span className="b2-spacer" />
+                <span className="pcp-spacer" />
                 <span className="pp-filter pp-filter--sm">
                   <Select
                     size="sm"
-                    ariaLabel="Group by"
+                    aria-label="Group by"
                     value={groupBy}
-                    onChange={(v) => setGroupBy(v)}
+                    onValueChange={(v) => setGroupBy(v)}
                     options={[
                       { value: 'none', label: 'Group: none' },
                       { value: 'team', label: 'Group: team' },
@@ -390,10 +394,10 @@ function PeopleBody({
                 <EmptyState
                   icon={Users}
                   title="No people yet"
-                  body="Add your squad to start planning capacity."
+                  description="Add your squad to start planning capacity."
                   action={
                     canWrite && (
-                      <Button variant="primary" icon={Plus} onClick={() => setPerson('new')}>
+                      <Button variant="primary" iconBefore={Plus} onClick={() => setPerson('new')}>
                         Add person
                       </Button>
                     )
@@ -411,16 +415,15 @@ function PeopleBody({
                 />
               )
             ) : (
-              <div className="b2-table-wrap b2-table-wrap--tall">
-                <table className="b2-table pp-table">
-                  <caption className="b2-sr-only">People with crafts and quarterly load ({b.caption})</caption>
+              <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+                <table className="pcp-tbl pp-table">
+                  <caption className="pcp-sr-only">People with crafts and quarterly load ({b.caption})</caption>
                   <thead>
                     <tr>
                       {canWrite && (
-                        <th scope="col" className="b2-cell-check">
+                        <th scope="col" className="pcp-tbl-check">
                           <Checkbox
-                            label="Select all people"
-                            hideLabel
+                            aria-label="Select all people"
                             checked={allSelected}
                             indeterminate={someSelected && !allSelected}
                             onChange={(v) => setSelected(v ? new Set(sorted.map((r) => r.person.id)) : new Set())}
@@ -478,8 +481,8 @@ function PeopleBody({
                           </span>
                         </SortTh>
                       ))}
-                      <th scope="col" className="b2-cell-menu">
-                        <span className="b2-sr-only">Actions</span>
+                      <th scope="col" className="pcp-tbl-menu">
+                        <span className="pcp-sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
@@ -489,11 +492,11 @@ function PeopleBody({
                       return (
                         <Fragment key={g.id}>
                           {groupBy !== 'none' && (
-                            <tr className="b2-group">
+                            <tr className="pcp-tbl-group">
                               <th scope="rowgroup" colSpan={canWrite ? 7 : 6}>
                                 <button
                                   type="button"
-                                  className="b2-rowlink pp-grouptoggle"
+                                  className="pcp-rowlink pp-grouptoggle"
                                   aria-expanded={!isCollapsed}
                                   onClick={() =>
                                     setCollapsed((c) => {
@@ -509,7 +512,7 @@ function PeopleBody({
                                   ) : (
                                     <ChevronDown size={16} aria-hidden="true" />
                                   )}
-                                  {g.label} <span className="b2-caption">· {g.rows.length}</span>
+                                  {g.label} <span className="pcp-caption pcp-text-tertiary">· {g.rows.length}</span>
                                 </button>
                               </th>
                               {quarters.map((qq, i) => {
@@ -520,7 +523,7 @@ function PeopleBody({
                                 );
                                 const rel = target > 0 ? (100 * load) / target : 0;
                                 return (
-                                  <td key={qq.key} className="b2-num">
+                                  <td key={qq.key} className="pcp-num">
                                     <BandCell
                                       value={rel}
                                       band={bandFor(rel, thresholds)}
@@ -540,10 +543,9 @@ function PeopleBody({
                               return (
                                 <tr key={p.id} className={cx(isSel && 'is-selected')}>
                                   {canWrite && (
-                                    <td className="b2-cell-check">
+                                    <td className="pcp-tbl-check">
                                       <Checkbox
-                                        label={`Select ${p.name}`}
-                                        hideLabel
+                                        aria-label={`Select ${p.name}`}
                                         checked={isSel}
                                         onChange={() => toggleRow(p.id)}
                                       />
@@ -552,7 +554,7 @@ function PeopleBody({
                                   <th scope="row" className="pp-col-person">
                                     <button
                                       type="button"
-                                      className="b2-rowlink pp-person"
+                                      className="pcp-rowlink pp-person"
                                       onClick={() => setPerson(p.id)}
                                     >
                                       <PersonLabel
@@ -567,12 +569,12 @@ function PeopleBody({
                                     </button>
                                   </th>
                                   <td className="pp-col-wide pp-col-chapter">
-                                    <span className="b2-ellipsis pp-trunc" title={r.chapter?.name}>
+                                    <span className="pcp-truncate pp-trunc" title={r.chapter?.name}>
                                       {r.chapter?.name ?? '—'}
                                     </span>
                                   </td>
                                   <td className="pp-col-wide pp-col-team">
-                                    <span className="b2-ellipsis pp-trunc" title={r.team?.name}>
+                                    <span className="pcp-truncate pp-trunc" title={r.team?.name}>
                                       {r.team?.name ?? '—'}
                                     </span>
                                   </td>
@@ -580,8 +582,8 @@ function PeopleBody({
                                     <CraftChip craft={r.primary} via="above" />
                                   </td>
                                   <td className="pp-col-below">
-                                    <span className="b2-chips">
-                                      {r.secondary.length === 0 && <span className="b2-subtle">—</span>}
+                                    <span className="pcp-chips">
+                                      {r.secondary.length === 0 && <span className="pcp-text-tertiary">—</span>}
                                       {r.secondary.map((c) => (
                                         <CraftChip
                                           key={c.craft.id}
@@ -593,9 +595,9 @@ function PeopleBody({
                                       ))}
                                     </span>
                                   </td>
-                                  <td className="b2-num pp-col-target">{fmt.pct(p.targetUtil)}</td>
+                                  <td className="pcp-num pp-col-target">{fmt.pct(p.targetUtil)}</td>
                                   {r.quarters.map((qq, i) => (
-                                    <td key={qq.key} className={cx('b2-num pp-col-q', i === qi && 'is-basis')}>
+                                    <td key={qq.key} className={cx('pcp-num pp-col-q', i === qi && 'is-basis')}>
                                       <BandCell
                                         value={qq.relativePct}
                                         band={qq.band}
@@ -603,10 +605,10 @@ function PeopleBody({
                                       />
                                     </td>
                                   ))}
-                                  <td className="b2-cell-menu">
+                                  <td className="pcp-tbl-menu">
                                     <Menu
-                                      label={`Actions for ${p.name}`}
-                                      size="sm"
+                                      trigger={<IconButton icon={Ellipsis} label={`Actions for ${p.name}`} size="sm" />}
+
                                       items={[
                                         {
                                           label: canWrite ? 'Edit' : 'Open',
@@ -637,13 +639,15 @@ function PeopleBody({
                 </table>
               </div>
             )}
-            <div className="b2-card__foot">
-              <span className="b2-caption">
+            <div className="pcp-card__footer">
+              <span className="pcp-caption pcp-text-tertiary">
                 {sorted.length} of {rows.length} people · load as % of each person&apos;s target · band filter uses{' '}
                 {b.caption}
               </span>
-              <span className="b2-spacer" />
-              <span className="b2-caption">Filled chip = above the table · outlined = below the table (L1–L3)</span>
+              <span className="pcp-spacer" />
+              <span className="pcp-caption pcp-text-tertiary">
+                Filled chip = above the table · outlined = below the table (L1–L3)
+              </span>
             </div>
           </Card>
         )}
@@ -659,7 +663,6 @@ function PeopleBody({
         }}
       />
       <ImportPeopleDialog snapshot={s} open={importOpen} onClose={onImportClose} />
-      {dialog}
     </>
   );
 }

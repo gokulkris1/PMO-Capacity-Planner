@@ -20,7 +20,14 @@ export interface KpiTileProps {
   value: ReactNode;
   /** Optional band pill to the right of the value. */
   band?: UtilBand;
-  delta?: KpiDelta;
+  /** Small unit after the value, e.g. "FTE", "people". */
+  unit?: string;
+  /** Status pill next to the value (e.g. a BandPill with a custom label). */
+  pill?: ReactNode;
+  /** Change vs a reference (with an arrow), or a plain secondary line. */
+  delta?: KpiDelta | string;
+  /** Native tooltip on the label explaining the metric. */
+  help?: string;
   /** Time-basis caption, e.g. "QBR1 · Q4 2026" (every metric states its basis). */
   caption: string;
   /** Optional sparkline values (24 px, --chart-1, no axes). */
@@ -54,20 +61,41 @@ function Sparkline({ values }: { values: number[] }) {
 const DELTA_ICON = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight } as const;
 
 /** KPI tile: label, tnum value, optional band, delta, time-basis caption (DESIGN_SYSTEM §8.8). */
-export function KpiTile({ label, value, band, delta, caption, sparkline, onHelp, helpLabel, className }: KpiTileProps) {
+export function KpiTile({
+  label,
+  value,
+  band,
+  unit,
+  pill,
+  delta,
+  help,
+  caption,
+  sparkline,
+  onHelp,
+  helpLabel,
+  className,
+}: KpiTileProps) {
   return (
     <div className={cx('pcp-kpi', className)}>
       <div className="pcp-kpi__label-row">
-        <span className="pcp-kpi__label">{label}</span>
+        <span className="pcp-kpi__label" title={help}>
+          {label}
+        </span>
         {onHelp ? (
           <IconButton icon={CircleQuestionMark} label={helpLabel ?? `About ${label}`} size="sm" onClick={onHelp} />
         ) : null}
       </div>
       <div className="pcp-kpi__value-row">
-        <span className="pcp-kpi__value">{value}</span>
+        <span className="pcp-kpi__value">
+          {value}
+          {unit ? <span className="pcp-kpi__unit">{unit}</span> : null}
+        </span>
         {band ? <BandPill band={band} /> : null}
+        {pill}
       </div>
-      {delta ? (
+      {typeof delta === 'string' ? (
+        <span className="pcp-kpi__delta">{delta}</span>
+      ) : delta ? (
         <span className="pcp-kpi__delta">
           <Icon icon={DELTA_ICON[delta.direction]} size={12} />
           <span>{delta.text}</span>

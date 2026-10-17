@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import type { OutlookPoint } from '../../../utils/viewModels';
 import type { QuarterView } from '../../../state';
-import { BandCell, ChartFrame, StackedBarChart, fmt } from '../_kit';
+import { BandCell, ChartPanel, fmt, StackedBarChart } from '../../../components/ui';
 
 export function CapacityOutlookChart({
   title,
@@ -36,31 +36,31 @@ export function CapacityOutlookChart({
     };
   });
   const table = (
-    <div className="b2-table-wrap">
-      <table className="b2-table b2-table--compact">
-        <caption className="b2-sr-only">{title}</caption>
+    <div className="pcp-tbl-wrap">
+      <table className="pcp-tbl pcp-tbl--compact">
+        <caption className="pcp-sr-only">{title}</caption>
         <thead>
           <tr>
             <th scope="col">Quarter</th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Supply
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Above
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Below
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Undeclared
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Free
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Demand
             </th>
-            <th scope="col" className="b2-num">
+            <th scope="col" className="pcp-num">
               Utilisation
             </th>
           </tr>
@@ -71,15 +71,15 @@ export function CapacityOutlookChart({
             return (
               <tr key={p.quarterKey}>
                 <th scope="row">
-                  {q?.label} <span className="b2-caption">{q?.calendarLabel}</span>
+                  {q?.label} <span className="pcp-caption pcp-text-tertiary">{q?.calendarLabel}</span>
                 </th>
-                <td className="b2-num">{fmt.fte(p.supplyFte)}</td>
-                <td className="b2-num">{fmt.fte(p.aboveFte)}</td>
-                <td className="b2-num">{fmt.fte(p.belowFte)}</td>
-                <td className="b2-num">{fmt.fte(p.undeclaredFte)}</td>
-                <td className="b2-num">{fmt.fte(p.freeFte)}</td>
-                <td className="b2-num">{fmt.fte(p.demandFte)}</td>
-                <td className="b2-num">
+                <td className="pcp-num">{fmt.fte(p.supplyFte)}</td>
+                <td className="pcp-num">{fmt.fte(p.aboveFte)}</td>
+                <td className="pcp-num">{fmt.fte(p.belowFte)}</td>
+                <td className="pcp-num">{fmt.fte(p.undeclaredFte)}</td>
+                <td className="pcp-num">{fmt.fte(p.freeFte)}</td>
+                <td className="pcp-num">{fmt.fte(p.demandFte)}</td>
+                <td className="pcp-num">
                   <BandCell value={p.utilisationPct} band={p.band} label={q?.label} />
                 </td>
               </tr>
@@ -87,11 +87,11 @@ export function CapacityOutlookChart({
           })}
         </tbody>
       </table>
-      <p className="b2-caption">All values in FTE except utilisation (load as a % of target).</p>
+      <p className="pcp-caption pcp-text-tertiary">All values in FTE except utilisation (load as a % of target).</p>
     </div>
   );
   return (
-    <ChartFrame
+    <ChartPanel
       title={title}
       caption={caption}
       actions={actions}
@@ -117,6 +117,6 @@ export function CapacityOutlookChart({
           .join('. ')}`}
         format={(v) => fmt.fte(v)}
       />
-    </ChartFrame>
+    </ChartPanel>
   );
 }

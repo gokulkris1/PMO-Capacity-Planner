@@ -1,7 +1,7 @@
 /** Sync health (JI-07): last success, last run status, duration, pages, issues, the last 10 jobs and errors. */
 import { CircleAlert, CircleCheck, CircleDashed, CircleX, Hourglass, LoaderCircle, TriangleAlert } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { Banner, Card, EmptyState, KpiTile, StatusPill, fmt } from '../../plan/_kit';
+import { Banner, Card, EmptyState, fmt, KpiTile, StatusPill } from '../../../components/ui';
 import type { DeliverySource } from '../../../state';
 
 export function syncStatePill(state: D.SyncHealthDTO['state']) {
@@ -81,13 +81,15 @@ const duration = (j: D.SyncJobDTO) => {
 export function HealthTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnapshot; delivery: DeliverySource }) {
   const h = delivery.health;
   if (!h)
-    return <EmptyState icon={CircleDashed} title="No sync has run yet" body="Run a sync to see its health here." />;
+    return (
+      <EmptyState icon={CircleDashed} title="No sync has run yet" description="Run a sync to see its health here." />
+    );
   const last = h.lastJob;
   const staleHours = h.lastSuccessAt
     ? (new Date(s.serverTime).getTime() - new Date(h.lastSuccessAt).getTime()) / 3600000
     : Infinity;
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       {(h.state === 'failed' || last?.status === 'failed') && (
         <Banner tone="danger" title={`Last run failed ${fmt.relative(last?.finishedAt, s.serverTime)}`}>
           {last?.error ?? 'Jira returned an error.'}
@@ -96,50 +98,50 @@ export function HealthTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnap
       {staleHours > 48 && h.state !== 'failed' && (
         <Banner tone="warning" title="Stale: no successful sync in the last 48 hours" />
       )}
-      <div className="b2-kpis" role="list" aria-label="Sync figures">
+      <div className="pcp-kpi-grid" role="list" aria-label="Sync figures">
         <div role="listitem">
           <KpiTile
             label="Last successful sync"
             value={h.lastSuccessAt ? fmt.relative(h.lastSuccessAt, s.serverTime) : 'Never'}
-            basis={h.lastSuccessAt ? fmt.dateTime(h.lastSuccessAt) : 'Daily at 05:00 UTC'}
+            caption={h.lastSuccessAt ? fmt.dateTime(h.lastSuccessAt) : 'Daily at 05:00 UTC'}
           />
         </div>
         <div role="listitem">
           <KpiTile
             label="Last run"
             value={last ? jobStatusPill(last) : '—'}
-            basis={
+            caption={
               last ? `${last.trigger === 'manual' ? 'Manual' : 'Scheduled'} · ${fmt.dateTime(last.startedAt)}` : '—'
             }
           />
         </div>
         <div role="listitem">
-          <KpiTile label="Duration" value={last ? duration(last) : '—'} basis="Last run" />
+          <KpiTile label="Duration" value={last ? duration(last) : '—'} caption="Last run" />
         </div>
         <div role="listitem">
           <KpiTile
             label="Pages · issues"
             value={last ? `${last.pagesDone} · ${last.issuesSeen}` : '—'}
-            basis="Last run"
+            caption="Last run"
           />
         </div>
       </div>
       <Card title="Recent runs" subtitle="The last 10 sync jobs" flush>
-        <div className="b2-table-wrap">
-          <table className="b2-table b2-table--compact">
-            <caption className="b2-sr-only">Recent sync jobs</caption>
+        <div className="pcp-tbl-wrap">
+          <table className="pcp-tbl pcp-tbl--compact">
+            <caption className="pcp-sr-only">Recent sync jobs</caption>
             <thead>
               <tr>
                 <th scope="col">Started</th>
                 <th scope="col">Trigger</th>
                 <th scope="col">Status</th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Duration
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Pages
                 </th>
-                <th scope="col" className="b2-num">
+                <th scope="col" className="pcp-num">
                   Issues
                 </th>
                 <th scope="col">Details</th>
@@ -148,21 +150,21 @@ export function HealthTab({ snapshot: s, delivery }: { snapshot: D.WorkspaceSnap
             <tbody>
               {h.recentJobs.map((j) => (
                 <tr key={j.id}>
-                  <th scope="row" className="b2-tnum">
+                  <th scope="row" className="pcp-tnum">
                     {fmt.dateTime(j.startedAt)}
                   </th>
                   <td>
                     {j.trigger === 'manual' ? `Manual${j.requestedBy ? ` · ${j.requestedBy.name}` : ''}` : 'Scheduled'}
                   </td>
                   <td>{jobStatusPill(j)}</td>
-                  <td className="b2-num">{duration(j)}</td>
-                  <td className="b2-num">{j.pagesDone}</td>
-                  <td className="b2-num">{j.issuesSeen}</td>
+                  <td className="pcp-num">{duration(j)}</td>
+                  <td className="pcp-num">{j.pagesDone}</td>
+                  <td className="pcp-num">{j.issuesSeen}</td>
                   <td className="dl-err">
                     {j.error ? (
-                      <span className={j.status === 'failed' ? 'dl-err__text' : 'b2-muted'}>{j.error}</span>
+                      <span className={j.status === 'failed' ? 'dl-err__text' : 'pcp-text-secondary'}>{j.error}</span>
                     ) : (
-                      <span className="b2-subtle">—</span>
+                      <span className="pcp-text-tertiary">—</span>
                     )}
                   </td>
                 </tr>

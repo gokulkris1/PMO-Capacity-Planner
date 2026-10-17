@@ -3,29 +3,30 @@
  * Stage pipeline, project table with QBR1 demand/staffed/gap, Jira and Planview links, and the project drawer.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, FolderKanban, Funnel, Plus, Search, X } from 'lucide-react';
+import { Download, FolderKanban, Funnel, Plus, Search, X, Ellipsis } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
 import { useQuarters, useRecordExport, useSession, useWorkspace } from '../../../state';
 import { buildDemandGrid } from '../../../utils/viewModels';
 import {
   Button,
   Card,
+  cx,
+  downloadText,
   EmptyState,
+  fmt,
   Menu,
-  PageBody,
   PageHeader,
   ProvenanceTag,
   Select,
   SortTh,
   StatusPill,
   TextField,
-  cx,
-  downloadText,
-  fmt,
   toCsv,
   useQueryParam,
   useSort,
-} from '../../plan/_kit';
+  IconButton,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
 import { ProjectDrawer } from './ProjectDrawer';
 import './projects.css';
 
@@ -34,21 +35,22 @@ export default function ProjectsPage() {
   const [, setProject] = useQueryParam('project');
   const [exportReq, setExportReq] = useState(0);
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Organisation' }, { label: 'Projects' }]}
+        breadcrumbs={[{ label: 'Organisation' }, { label: 'Projects' }]}
         title="Projects"
         description="Every project with its stage, initiation date, demand and staffing for QBR1, and its Jira and Planview links."
         actions={
           <>
             {can('projects.write') && (
-              <Button variant="primary" icon={Plus} onClick={() => setProject('new')}>
+              <Button variant="primary" iconBefore={Plus} onClick={() => setProject('new')}>
                 Add project
               </Button>
             )}
             {can('export') && (
               <Menu
-                label="More actions"
+                trigger={<IconButton icon={Ellipsis} label="More actions" />}
+
                 items={[{ label: 'Export CSV', icon: Download, onSelect: () => setExportReq((n) => n + 1) }]}
               />
             )}
@@ -154,7 +156,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
   const filters = [stage, tribe, status, q].filter(Boolean).length;
 
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       <ol className="pj-pipeline" aria-label="Stage pipeline">
         {pipeline.map((p) => (
           <li key={p.stage}>
@@ -165,8 +167,8 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
               onClick={() => setStage(stage === p.stage ? null : p.stage)}
             >
               <span className="pj-stage__label">{p.stage}</span>
-              <span className="pj-stage__count b2-tnum">{p.count}</span>
-              <span className="b2-caption b2-tnum">
+              <span className="pj-stage__count pcp-tnum">{p.count}</span>
+              <span className="pcp-caption pcp-text-tertiary pcp-tnum">
                 {fmt.fte(p.demand)} FTE demand {q1?.label}
                 {p.gap > 0.04 && <span className="pj-gap"> · gap {fmt.fte(p.gap)}</span>}
               </span>
@@ -175,35 +177,35 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
         ))}
       </ol>
       <Card flush>
-        <div className="b2-toolbar">
+        <div className="pcp-tbl-toolbar">
           <span className="pj-search">
             <TextField
               id="pj-q"
-              icon={Search}
+              leadingIcon={Search}
               size="sm"
               value={q}
               placeholder="Find a project or Jira key"
-              ariaLabel="Find a project"
-              onChange={(v) => setQ(v)}
+              aria-label="Find a project"
+              onValueChange={(v) => setQ(v)}
             />
           </span>
           <span className="pj-filter">
             <Select
               size="sm"
-              ariaLabel="Filter by tribe"
+              aria-label="Filter by tribe"
               value={tribe}
               placeholder="Tribe: all"
-              onChange={setTribe}
+              onValueChange={setTribe}
               options={s.tribes.filter((t) => !t.archived).map((t) => ({ value: t.id, label: `Tribe: ${t.name}` }))}
             />
           </span>
           <span className="pj-filter">
             <Select
               size="sm"
-              ariaLabel="Filter by status"
+              aria-label="Filter by status"
               value={status}
               placeholder="Status: all"
-              onChange={setStatus}
+              onValueChange={setStatus}
               options={['Planning', 'Active', 'On Hold', 'Completed'].map((x) => ({ value: x, label: `Status: ${x}` }))}
             />
           </span>
@@ -211,7 +213,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
             <Button
               size="sm"
               variant="subtle"
-              icon={X}
+              iconBefore={X}
               onClick={() => {
                 setStage(null);
                 setTribe(null);
@@ -228,10 +230,10 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
             <EmptyState
               icon={FolderKanban}
               title="No projects yet"
-              body="Add the projects your tribes have initiated."
+              description="Add the projects your tribes have initiated."
               action={
                 can('projects.write') && (
-                  <Button variant="primary" icon={Plus} onClick={() => setProject('new')}>
+                  <Button variant="primary" iconBefore={Plus} onClick={() => setProject('new')}>
                     Add project
                   </Button>
                 )
@@ -241,9 +243,9 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
             <EmptyState icon={Funnel} title="No projects match these filters." />
           )
         ) : (
-          <div className="b2-table-wrap b2-table-wrap--tall">
-            <table className="b2-table pj-table">
-              <caption className="b2-sr-only">Projects</caption>
+          <div className="pcp-tbl-wrap pcp-tbl-wrap--tall">
+            <table className="pcp-tbl pj-table">
+              <caption className="pcp-sr-only">Projects</caption>
               <thead>
                 <tr>
                   <SortTh
@@ -251,7 +253,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                     sortKey="name"
                     sort={sort}
                     onSort={toggle}
-                    className="b2-sticky-col pj-col-name"
+                    className="pcp-tbl-sticky pj-col-name"
                   />
                   <SortTh label="Jira" sortKey="jira" sort={sort} onSort={toggle} className="pj-col-jira" />
                   <SortTh label="Tribe" sortKey="tribe" sort={sort} onSort={toggle} className="pj-col-tribe" />
@@ -308,32 +310,36 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                   const c = r.cells[0];
                   return (
                     <tr key={p.id}>
-                      <th scope="row" className="b2-sticky-col pj-col-name">
-                        <button type="button" className="b2-rowlink pj-name" onClick={() => setProject(p.id)}>
-                          <span className="b2-rowlink__label b2-strong b2-ellipsis" title={p.name}>
+                      <th scope="row" className="pcp-tbl-sticky pj-col-name">
+                        <button type="button" className="pcp-rowlink pj-name" onClick={() => setProject(p.id)}>
+                          <span className="pcp-rowlink__label pcp-strong pcp-truncate" title={p.name}>
                             {p.name}
                           </span>
-                          <span className="b2-caption pj-name__sub">
+                          <span className="pcp-caption pcp-text-tertiary pj-name__sub">
                             {p.source === 'planview' && <ProvenanceTag source="planview" />}
                             {p.initiatedOn ? `Initiated ${fmt.date(p.initiatedOn)}` : p.priority}
                           </span>
                         </button>
                       </th>
-                      <td className="b2-tnum">{p.jiraKey ?? <span className="b2-subtle">—</span>}</td>
-                      <td className="b2-ellipsis">{r.tribe?.name ?? <span className="b2-subtle">No tribe</span>}</td>
-                      <td>{p.stage ? <StatusPill>{p.stage}</StatusPill> : <span className="b2-subtle">—</span>}</td>
+                      <td className="pcp-tnum">{p.jiraKey ?? <span className="pcp-text-tertiary">—</span>}</td>
+                      <td className="pcp-truncate">
+                        {r.tribe?.name ?? <span className="pcp-text-tertiary">No tribe</span>}
+                      </td>
+                      <td>
+                        {p.stage ? <StatusPill>{p.stage}</StatusPill> : <span className="pcp-text-tertiary">—</span>}
+                      </td>
                       <td>{p.status}</td>
-                      <td className="b2-tnum pj-dates">{fmt.dateRange(p.startDate, p.endDate)}</td>
-                      <td className="b2-num">{fmt.fte(c?.demandFte)}</td>
-                      <td className="b2-num">{fmt.fte(c?.staffedFte)}</td>
-                      <td className="b2-num">
+                      <td className="pcp-tnum pj-dates">{fmt.dateRange(p.startDate, p.endDate)}</td>
+                      <td className="pcp-num">{fmt.fte(c?.demandFte)}</td>
+                      <td className="pcp-num">{fmt.fte(c?.staffedFte)}</td>
+                      <td className="pcp-num">
                         {c && c.gapFte > 0.04 ? (
                           <span className="pj-gap-pill">{fmt.fte(c.gapFte)}</span>
                         ) : (
-                          <span className="b2-subtle">0.0</span>
+                          <span className="pcp-text-tertiary">0.0</span>
                         )}
                       </td>
-                      <td className="b2-ellipsis">
+                      <td className="pcp-truncate">
                         {p.ownerUserId ? (
                           p.ownerUserId === me?.user.id ? (
                             'You'
@@ -341,7 +347,7 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                             'Assigned'
                           )
                         ) : (
-                          <span className="b2-subtle">—</span>
+                          <span className="pcp-text-tertiary">—</span>
                         )}
                       </td>
                     </tr>
@@ -351,8 +357,8 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
             </table>
           </div>
         )}
-        <div className="b2-card__foot">
-          <span className="b2-caption">
+        <div className="pcp-card__footer">
+          <span className="pcp-caption pcp-text-tertiary">
             {rows.length} of {grid.length} projects · FTE for {fmt.quarterCaption(q1)} · projects carry no colour;
             status colours mean status only
           </span>

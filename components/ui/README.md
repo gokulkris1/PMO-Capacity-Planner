@@ -116,6 +116,19 @@ export default function PeoplePage() {
 `useDocumentTitle(title)`, `useUrlParam(name)` (drawer/filter state in the URL), `useMediaQuery(q)`,
 `formatPct`, `formatFte` ("0.5 FTE"), `formatDate` ("16 Oct 2026"), `cx`.
 
+### Product-page helpers
+| Export | Notes |
+|---|---|
+| `fmt.*` | `fte`, `fteUnit`, `fteSigned`, `pct`, `date`, `dateShort`, `dateRange`, `dateTime`, `relative`, `quarterCaption`, `quarterTooltip`, `compare`, `PROFICIENCY_LABEL`, `STAGE_ORDER` |
+| `indexSnapshot`, `toCsv`, `downloadText`, `errorMessage`, `numOrNull`, `numText` | snapshot lookups, CSV text (via `utils/csv`), browser download, user-facing error text, NumberField ↔ text state |
+| `useQueryParam(name, fallback)` | filter state in the URL (replace navigation) |
+| `useAction()` | `{ busy, run(key, fn, { success, body, undo }) }`: busy flag, success toast with Undo, error and 409 toasts |
+| `useSort`, `SortTh` | sorting for hand-built `<table className="pcp-tbl">` grids (`pcp-tbl-wrap`, `pcp-tbl--compact`, `pcp-tbl-sticky`, `pcp-tbl-group`, `pcp-tbl-total`) |
+| `BandCell` | band-tinted cell that fills a grid cell (partial-quarter icon, dashed tentative) |
+| `BookingStatePill`, `PersonLabel`, `relativeLoadSplit` | booking state lozenge, avatar + name + sub line, absolute load to QuarterLoadBar props |
+| `ChartPanel`, `StackedBarChart`, `GroupedBarChart`, `TrendChart`, `Legend` | lightweight charts (HTML bars to scale, SVG lines; no Recharts) used by the product pages |
+| `PageBody` (`components/shell/PageBody`) | snapshot loading skeleton / error banner, then a render prop with the snapshot |
+
 ### Charts (`components/ui/charts`)
 | Export | Props |
 |---|---|

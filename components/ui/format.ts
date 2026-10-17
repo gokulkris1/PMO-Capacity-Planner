@@ -1,6 +1,7 @@
-/** Number, date and label formatting shared by B2 pages (DESIGN_SYSTEM §3: one decimal FTE, integer %). */
-import type * as D from '../../../shared/contracts/dto';
-import type { QuarterView } from '../../../state';
+/** Number, date and label formatting for product pages (DESIGN_SYSTEM §3: one decimal FTE, integer %). */
+import type * as D from '../../shared/contracts/dto';
+import type { QuarterView } from '../../state';
+import { toCsvRows } from '../../utils/csv';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -117,15 +118,9 @@ export function compare(a: string | number | null | undefined, b: string | numbe
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
-/** Builds CSV text (RFC 4180) from rows; formula-injection safe for spreadsheet apps. */
+/** Builds CSV text (RFC 4180) from rows; formula-injection safe for spreadsheet apps (utils/csv). */
 export function toCsv(header: string[], rows: Array<Array<string | number | null | undefined>>): string {
-  const cell = (v: string | number | null | undefined) => {
-    if (v === null || v === undefined) return '';
-    let s = String(v);
-    if (/^[=+\-@\t\r]/.test(s) && typeof v === 'string') s = `'${s}`;
-    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
+  return toCsvRows(rows, header);
 }
 
 /** Triggers a browser download of text content (no network). */
@@ -153,4 +148,14 @@ export function errorMessage(e: unknown, fallback = 'Something went wrong. Try a
   if (err.status === 400) return err.message || 'Check the highlighted fields.';
   if (err.status === 413) return 'Too many changes at once. Try a smaller selection.';
   return `${fallback}${ref}`;
+}
+
+/** Text state to NumberField value and back: '' is null. */
+export function numOrNull(text: string | number | null | undefined): number | null {
+  if (text === null || text === undefined || text === '') return null;
+  const n = typeof text === 'number' ? text : Number(String(text).replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+export function numText(n: number | null | undefined): string {
+  return n === null || n === undefined || !Number.isFinite(n) ? '' : String(n);
 }

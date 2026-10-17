@@ -18,6 +18,8 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   /** Class for the outer control box. */
   className?: string;
   ref?: Ref<HTMLInputElement>;
+  /** Convenience: called with the new text (alongside the native onChange). */
+  onValueChange?: (value: string) => void;
 }
 
 /** Single-line text input (DESIGN_SYSTEM §8.4). Use inside FormField for a bound label. */
@@ -34,6 +36,8 @@ export function TextField({
   'aria-describedby': ariaDescribedBy,
   required,
   type = 'text',
+  onValueChange,
+  onChange,
   ...rest
 }: TextFieldProps) {
   const field = useFieldControl({ id, invalid, 'aria-describedby': ariaDescribedBy, required });
@@ -58,6 +62,10 @@ export function TextField({
         readOnly={readOnly}
         {...field}
         {...rest}
+        onChange={(e) => {
+          onChange?.(e);
+          onValueChange?.(e.target.value);
+        }}
       />
       {onClear && hasValue && !disabled && !readOnly ? (
         <button type="button" className="pcp-control__clear" aria-label="Clear" onClick={onClear}>
@@ -81,6 +89,8 @@ export function DateField({ className, ...rest }: DateFieldProps) {
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   invalid?: boolean;
   ref?: Ref<HTMLTextAreaElement>;
+  /** Convenience: called with the new text (alongside the native onChange). */
+  onValueChange?: (value: string) => void;
 }
 
 /** Multi-line text input. */
@@ -91,10 +101,23 @@ export function Textarea({
   'aria-describedby': ariaDescribedBy,
   required,
   ref,
+  onValueChange,
+  onChange,
   ...rest
 }: TextareaProps) {
   const field = useFieldControl({ id, invalid, 'aria-describedby': ariaDescribedBy, required });
-  return <textarea ref={ref} className={cx('pcp-textarea', className)} {...field} {...rest} />;
+  return (
+    <textarea
+      ref={ref}
+      className={cx('pcp-textarea', className)}
+      {...field}
+      {...rest}
+      onChange={(e) => {
+        onChange?.(e);
+        onValueChange?.(e.target.value);
+      }}
+    />
+  );
 }
 
 export type PasswordFieldProps = Omit<TextFieldProps, 'type' | 'onClear'>;

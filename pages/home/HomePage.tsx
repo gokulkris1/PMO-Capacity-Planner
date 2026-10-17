@@ -20,55 +20,54 @@ import type * as D from '../../shared/contracts/dto';
 import { useQuarters, useWorkspace } from '../../state';
 import { buildDemandGrid, buildHome, buildPeopleRows, type PersonRow } from '../../utils/viewModels';
 import {
-  Banner,
   BandCell,
   BandPill,
+  Banner,
   Card,
   CraftChip,
   EmptyState,
-  KpiTile,
-  PageBody,
-  PageHeader,
-  PersonLabel,
   fmt,
   indexSnapshot,
-  useBasis,
-  useWsPath,
-} from '../plan/_kit';
+  KpiTile,
+  PageHeader,
+  PersonLabel,
+  LinkButton,
+} from '../../components/ui';
+import { PageBody } from '../../components/shell/PageBody';
+import { useTimeBasis, TimeBasisControl } from '../../components/shell/TimeBasis';
+import { useWsPath } from '../../components/shell/workspacePath';
 import { CapacityOutlookChart } from '../plan/_parts/CapacityOutlookChart';
 import { useDelivery } from '../../state';
 import './home.css';
 
 export default function HomePage() {
+  const basis = useTimeBasis('qbr1');
   const { can, workspace } = useWorkspace();
   const wsPath = useWsPath();
   const isContributor = workspace?.role === 'CONTRIBUTOR';
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Home' }]}
+        breadcrumbs={[{ label: 'Home' }]}
         title="Home"
         description="Squad utilisation against the 100% target, open demand and what needs attention next."
-        basis
+        timeBasis={<TimeBasisControl state={basis} />}
         actions={
           <>
             {(isContributor || workspace?.linkedPersonId) && (
-              <Link className="b2-btn b2-btn--secondary" to={wsPath('me')}>
-                <CircleUserRound size={16} strokeWidth={1.75} aria-hidden="true" />
+              <LinkButton variant="secondary" iconBefore={CircleUserRound} to={wsPath('me')}>
                 My plan
-              </Link>
+              </LinkButton>
             )}
             {can('export') && (
-              <Link className="b2-btn b2-btn--secondary" to={wsPath('reports')}>
-                <FileChartColumn size={16} strokeWidth={1.75} aria-hidden="true" />
+              <LinkButton variant="secondary" iconBefore={FileChartColumn} to={wsPath('reports')}>
                 QBR pack
-              </Link>
+              </LinkButton>
             )}
             {can('allocations.write') && (
-              <Link className="b2-btn b2-btn--primary" to={wsPath('plan/allocations')}>
-                <Grid3x3 size={16} strokeWidth={1.75} aria-hidden="true" />
+              <LinkButton variant="primary" iconBefore={Grid3x3} to={wsPath('plan/allocations')}>
                 Plan allocations
-              </Link>
+              </LinkButton>
             )}
           </>
         }
@@ -83,7 +82,7 @@ export default function HomePage() {
 function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const { thresholds, workspace, can } = useWorkspace();
   const quarters = useQuarters();
-  const b = useBasis();
+  const b = useTimeBasis('qbr1');
   const wsPath = useWsPath();
   const delivery = useDelivery(s);
   const idx = useMemo(() => indexSnapshot(s), [s]);
@@ -116,7 +115,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const dir = (a: number, z: number) => (a > z ? 'up' : a < z ? 'down' : null);
 
   return (
-    <div className="b2-stack">
+    <div className="pcp-stack">
       {health && (health.state === 'failed' || health.state === 'stale') && (
         <Banner
           tone="warning"
@@ -125,23 +124,29 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               ? `Jira sync failed ${fmt.relative(health.lastJob?.finishedAt ?? null, s.serverTime)}: ${health.lastJob?.error ?? 'unknown reason'}`
               : `Jira data is stale: last successful sync ${fmt.relative(health.lastSuccessAt, s.serverTime)}`
           }
-          action={
-            <Link className="b2-btn b2-btn--link" to={`${wsPath('delivery/jira-planview')}?tab=health`}>
+          actionNode={
+            <LinkButton variant="link" to={`${wsPath('delivery/jira-planview')}?tab=health`}>
               View sync health
-            </Link>
+            </LinkButton>
           }
         />
       )}
 
-      <div className="b2-kpis" role="list" aria-label="Key figures">
+      <div className="pcp-kpi-grid" role="list" aria-label="Key figures">
         <div role="listitem">
           <KpiTile
             label="Squad utilisation"
             value={fmt.pct(k.utilisationPct)}
             pill={<BandPill band={k.band} />}
-            delta={nextQ ? `${nextQ.label}: ${fmt.pct(k.nextQuarterPct)}` : undefined}
-            deltaDirection={nextQ ? dir(k.nextQuarterPct, k.utilisationPct) : null}
-            basis={`${basisLabel} · target 100%`}
+            delta={
+              nextQ
+                ? {
+                    direction: dir(k.nextQuarterPct, k.utilisationPct) ?? 'flat',
+                    text: `${nextQ.label}: ${fmt.pct(k.nextQuarterPct)}`,
+                  }
+                : undefined
+            }
+            caption={`${basisLabel} · target 100%`}
             help="Σ load ÷ Σ target across the squad"
           />
         </div>
@@ -151,7 +156,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             value={fmt.fte(k.unstaffedFte)}
             unit="FTE"
             delta={`${unstaffed.length} project${unstaffed.length === 1 ? '' : 's'} with a gap`}
-            basis={basisLabel}
+            caption={basisLabel}
           />
         </div>
         <div role="listitem">
@@ -160,7 +165,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             value={k.overCount}
             unit={k.overCount === 1 ? 'person' : 'people'}
             delta={`Above ${thresholds.onTargetTo}% of target`}
-            basis={basisLabel}
+            caption={basisLabel}
           />
         </div>
         <div role="listitem">
@@ -169,13 +174,13 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             value={k.availableCount}
             unit={k.availableCount === 1 ? 'person' : 'people'}
             delta={`Below ${thresholds.benchBelow}% of target`}
-            basis={basisLabel}
+            caption={basisLabel}
           />
         </div>
       </div>
 
-      <div className="b2-grid-12">
-        <div className="b2-col-8">
+      <div className="pcp-grid-xl">
+        <div className="pcp-span-8">
           <CapacityOutlookChart
             title="Capacity vs demand, next four quarters"
             caption="Squad FTE by kind of work, with captured demand and the 100% target"
@@ -183,28 +188,28 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             quarters={quarters}
           />
         </div>
-        <div className="b2-col-4">
+        <div className="pcp-span-4">
           <Card
             title="Over capacity"
             subtitle={basisLabel}
             flush
             actions={
-              <Link className="b2-btn b2-btn--subtle b2-btn--sm" to={`${wsPath('org/people')}?band=over`}>
+              <LinkButton variant="subtle" size="sm" to={`${wsPath('org/people')}?band=over`}>
                 View all
-              </Link>
+              </LinkButton>
             }
           >
             <PeopleList rows={strained.slice(0, 5)} qi={qi} href={personHref} empty="Nobody is over capacity." />
           </Card>
-          <div className="b2-gap" />
+          <div className="home-gap" />
           <Card
             title="Under target"
             subtitle={`${basisLabel} · offer spare capacity on the Marketplace`}
             flush
             actions={
-              <Link className="b2-btn b2-btn--subtle b2-btn--sm" to={`${wsPath('plan/marketplace')}?tab=under`}>
+              <LinkButton variant="subtle" size="sm" to={`${wsPath('plan/marketplace')}?tab=under`}>
                 Marketplace
-              </Link>
+              </LinkButton>
             }
           >
             <PeopleList
@@ -217,20 +222,21 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         </div>
       </div>
 
-      <div className="b2-grid-12">
-        <div className="b2-col-6">
+      <div className="pcp-grid-xl">
+        <div className="pcp-span-6">
           <Card
             title="Unstaffed demand"
             subtitle={`${basisLabel} · demand not yet covered by confirmed bookings`}
             flush
             actions={
-              <Link
-                className="b2-btn b2-btn--subtle b2-btn--sm"
+              <LinkButton
+                variant="subtle"
+                size="sm"
+                iconBefore={Store}
                 to={`${wsPath('plan/marketplace')}?quarter=${b.quarter?.key ?? ''}`}
               >
-                <Store size={16} strokeWidth={1.75} aria-hidden="true" />
                 Staff it
-              </Link>
+              </LinkButton>
             }
           >
             {unstaffed.length === 0 ? (
@@ -238,26 +244,26 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                 compact
                 icon={ListChecks}
                 title="No open demand"
-                body="Every captured demand line is staffed."
+                description="Every captured demand line is staffed."
               />
             ) : (
-              <ul className="b2-list home-list">
+              <ul className="pcp-list home-list">
                 {unstaffed.slice(0, 6).map((d) => (
                   <li key={d.project.id}>
                     <div className="home-list__main">
-                      <Link className="b2-link b2-strong" to={`${wsPath('org/projects')}?project=${d.project.id}`}>
+                      <Link className="pcp-link pcp-strong" to={`${wsPath('org/projects')}?project=${d.project.id}`}>
                         {d.project.name}
                       </Link>
-                      <span className="b2-caption">{d.tribe?.name ?? 'No tribe'}</span>
+                      <span className="pcp-caption pcp-text-tertiary">{d.tribe?.name ?? 'No tribe'}</span>
                     </div>
-                    <span className="b2-chips home-list__chips">
+                    <span className="pcp-chips home-list__chips">
                       {d.cell.lines.slice(0, 3).map((l) => (
                         <CraftChip key={l.id} craft={idx.crafts.get(l.craftId)} suffix={fmt.fte(l.fte)} />
                       ))}
                     </span>
-                    <span className="b2-num home-list__value">
-                      <span className="b2-strong">{fmt.fte(d.cell.gapFte)}</span>
-                      <span className="b2-caption"> FTE gap</span>
+                    <span className="pcp-num home-list__value">
+                      <span className="pcp-strong">{fmt.fte(d.cell.gapFte)}</span>
+                      <span className="pcp-caption pcp-text-tertiary"> FTE gap</span>
                     </span>
                   </li>
                 ))}
@@ -265,7 +271,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             )}
           </Card>
         </div>
-        <div className="b2-col-6">
+        <div className="pcp-span-6">
           <Card title="Needs a decision" subtitle="Approvals, proposals and projects without demand" flush>
             <ActionItems
               pendingCraft={pendingCraft.length}
@@ -296,12 +302,12 @@ function PeopleList({
 }) {
   if (rows.length === 0) return <EmptyState compact icon={Users} title={empty} />;
   return (
-    <ul className="b2-list home-list">
+    <ul className="pcp-list home-list">
       {rows.map((r) => {
         const q = r.quarters[qi];
         return (
           <li key={r.person.id}>
-            <Link className="b2-rowlink home-list__main" to={href(r.person.id)}>
+            <Link className="pcp-rowlink home-list__main" to={href(r.person.id)}>
               <PersonLabel name={r.person.name} sub={r.person.role} />
             </Link>
             <span className="home-list__band">
@@ -359,11 +365,11 @@ function ActionItems({
         compact
         icon={ListChecks}
         title="Nothing waiting"
-        body="No approvals, proposals or gaps in demand capture."
+        description="No approvals, proposals or gaps in demand capture."
       />
     );
   return (
-    <ul className="b2-list home-list">
+    <ul className="pcp-list home-list">
       {items.map((it) => {
         const Icon = it.warn ? TriangleAlert : it.icon;
         return (
@@ -372,13 +378,12 @@ function ActionItems({
               size={16}
               strokeWidth={1.75}
               aria-hidden="true"
-              className={it.warn ? 'b2-icon-status--warning' : 'b2-icon-status--info'}
+              className={it.warn ? 'pcp-icon-status--warning' : 'pcp-icon-status--info'}
             />
             <span className="home-list__main">{it.text}</span>
-            <Link className="b2-btn b2-btn--secondary b2-btn--sm" to={it.to}>
+            <LinkButton variant="secondary" size="sm" iconAfter={ArrowRight} to={it.to}>
               {it.cta}
-              <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
+            </LinkButton>
           </li>
         );
       })}
@@ -452,15 +457,15 @@ function RecentActivity({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           compact
           icon={History}
           title="No recent changes"
-          body="Edits, proposals and approvals will show here."
+          description="Edits, proposals and approvals will show here."
         />
       ) : (
-        <ul className="b2-list home-list">
+        <ul className="pcp-list home-list">
           {events.map((e) => (
             <li key={e.key}>
               <PersonLabel name={e.who} />
-              <span className="home-list__main b2-muted">{e.text}</span>
-              <time className="b2-caption" dateTime={e.at} title={fmt.dateTime(e.at)}>
+              <span className="home-list__main pcp-text-secondary">{e.text}</span>
+              <time className="pcp-caption pcp-text-tertiary" dateTime={e.at} title={fmt.dateTime(e.at)}>
                 {fmt.relative(e.at, s.serverTime)}
               </time>
             </li>

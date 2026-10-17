@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { cx } from '../internal/utils';
 import './avatar.css';
 
@@ -42,6 +42,31 @@ export function Avatar({ name, src, size = 32, linked, decorative = true, classN
         <span className="pcp-avatar__initials">{initials(name)}</span>
       )}
       {linked ? <span className="pcp-avatar__dot" /> : null}
+    </span>
+  );
+}
+
+/** Avatar with a name and an optional second line (job title, email), truncating cleanly in table cells. */
+export function PersonLabel({
+  name,
+  sub,
+  size = 24,
+  className,
+}: {
+  name: string;
+  sub?: ReactNode;
+  size?: AvatarSize;
+  className?: string;
+}) {
+  return (
+    <span className={cx('pcp-person', className)}>
+      <Avatar name={name} size={size} />
+      <span className="pcp-person__text">
+        <span className="pcp-person__name" title={name}>
+          {name}
+        </span>
+        {sub ? <span className="pcp-person__sub">{sub}</span> : null}
+      </span>
     </span>
   );
 }

@@ -15,19 +15,20 @@ import {
   Button,
   Card,
   Checkbox,
+  cx,
   EmptyState,
-  PageBody,
+  fmt,
   PageHeader,
   PersonLabel,
   SegmentedControl,
   Select,
   TrendChart,
-  cx,
-  fmt,
-  useBasis,
   useQueryParam,
-  useWsPath,
-} from '../_kit';
+  LinkButton,
+} from '../../../components/ui';
+import { PageBody } from '../../../components/shell/PageBody';
+import { useTimeBasis, TimeBasisControl } from '../../../components/shell/TimeBasis';
+import { useWsPath } from '../../../components/shell/workspacePath';
 import { CapacityOutlookChart } from '../_parts/CapacityOutlookChart';
 import { useDelivery } from '../../../state';
 import './capacity.css';
@@ -35,14 +36,14 @@ import './capacity.css';
 type Pivot = 'craft' | 'chapter' | 'tribe' | 'person';
 
 export default function CapacityOutlookPage() {
+  const basis = useTimeBasis('qbr1');
   return (
-    <div className="b2-page">
+    <div className="pcp-page">
       <PageHeader
-        crumbs={[{ label: 'Plan' }, { label: 'Capacity Outlook' }]}
+        breadcrumbs={[{ label: 'Plan' }, { label: 'Capacity Outlook' }]}
         title="Capacity Outlook"
         description="Supply against demand for the next four quarters, by craft, chapter, tribe or person."
-        basis
-        basisExclude={['today', 'window']}
+        timeBasis={<TimeBasisControl state={basis} exclude={['today', 'window']} />}
       />
       <PageBody skeleton="kpi" label="the capacity outlook">
         {(s) => <OutlookBody snapshot={s} />}
@@ -54,7 +55,7 @@ export default function CapacityOutlookPage() {
 function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const { thresholds, can } = useWorkspace();
   const quarters = useQuarters();
-  const b = useBasis();
+  const b = useTimeBasis('qbr1');
   const wsPath = useWsPath();
   const [pivotRaw, setPivot] = useQueryParam('pivot', 'craft');
   const [craft, setCraft] = useQueryParam('craft');
@@ -134,46 +135,46 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
   const rows = model.rows.filter((r) => r.points.some((p) => p.supplyFte > 0 || p.demandFte > 0));
 
   return (
-    <div className="b2-stack">
-      <div className="b2-row b2-row--wrap co-controls">
+    <div className="pcp-stack">
+      <div className="pcp-row pcp-row--wrap co-controls">
         <SegmentedControl
           label="Pivot"
           value={pivot}
           onChange={(v) => setPivot(v)}
-          items={[
-            { id: 'craft', label: 'Craft' },
-            { id: 'chapter', label: 'Chapter' },
-            { id: 'tribe', label: 'Tribe' },
-            { id: 'person', label: 'Person' },
+          options={[
+            { value: 'craft', label: 'Craft' },
+            { value: 'chapter', label: 'Chapter' },
+            { value: 'tribe', label: 'Tribe' },
+            { value: 'person', label: 'Person' },
           ]}
         />
         <span className="co-filter">
           <Select
             size="sm"
-            ariaLabel="Filter by craft"
+            aria-label="Filter by craft"
             value={craft}
             placeholder="Craft: all"
-            onChange={setCraft}
+            onValueChange={setCraft}
             options={s.crafts.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Craft: ${c.name}` }))}
           />
         </span>
         <span className="co-filter">
           <Select
             size="sm"
-            ariaLabel="Filter by chapter"
+            aria-label="Filter by chapter"
             value={chapter}
             placeholder="Chapter: all"
-            onChange={setChapter}
+            onValueChange={setChapter}
             options={s.chapters.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Chapter: ${c.name}` }))}
           />
         </span>
         <span className="co-filter">
           <Select
             size="sm"
-            ariaLabel="Filter by tribe"
+            aria-label="Filter by tribe"
             value={tribe}
             placeholder="Tribe: all"
-            onChange={setTribe}
+            onValueChange={setTribe}
             options={s.tribes.filter((c) => !c.archived).map((c) => ({ value: c.id, label: `Tribe: ${c.name}` }))}
           />
         </span>
@@ -181,7 +182,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <Button
             size="sm"
             variant="subtle"
-            icon={X}
+            iconBefore={X}
             onClick={() => {
               setCraft(null);
               setChapter(null);
@@ -191,14 +192,14 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             Clear filters
           </Button>
         )}
-        <span className="b2-spacer" />
+        <span className="pcp-spacer" />
         {pivot === 'tribe' && (
           <Checkbox checked={signal === '1'} onChange={(v) => setSignal(v ? '1' : null)} label="Delivery signal" />
         )}
       </div>
 
-      <div className="b2-grid-12">
-        <div className="b2-col-8">
+      <div className="pcp-grid-xl">
+        <div className="pcp-span-8">
           <CapacityOutlookChart
             title={scopeLabel ? `Supply vs demand · ${scopeLabel}` : 'Squad supply vs demand'}
             caption="FTE by kind of work per quarter; demand captured on projects; dashed line = supply at target"
@@ -206,7 +207,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             quarters={quarters}
           />
         </div>
-        <div className="b2-col-4 b2-stack">
+        <div className="pcp-span-4 pcp-stack">
           <Card title="Over capacity" subtitle={b.caption} flush>
             <SideList rows={over.slice(0, 5)} qi={qi} wsPath={wsPath} empty="Nobody is over capacity." />
           </Card>
@@ -229,15 +230,15 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <EmptyState
             icon={filters ? Funnel : Gauge}
             title={filters ? 'Nothing matches these filters.' : 'No capacity to show yet'}
-            body={filters ? undefined : 'Add people and bookings to see the outlook.'}
+            description={filters ? undefined : 'Add people and bookings to see the outlook.'}
           />
         ) : (
-          <div className="b2-table-wrap">
-            <table className="b2-table b2-table--compact co-table">
-              <caption className="b2-sr-only">Capacity by {pivot} and quarter</caption>
+          <div className="pcp-tbl-wrap">
+            <table className="pcp-tbl pcp-tbl--compact co-table">
+              <caption className="pcp-sr-only">Capacity by {pivot} and quarter</caption>
               <thead>
                 <tr>
-                  <th scope="col" rowSpan={2} className="b2-sticky-col co-col-name">
+                  <th scope="col" rowSpan={2} className="pcp-tbl-sticky co-col-name">
                     {pivot[0].toUpperCase() + pivot.slice(1)}
                   </th>
                   <th scope="colgroup" colSpan={quarters.length} className="co-qgroup">
@@ -252,28 +253,28 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                     <th
                       key={q.key}
                       scope="col"
-                      className={cx('b2-num co-sub-h', i === 0 && 'co-first', i === qi && 'is-basis')}
+                      className={cx('pcp-num co-sub-h', i === 0 && 'co-first', i === qi && 'is-basis')}
                       title={fmt.quarterTooltip(q)}
                     >
                       {q.label}
                     </th>
                   ))}
-                  <th scope="col" className="b2-num co-sub-h co-first">
+                  <th scope="col" className="pcp-num co-sub-h co-first">
                     Supply
                   </th>
-                  <th scope="col" className="b2-num co-sub-h">
+                  <th scope="col" className="pcp-num co-sub-h">
                     Load
                   </th>
-                  <th scope="col" className="b2-num co-sub-h">
+                  <th scope="col" className="pcp-num co-sub-h">
                     Free
                   </th>
                   {pivot !== 'person' && (
-                    <th scope="col" className="b2-num co-sub-h">
+                    <th scope="col" className="pcp-num co-sub-h">
                       Demand
                     </th>
                   )}
                   {pivot !== 'person' && (
-                    <th scope="col" className="b2-num co-sub-h">
+                    <th scope="col" className="pcp-num co-sub-h">
                       Gap
                     </th>
                   )}
@@ -289,16 +290,16 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   const load = p ? p.aboveFte + p.belowFte + p.undeclaredFte : 0;
                   const gap = st && p ? Math.max(0, p.demandFte - (st[qi] ?? 0)) : null;
                   return (
-                    <tr key={r.id} className={cx(r.total && 'b2-total')}>
-                      <th scope="row" className="b2-sticky-col co-col-name">
+                    <tr key={r.id} className={cx(r.total && 'pcp-tbl-total')}>
+                      <th scope="row" className="pcp-tbl-sticky co-col-name">
                         {r.total ? (
                           r.label
                         ) : pivot === 'person' ? (
-                          <Link className="b2-link" to={`${wsPath('org/people')}?person=${r.id}`}>
+                          <Link className="pcp-link" to={`${wsPath('org/people')}?person=${r.id}`}>
                             {r.label}
                           </Link>
                         ) : pivot === 'tribe' ? (
-                          <Link className="b2-link" to={wsPath(`org/tribes/${r.id}`)}>
+                          <Link className="pcp-link" to={wsPath(`org/tribes/${r.id}`)}>
                             {r.label}
                           </Link>
                         ) : (
@@ -306,7 +307,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                         )}
                       </th>
                       {r.points.map((pt, i) => (
-                        <td key={pt.quarterKey} className={cx('b2-num co-util', i === 0 && 'co-first')}>
+                        <td key={pt.quarterKey} className={cx('pcp-num co-util', i === 0 && 'co-first')}>
                           {pt.supplyFte > 0 ? (
                             <BandCell
                               value={pt.utilisationPct}
@@ -314,24 +315,24 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                               label={`${r.label} ${quarters[i]?.label}`}
                             />
                           ) : (
-                            <span className="b2-subtle">—</span>
+                            <span className="pcp-text-tertiary">—</span>
                           )}
                         </td>
                       ))}
-                      <td className="b2-num co-first">{fmt.fte(p?.supplyFte)}</td>
-                      <td className="b2-num">{fmt.fte(load)}</td>
-                      <td className="b2-num">{fmt.fte(p?.freeFte)}</td>
-                      {pivot !== 'person' && <td className="b2-num">{fmt.fte(p?.demandFte)}</td>}
+                      <td className="pcp-num co-first">{fmt.fte(p?.supplyFte)}</td>
+                      <td className="pcp-num">{fmt.fte(load)}</td>
+                      <td className="pcp-num">{fmt.fte(p?.freeFte)}</td>
+                      {pivot !== 'person' && <td className="pcp-num">{fmt.fte(p?.demandFte)}</td>}
                       {pivot !== 'person' && (
-                        <td className="b2-num">
+                        <td className="pcp-num">
                           {gap === null ? (
-                            <span className="b2-subtle" title="Not defined for this grouping">
+                            <span className="pcp-text-tertiary" title="Not defined for this grouping">
                               —
                             </span>
                           ) : gap > 0.04 ? (
                             <span className="co-gap">{fmt.fte(gap)}</span>
                           ) : (
-                            <span className="b2-subtle">0.0</span>
+                            <span className="pcp-text-tertiary">0.0</span>
                           )}
                         </td>
                       )}
@@ -358,12 +359,12 @@ function SideList({
   wsPath(p: string): string;
   empty: string;
 }) {
-  if (rows.length === 0) return <p className="co-empty b2-muted">{empty}</p>;
+  if (rows.length === 0) return <p className="co-empty pcp-text-secondary">{empty}</p>;
   return (
-    <ul className="b2-list co-list">
+    <ul className="pcp-list co-list">
       {rows.map((r) => (
         <li key={r.person.id}>
-          <Link className="b2-rowlink co-list__main" to={`${wsPath('org/people')}?person=${r.person.id}`}>
+          <Link className="pcp-rowlink co-list__main" to={`${wsPath('org/people')}?person=${r.person.id}`}>
             <PersonLabel name={r.person.name} sub={r.primary?.name ?? r.person.role} />
           </Link>
           <span className="co-list__band">
@@ -408,15 +409,15 @@ function DeliverySignal({
             compact
             icon={Activity}
             title="No delivery data yet"
-            body="Connect Jira and run a sync to see delivery."
+            description="Connect Jira and run a sync to see delivery."
             action={
-              <Link className="b2-btn b2-btn--secondary" to={`${wsPath('delivery/jira-planview')}?tab=health`}>
+              <LinkButton variant="secondary" to={`${wsPath('delivery/jira-planview')}?tab=health`}>
                 Open Jira & Planview
-              </Link>
+              </LinkButton>
             }
           />
         ) : (
-          <p className="b2-muted">No delivery data has been synced for this workspace.</p>
+          <p className="pcp-text-secondary">No delivery data has been synced for this workspace.</p>
         )}
       </Card>
     );
@@ -426,14 +427,14 @@ function DeliverySignal({
       title={`Delivery signal · ${tribeName}`}
       subtitle="Planned FTE (bookings) vs FTE implied by Jira story points per sprint · signal, not a timesheet"
     >
-      <div className="b2-stack b2-stack--sm">
-        <ul className="b2-legend" aria-label="Legend">
+      <div className="pcp-stack pcp-stack--md">
+        <ul className="pcp-legend" aria-label="Legend">
           <li>
-            <span className="b2-swatch b2-swatch--1" aria-hidden="true" />
+            <span className="pcp-swatch pcp-swatch--1" aria-hidden="true" />
             Planned FTE
           </li>
           <li>
-            <span className="b2-swatch b2-swatch--2" aria-hidden="true" />
+            <span className="pcp-swatch pcp-swatch--2" aria-hidden="true" />
             Jira-implied FTE
           </li>
         </ul>
