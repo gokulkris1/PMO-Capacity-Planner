@@ -37,6 +37,11 @@
 .mk-line__head:focus-visible {
   outline-offset: -2px;
 }
+/* UAT-09: one column for the craft code (2-4 characters), so project names line up whatever the code. */
+.mk-line__craft {
+  display: flex;
+  flex: 0 0 52px;
+}
 .mk-line__title {
   display: flex;
   flex-direction: column;

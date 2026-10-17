@@ -112,9 +112,9 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
     );
   }, [s, quarters, thresholds, craft, chapter, tribe]);
   const at = (r: PersonRow) => r.quarters[qi];
-  const under = people
-    .filter((r) => at(r)?.band === 'under' || at(r)?.band === 'bench')
-    .sort((a, z) => at(a).relativePct - at(z).relativePct);
+  // UAT-06 (as QA-023 on Home): "Under target" is the Under band only; the Available band has its own list.
+  const under = people.filter((r) => at(r)?.band === 'under').sort((a, z) => at(a).relativePct - at(z).relativePct);
+  const available = people.filter((r) => at(r)?.band === 'bench').sort((a, z) => at(a).relativePct - at(z).relativePct);
   const over = people.filter((r) => at(r)?.band === 'over').sort((a, z) => at(z).relativePct - at(a).relativePct);
 
   const filters = [craft, chapter, tribe].filter(Boolean).length;
@@ -205,7 +205,10 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             <SideList rows={over.slice(0, 5)} qi={qi} wsPath={wsPath} empty="Nobody is over capacity." />
           </Card>
           <Card title="Under target" subtitle={b.caption} flush>
-            <SideList rows={under.slice(0, 5)} qi={qi} wsPath={wsPath} empty="Everyone is at or above target." />
+            <SideList rows={under.slice(0, 5)} qi={qi} wsPath={wsPath} empty="Nobody is in the Under target band." />
+          </Card>
+          <Card title="Available" subtitle={`${b.caption} · below ${thresholds.benchBelow}% of target`} flush>
+            <SideList rows={available.slice(0, 5)} qi={qi} wsPath={wsPath} empty="Nobody is in the Available band." />
           </Card>
         </div>
       </div>

@@ -280,7 +280,9 @@ function OpenDemand({
                   ) : (
                     <ChevronRight size={16} aria-hidden="true" />
                   )}
-                  <CraftChip craft={craftDto} />
+                  <span className="mk-line__craft">
+                    <CraftChip craft={craftDto} />
+                  </span>
                   <span className="mk-line__title">
                     <span className="pcp-strong">{x.project?.name}</span>
                     <span className="pcp-caption pcp-text-tertiary">

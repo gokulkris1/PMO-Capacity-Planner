@@ -252,6 +252,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <Card
             title="Over capacity"
             subtitle={basisLabel}
+            className="home-sidecard"
             flush
             actions={
               <LinkButton variant="subtle" size="sm" to={`${wsPath('org/people')}?band=over`}>
@@ -265,6 +266,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <Card
             title="Available"
             subtitle={`${basisLabel} · below ${thresholds.benchBelow}% of target`}
+            className="home-sidecard"
             flush
             actions={
               <LinkButton variant="subtle" size="sm" to={`${wsPath('plan/marketplace')}?tab=under`}>
@@ -287,6 +289,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           <Card
             title="Unstaffed demand"
             subtitle={`${basisLabel} · demand not yet covered by confirmed bookings`}
+            className="home-sidecard"
             flush
             actions={
               <LinkButton
@@ -414,7 +417,7 @@ function ActionItems({
     items.push({
       key: `p-${p.id}`,
       icon: FolderKanban,
-      text: `${p.name} is ${p.stage?.toLowerCase() ?? 'initiated'} with no demand captured`,
+      text: `${p.name} is ${p.stage?.toLowerCase() ?? 'initiated'} with no demand captured for QBR1–2`,
       to: `${wsPath('plan/demand')}?project=${p.id}`,
       cta: 'Add demand',
       warn: true,

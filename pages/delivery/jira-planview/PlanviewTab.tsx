@@ -365,7 +365,7 @@ function DiffSection({
                     <ul className="dl-diff">
                       {i.changes.map((c) => (
                         <li key={c.field}>
-                          <span className="pcp-caption pcp-text-tertiary">{c.field}</span>{' '}
+                          <span className="pcp-caption pcp-text-tertiary">{fieldLabel(c.field)}</span>{' '}
                           {c.from ? <span className="dl-diff__from">{fmtVal(c.from)}</span> : null}
                           {c.from ? ' → ' : ''}
                           <span className="pcp-strong">{fmtVal(c.to)}</span>
@@ -451,4 +451,26 @@ function FieldTest({ test }: { test: PlanviewFieldTest }) {
       </div>
     </Card>
   );
+}
+
+/** UAT-12: people read "Start date", not the API key `startDate`. */
+const FIELD_LABEL: Record<string, string> = {
+  name: 'Name',
+  startDate: 'Start date',
+  endDate: 'End date',
+  percentage: 'Allocation %',
+  status: 'Status',
+  stage: 'Stage',
+  tribe: 'Tribe',
+  tribeId: 'Tribe',
+  craftId: 'Craft',
+  externalId: 'Planview id',
+};
+function fieldLabel(field: string): string {
+  if (FIELD_LABEL[field]) return FIELD_LABEL[field];
+  const words = field
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }

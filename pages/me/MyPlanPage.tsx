@@ -336,9 +336,14 @@ function Proposals({ snapshot: s, proposals }: { snapshot: D.WorkspaceSnapshot; 
                   <span className="pcp-strong">{p?.name}</span>
                   <BookingStatePill state="tentative" />
                 </span>
-                <span className="pcp-caption pcp-text-tertiary">
-                  {idx.tribes.get(p?.tribeId ?? '')?.name ?? 'No tribe'} · {fmt.dateRange(a.startDate, a.endDate)} ·
-                  proposed by {a.proposedBy?.name ?? 'a Planner'} {fmt.relative(a.proposedAt, s.serverTime)}
+                {/* UAT-10: the line wraps between its parts, never inside "5 days ago". */}
+                <span className="pcp-caption pcp-text-tertiary me-proposals__meta">
+                  <span>{idx.tribes.get(p?.tribeId ?? '')?.name ?? 'No tribe'}</span>
+                  <span>{fmt.dateRange(a.startDate, a.endDate)}</span>
+                  <span>
+                    proposed by {a.proposedBy?.name ?? 'a Planner'}{' '}
+                    <span className="me-proposals__when">{fmt.relative(a.proposedAt, s.serverTime)}</span>
+                  </span>
                 </span>
               </div>
               <CraftChip

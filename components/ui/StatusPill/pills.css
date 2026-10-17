@@ -280,3 +280,10 @@
   gap: var(--space-050);
   min-width: 0;
 }
+/* QA-033: group and total rows already sit on the sunken surface, the Available (bench) tint itself. There the
+   Available value is a raised chip with a hairline, so it reads as banded like Under and Over in the same row. */
+.pcp-tbl tr.pcp-tbl-group .pcp-band-value--bench,
+.pcp-tbl tr.pcp-tbl-total .pcp-band-value--bench {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}

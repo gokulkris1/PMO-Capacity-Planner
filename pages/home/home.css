@@ -30,3 +30,28 @@
   justify-content: center;
   gap: var(--space-100);
 }
+
+/* UAT-11: the side lists put their link on the title row and let the subtitle use the card's full width, so
+   "QBR1 · Q4 2026 · below 50% of target" stays on one line and "View all" / "Marketplace" line up. */
+.home-sidecard .pcp-card__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-200);
+  row-gap: var(--space-025);
+}
+.home-sidecard .pcp-card__titles {
+  display: contents;
+}
+.home-sidecard .pcp-card__title {
+  grid-column: 1;
+  grid-row: 1;
+}
+.home-sidecard .pcp-card__actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+.home-sidecard .pcp-card__subtitle {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}

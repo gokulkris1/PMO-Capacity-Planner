@@ -5,18 +5,23 @@
 .pp-tabs {
   margin-bottom: var(--space-200);
 }
-/* Search plus six filters fit on one line from 1280 px (QA-036); narrower, the bar wraps. */
+/* One row at 1280 px with every filter shown (QA-036): the band filter never shrinks below its full label
+   ("Band (QBR1): all"); search and the other filters give way first. */
 .pp-search {
-  flex: 1 1 172px;
+  flex: 1 1 136px;
   max-width: 240px;
-  min-width: 148px;
+  min-width: 120px;
 }
 .pp-filter {
-  flex: 0 1 124px;
-  min-width: 104px;
+  flex: 0 1 116px;
+  min-width: 100px;
 }
 .pp-filter--sm {
-  flex-basis: 132px;
+  flex-basis: 124px;
+}
+.pp-filter--band {
+  flex: 0 0 auto;
+  min-width: 148px;
 }
 .pp-table {
   table-layout: fixed;

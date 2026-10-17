@@ -312,8 +312,9 @@ function PeopleBody({
                     leadingIcon={Search}
                     size="sm"
                     value={q}
-                    placeholder="Search name, title or skill"
-                    aria-label="Search people"
+                    placeholder="Search people"
+                    title="Search by name, job title or skill"
+                    aria-label="Search people by name, job title or skill"
                     onValueChange={(v) => setQ(v)}
                   />
                 </span>
@@ -353,7 +354,7 @@ function PeopleBody({
                       .map((c) => ({ value: c.id, label: `Tribe: ${c.name}` }))}
                   />
                 </span>
-                <span className="pp-filter pp-filter--sm">
+                <span className="pp-filter pp-filter--band">
                   <Select
                     size="sm"
                     aria-label={`Filter by band in ${b.quarter?.label ?? 'QBR1'}`}
@@ -573,8 +574,14 @@ function PeopleBody({
                                         name={p.name}
                                         sub={
                                           <>
-                                            <span className="pp-sub-title">{p.role}</span>
-                                            {secondaryLine && <span className="pp-sub-org"> · {secondaryLine}</span>}
+                                            {p.role ? <span className="pp-sub-title">{p.role}</span> : null}
+                                            {/* QA-032: no leading separator when the job title is empty. */}
+                                            {secondaryLine && (
+                                              <span className="pp-sub-org">
+                                                {p.role ? ' · ' : ''}
+                                                {secondaryLine}
+                                              </span>
+                                            )}
                                           </>
                                         }
                                       />

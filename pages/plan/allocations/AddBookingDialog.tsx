@@ -135,7 +135,7 @@ function Inner({
             }}
             options={[...s.people]
               .sort((a, b) => a.name.localeCompare(b.name))
-              .map((p) => ({ value: p.id, label: `${p.name} · ${p.role}` }))}
+              .map((p) => ({ value: p.id, label: p.role ? `${p.name} · ${p.role}` : p.name }))}
           />
         </FormField>
         <FormField

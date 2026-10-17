@@ -55,3 +55,17 @@
   min-width: 40px;
   text-align: right;
 }
+
+/* UAT-10: "Tribe · dates · proposed by X 5 days ago" wraps only between its parts. */
+.me-proposals__meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-050);
+}
+.me-proposals__meta > span:not(:last-child)::after {
+  content: '·';
+  margin-left: var(--space-050);
+}
+.me-proposals__when {
+  white-space: nowrap;
+}

@@ -99,7 +99,7 @@ function DemandBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               setMissing('1');
             }}
           >
-            Initiated projects without demand: {missing.length}
+            Initiated projects without QBR1–2 demand: {missing.length}
           </Button>
         )}
       </div>
@@ -295,8 +295,13 @@ function ByProject({
                             </span>
                           </span>
                           {missingIds.has(d.project.id) && (
-                            <StatusPill tone="warning" icon={TriangleAlert}>
-                              No demand captured
+                            // UAT-07: the rule (DM-02#AC3) looks at QBR1–QBR2 only; later demand does not count.
+                            <StatusPill
+                              tone="warning"
+                              icon={TriangleAlert}
+                              title="Initiated or Mobilising, with no demand captured for the next two quarters"
+                            >
+                              No QBR1–2 demand
                             </StatusPill>
                           )}
                         </span>
