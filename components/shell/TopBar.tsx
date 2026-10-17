@@ -243,6 +243,20 @@ export interface TopBarProps {
   mobileTitle?: string;
 }
 
+/** Which data the user is looking at: the organisation's live workspace, or the in-browser demo. */
+function DataContextPill() {
+  const { mode } = useSession();
+  return mode === 'demo' ? (
+    <StatusPill tone="info" title="Demo data: changes stay in this browser">
+      Demo
+    </StatusPill>
+  ) : (
+    <StatusPill tone="neutral" title="You are viewing live data">
+      Live
+    </StatusPill>
+  );
+}
+
 /** White 56 px top bar (DESIGN_SYSTEM §8.1). */
 export function TopBar(p: TopBarProps) {
   return (
@@ -259,9 +273,7 @@ export function TopBar(p: TopBarProps) {
       </div>
       <div className="pcp-topbar__end">
         <span className="pcp-topbar__context">
-          <StatusPill tone="neutral" title="You are viewing live data">
-            Live
-          </StatusPill>
+          <DataContextPill />
         </span>
         <span className="pcp-topbar__desktop">
           <HelpMenu

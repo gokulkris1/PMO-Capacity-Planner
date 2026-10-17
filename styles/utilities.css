@@ -253,14 +253,11 @@
 }
 
 /* ---- Product page patterns ------------------------------------------------------------------ */
-/* Dense pages (Allocations, Demand) use the 16 px gutter so grids get the width. */
-.pcp-page--dense {
-  padding-left: var(--space-200);
-  padding-right: var(--space-200);
-}
+/* Dense grid pages (Allocations, Demand) use the same shell gutter as every other page, so titles, actions and
+   the demo banner line up across the product. The modifier stays as a hook for denser rows. */
+.pcp-page--dense,
 .pcp-page-header--dense {
-  padding-left: var(--space-200);
-  padding-right: var(--space-200);
+  min-width: 0;
 }
 /* 12-column grid that stacks below 1280 px (two-column dashboards need the full width). */
 .pcp-grid-xl {

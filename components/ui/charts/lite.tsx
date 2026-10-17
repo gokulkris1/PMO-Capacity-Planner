@@ -295,6 +295,8 @@ export function GroupedBarChart({
   const [active, setActive] = useState<number | null>(null);
   const scale = useMemo(() => niceScale(Math.max(0, ...series.flatMap((s) => s.values)) * 1.08), [series]);
   const y = (v: number) => `${(Math.max(0, v) / scale.max) * 100}%`;
+  // Few categories on a wide panel: wider bars so the chart does not read as thin pins (max-width keeps them inside).
+  const barWidth = categories.length <= 3 ? 44 : categories.length <= 6 ? 32 : 20;
   return (
     <div className="pcp-lchart" role="group" aria-label={ariaLabel}>
       <div className="pcp-lchart__yaxis" style={{ height }}>
@@ -323,7 +325,11 @@ export function GroupedBarChart({
             >
               <span className="pcp-lchart__bars">
                 {series.map((s) => (
-                  <span key={s.name} className="pcp-lchart__stack" style={{ height: y(s.values[i] ?? 0), width: 20 }}>
+                  <span
+                    key={s.name}
+                    className="pcp-lchart__stack"
+                    style={{ height: y(s.values[i] ?? 0), width: barWidth }}
+                  >
                     <span className={`pcp-lchart__seg pcp-lchart__seg--${s.kind}`} style={{ height: '100%' }} />
                   </span>
                 ))}
