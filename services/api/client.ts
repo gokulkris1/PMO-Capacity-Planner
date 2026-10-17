@@ -282,6 +282,19 @@ export function createApiClient(t: Transport) {
       checkout: (plan: D.Plan, orgSlug: string) => post<{ url: string }>(LEGACY.checkout, { plan, orgSlug }),
     },
 
+    /**
+     * Legacy QBR sprint module (`/api/qbr/*`, SH-05; only while `features.qbrSprintModule` is on). The path is
+     * relative to /api/qbr, e.g. 'overview', `quarter/${id}`; the workspace goes in the query.
+     */
+    qbr: {
+      get: <T>(wsId: D.ID, path: string, query: Record<string, string> = {}) =>
+        get<T>(`/api/qbr/${path}`, { wsId, ...query }),
+      post: <T>(wsId: D.ID, path: string, body: unknown = {}) =>
+        t.request<T>('POST', `/api/qbr/${path}`, body, { query: { wsId } }),
+      remove: <T>(wsId: D.ID, path: string) =>
+        t.request<T>('DELETE', `/api/qbr/${path}`, undefined, { query: { wsId } }),
+    },
+
     /** ST-09 cockpit. `GET /api/v2/platform/overview` is requested from A (handoff-C.md §7). */
     platform: {
       overview: () => get<PlatformOverview>(API.platformOverview),

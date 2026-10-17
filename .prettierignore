@@ -17,9 +17,6 @@ docs/
 # command in docs/release/handoff-WP0.md). I may format it when a contract change is approved.
 shared/
 
-# Legacy v1.1 files: same list as LEGACY_FILES in eslint.config.js. Shrink only.
-pages/delivery/sprints/legacy/**
-
 # No Prettier parser for these
 netlify.toml
 .env.example

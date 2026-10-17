@@ -14,10 +14,7 @@ import security from 'eslint-plugin-security';
 import globals from 'globals';
 
 /** v1.1 files not yet brought up to the 2.0 lint bar. Shrink only. */
-export const LEGACY_FILES = [
-  // The v1.1 QBR sprint module, moved here from components/qbr (SH-05; unified with the core plan in EP-21).
-  'pages/delivery/sprints/legacy/**',
-];
+export const LEGACY_FILES = [];
 
 /** DS-07: UI code under components/ and pages/ uses tokens, never hex colours or inline theme colours. */
 const HEX_MESSAGE = 'Use a design token (var(--…)) instead of a hex colour.';
