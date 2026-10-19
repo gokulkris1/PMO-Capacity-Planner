@@ -22,7 +22,7 @@ import { bestEffort, slugify, staleOrMissing } from '../entity';
 import type { Params } from '../router';
 
 export const AI_NOT_CONFIGURED =
-  'The AI assistant is not set up on this deployment (no OpenAI key). Ask whoever runs PMO Capacity Planner to add one.';
+  'The AI assistant is not set up on this deployment (no Anthropic API key). Ask whoever runs PMO Capacity Planner to add one.';
 
 export async function loadOrgDTO(q: Queryable, orgId: string): Promise<OrgDTO | null> {
   const r = await one(
@@ -155,7 +155,7 @@ export async function patchOrg(ctx: Ctx, p: Params): Promise<OrgDTO | null> {
     if (
       patch.features.aiAssistant === true &&
       !featuresOf(access.org.features).aiAssistant &&
-      !optionalEnv('OPENAI_API_KEY')
+      !optionalEnv('ANTHROPIC_API_KEY')
     )
       throw conflict(AI_NOT_CONFIGURED, { fields: { 'patch.features.aiAssistant': AI_NOT_CONFIGURED } });
     params.push(JSON.stringify(next));

@@ -5,7 +5,7 @@ import { Card, StatusPill, Switch, useConfirm, useToast } from '../../components
 import { SectionBody, SectionHeader, errorText } from './common';
 
 const AI_EGRESS =
-  "Questions and a summary of this workspace's people, projects and allocations will be sent to OpenAI for processing.";
+  "Questions and a summary of this workspace's people, projects and allocations will be sent to Anthropic (Claude) for processing.";
 
 const FEATURES: Array<{ flag: FeatureFlag; label: string; description: string }> = [
   {

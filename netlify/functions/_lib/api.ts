@@ -271,7 +271,7 @@ export function withApi(opts: ApiOptions, fn: (ctx: Ctx) => Promise<unknown>): H
       else if (e instanceof ZodError) err = badRequest('Check the highlighted fields.', zodFields(e));
       // A malformed id reaching a uuid column (invalid_text_representation) means "no such row", never a 500.
       else if ((e as { code?: unknown })?.code === '22P02') err = new HttpError(404, 'not_found', 'Not found');
-      // Jira, Planview or OpenAI unreachable, slow or failing: 502/504 with a human message, never 500 (QA-009).
+      // Jira, Planview or Anthropic unreachable, slow or failing: 502/504 with a human message, never 500 (QA-009).
       else if (outboundHttpError(e)) err = outboundHttpError(e)!;
       else {
         log('error', {

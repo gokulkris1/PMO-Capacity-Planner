@@ -5,8 +5,9 @@ export function jsonResponse(body: unknown, status = 200, headers: Record<string
     ok: status >= 200 && status < 300,
     status,
     type: 'basic',
-    headers: { get: (k: string) => lower[k.toLowerCase()] ?? null },
+    headers: new Headers(lower),
     text: async () => JSON.stringify(body),
+    json: async () => body,
   } as unknown as Response;
 }
 

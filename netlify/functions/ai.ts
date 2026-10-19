@@ -1,8 +1,9 @@
 /**
  * POST /api/ai (HS-11, SEC-16, SEC-29): off unless the org enables `aiAssistant`; the client sends
  * `{ wsId, question }` only and the server builds the prompt from workspace data; per-org monthly quota with an
- * atomic check-and-increment; upstream failures return a generic 502; only OPENAI_API_KEY is read.
+ * atomic check-and-increment; upstream failures return a generic 502; only ANTHROPIC_API_KEY is read.
  */
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { auditCtx, parseWith, withApi } from './_lib/api';
 import { audit } from './_lib/audit';
@@ -12,7 +13,7 @@ import { optionalEnv } from './_lib/env';
 import { badRequest, forbidden, notFound, rateLimited, serviceUnavailable, upstreamError } from './_lib/errors';
 import { AI_NOT_CONFIGURED } from './_lib/handlers/orgs';
 import { buildSnapshot } from './_lib/handlers/snapshot';
-import { readJson, safeFetch } from './_lib/net';
+import { MAX_OUTBOUND_MS, safeFetch } from './_lib/net';
 import { errorFields, log } from './_lib/log';
 
 const schema = z.object({
@@ -30,9 +31,9 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   const access = await requireWorkspace(ctx, body.wsId);
   requireFeature(access.org, 'aiAssistant');
   if (!access.permissions.has('ai.use')) throw forbidden();
-  const apiKey = optionalEnv('OPENAI_API_KEY');
+  const apiKey = optionalEnv('ANTHROPIC_API_KEY');
   // QA-029: a clear, specific message (the assistant UI shows it) rather than a generic error.
-  if (!apiKey) throw serviceUnavailable(AI_NOT_CONFIGURED, 'OPENAI_API_KEY missing');
+  if (!apiKey) throw serviceUnavailable(AI_NOT_CONFIGURED, 'ANTHROPIC_API_KEY missing');
 
   const limit = orgEntitlements(access.org).aiQueriesPerMonth;
   const used = await ctx.db.query<{ n: number }>(
@@ -53,27 +54,29 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   const system = buildSystemPrompt(snapshot, access.role);
   let answer: string;
   try {
-    const res = await safeFetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: optionalEnv('OPENAI_MODEL', 'gpt-4o-mini'),
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: body.question },
-          ],
-          temperature: 0.2,
-          max_tokens: 500,
-        }),
-      },
-      { label: 'AI service', timeoutMs: 7000 },
-    );
-    const { json } = await readJson(res);
-    if (!res.ok) throw new Error(`AI upstream ${res.status}`);
-    const content = (json as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;
-    answer = typeof content === 'string' && content.trim() ? content.trim() : 'No answer was generated.';
+    // Outbound calls go through safeFetch (timeout, no redirects); one attempt fits the function's time limit.
+    const client = new Anthropic({
+      apiKey,
+      maxRetries: 0,
+      fetch: (input, init) => safeFetch(String(input), init ?? {}, { label: 'AI service', timeoutMs: MAX_OUTBOUND_MS }),
+    });
+    const message = await client.beta.messages.create({
+      model: optionalEnv('ANTHROPIC_MODEL', 'claude-opus-5-5'),
+      max_tokens: 2000,
+      // Short factual answers: low effort keeps the reply inside the function's time limit.
+      output_config: { effort: 'low' },
+      // On a safety decline, the API retries the same request on a fallback model it chooses.
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system,
+      messages: [{ role: 'user', content: body.question }],
+    });
+    if (message.stop_reason === 'refusal') throw new Error('AI refusal');
+    const text = message.content
+      .flatMap((b) => (b.type === 'text' ? [b.text] : []))
+      .join('')
+      .trim();
+    answer = text || 'No answer was generated.';
   } catch (e) {
     log('warn', { event: 'ai.upstream_failed', requestId: ctx.requestId, err: errorFields(e) });
     await ctx.db

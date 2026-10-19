@@ -67,7 +67,7 @@ Set these in Netlify → Project configuration → Environment variables. `.env.
 | `ALLOW_PUBLIC_SIGNUP` / `VITE_ALLOW_PUBLIC_SIGNUP` | Optional | Sign-up follows the mode (open in public, closed in internal) |
 | `ALLOWED_ORIGINS` | Optional | Only the site's own Netlify URLs may call the API from a browser |
 | `RESEND_API_KEY`, `FROM_EMAIL` | Recommended | No email: invitation links are copied by hand, 2FA and reset codes cannot be sent. Without `FROM_EMAIL` the v1.1 sender is used |
-| `OPENAI_API_KEY` (`OPENAI_MODEL`) | Optional | The assistant (off per organisation by default) answers 503 |
+| `ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL`) | Optional | The assistant (off per organisation by default) answers 503 |
 | `STRIPE_*` | Public mode billing only | Checkout answers 503 |
 | `APP_URL`, `LOG_LEVEL`, `INTEGRATIONS_FETCH_TIMEOUT_MS`, `JWT_SECRET_NEXT` | Optional | Netlify `URL`, `info`, 7000 ms, no key rotation |
 

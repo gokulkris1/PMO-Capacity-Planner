@@ -116,7 +116,7 @@ be explained. For a single broken page, prefer switching the feature off or a fi
 |---|---|
 | A CSP violation blocks something in production | Rename the header in `netlify.toml` to `Content-Security-Policy-Report-Only`, merge and let Netlify redeploy, then fix the cause |
 | The Jira sync misbehaves | Settings › Features → "Daily Jira sync" off (per organisation) |
-| The assistant | Settings › Features → AI assistant off, or remove `OPENAI_API_KEY` |
+| The assistant | Settings › Features → AI assistant off, or remove `ANTHROPIC_API_KEY` |
 | Email | Remove `RESEND_API_KEY`: invitations fall back to copyable links |
 
 ## 5. Troubleshooting

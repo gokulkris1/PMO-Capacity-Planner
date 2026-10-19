@@ -28,6 +28,7 @@
     "e2e:screenshots": "node scripts/e2e/screenshots.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@neondatabase/serverless": "^1.0.2",
     "@tanstack/react-virtual": "^3.14.21",

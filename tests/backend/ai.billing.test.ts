@@ -44,9 +44,24 @@ beforeAll(async () => {
 });
 afterAll(() => teardownDb(db));
 beforeEach(() => {
-  testEnv({ OPENAI_API_KEY: 'sk-test-openai' });
+  testEnv({ ANTHROPIC_API_KEY: 'sk-ant-test' });
   fetchMock = installFetch();
-  fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'Noma is free next sprint.' } }] }));
+  fetchMock.mockImplementation(async () =>
+    jsonResponse(
+      {
+        id: 'msg_test',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-opus-5-5',
+        content: [{ type: 'text', text: 'Noma is free next sprint.' }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 10, output_tokens: 5 },
+      },
+      200,
+      { 'content-type': 'application/json' },
+    ),
+  );
 });
 
 describe('AI assistant (HS-11)', () => {
@@ -67,11 +82,14 @@ describe('AI assistant (HS-11)', () => {
     });
     expect(r.status).toBe(200);
     expect(r.json.answer).toBe('Noma is free next sprint.');
-    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sent.messages[0].role).toBe('system');
-    expect(sent.messages[0].content).toContain('Noma Odigie');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe('https://api.anthropic.com/v1/messages?beta=true');
+    const sent = JSON.parse(init.body);
+    expect(sent.system).toContain('Noma Odigie');
+    expect(sent.messages).toEqual([{ role: 'user', content: 'Who is free?' }]);
+    expect(sent.fallbacks).toBe('default');
     expect(JSON.stringify(sent)).not.toContain('Ignore all rules');
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer sk-test-openai');
+    expect(new Headers(init.headers).get('x-api-key')).toBe('sk-ant-test');
   });
 
   it('rejects questions over 2,000 characters and other tenants', async () => {
@@ -86,11 +104,17 @@ describe('AI assistant (HS-11)', () => {
 
   it('returns a generic 502 on upstream errors and does not count the question', async () => {
     const before = (await db.query(`SELECT ai_queries_month AS n FROM organizations WHERE id = $1`, [org]))[0].n;
-    fetchMock.mockResolvedValue(jsonResponse({ error: { message: 'Incorrect API key sk-test-openai' } }, 401));
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(
+        { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key sk-ant-test' } },
+        401,
+        { 'content-type': 'application/json' },
+      ),
+    );
     const r = await call(ai, 'POST', '/api/ai', { token: planner.token, body: { wsId: ws, question: 'Who?' } });
     expect(r.status).toBe(502);
     expect(r.json.error).toBe('The AI service is unavailable. Try again later.');
-    expect(r.body).not.toContain('Incorrect API key');
+    expect(r.body).not.toContain('x-api-key');
     expect((await db.query(`SELECT ai_queries_month AS n FROM organizations WHERE id = $1`, [org]))[0].n).toBe(before);
   });
 
@@ -120,9 +144,9 @@ describe('AI assistant (HS-11)', () => {
     expect((await db.query(`SELECT ai_queries_month AS n FROM organizations WHERE id = $1`, [org]))[0].n).toBe(1);
   });
 
-  it('reads only OPENAI_API_KEY', () => {
+  it('reads only ANTHROPIC_API_KEY', () => {
     const src = readFileSync(join(__dirname, '../../netlify/functions/ai.ts'), 'utf8');
-    expect(src).not.toMatch(/VITE_|GEMINI_|['"]API_KEY['"]/);
+    expect(src).not.toMatch(/VITE_|GEMINI_|OPENAI_|['"]API_KEY['"]/);
   });
 });
 

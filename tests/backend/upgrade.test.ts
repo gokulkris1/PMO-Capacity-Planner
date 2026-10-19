@@ -55,7 +55,7 @@ function productionEnv(): void {
     'VITE_APP_MODE',
     'ALLOW_PUBLIC_SIGNUP',
     'FROM_EMAIL',
-    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
     'JWT_SECRET_NEXT',
   ])
     delete process.env[k];

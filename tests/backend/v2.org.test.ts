@@ -190,19 +190,19 @@ describe('orgs and workspaces (AC-08, ST-01, ST-03, ST-05)', () => {
     expect(badThresholds.json.error).toBe(
       'On-target range must start below where it ends, and above the Available threshold.',
     );
-    // QA-029: the assistant cannot be switched on while the deployment has no OpenAI key.
+    // QA-029: the assistant cannot be switched on while the deployment has no Anthropic API key.
     const noKey = await call(v2, 'PATCH', `/api/v2/orgs/${org}`, {
       token: admin.token,
       body: { version: 1, patch: { features: { aiAssistant: true } } },
     });
     expect(noKey.status).toBe(409);
     expect(noKey.json.error).toMatch(/^The AI assistant is not set up on this deployment/);
-    testEnv({ OPENAI_API_KEY: 'sk-test-not-real' });
+    testEnv({ ANTHROPIC_API_KEY: 'sk-ant-test-not-real' });
     const ok = await call(v2, 'PATCH', `/api/v2/orgs/${org}`, {
       token: admin.token,
       body: { version: 1, patch: { features: { aiAssistant: true }, defaultWorkspaceVisibility: 'members' } },
     });
-    delete process.env.OPENAI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     expect(ok.status).toBe(200);
     expect(ok.json).toMatchObject({ version: 2, defaultWorkspaceVisibility: 'members' });
     expect((ok.json.features as { aiAssistant: boolean }).aiAssistant).toBe(true);
