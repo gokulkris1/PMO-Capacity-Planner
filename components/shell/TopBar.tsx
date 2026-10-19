@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   CircleQuestionMark,
   CircleUserRound,
+  Compass,
   Inbox,
   Keyboard,
   ListChecks,
@@ -17,7 +18,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { useFeature, useSession, useWorkspace, useWorkspaceData } from '../../state';
+import { useSession, useWorkspace, useWorkspaceData } from '../../state';
 import { ROLE_LABEL } from '../../shared/permissions';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/Button';
@@ -106,23 +107,21 @@ export function HelpMenu({
   onShortcuts,
   onWhatsNew,
   onAssistant,
+  onTour,
 }: {
   onGlossary: () => void;
   onShortcuts: () => void;
   onWhatsNew: () => void;
   onAssistant: () => void;
+  onTour: () => void;
 }) {
-  const ai = useFeature('aiAssistant');
   const items: MenuItem[] = [
+    { id: 'tour', label: 'Take the tour', icon: Compass, onSelect: onTour },
     { id: 'glossary', label: 'Glossary', icon: BookOpen, onSelect: onGlossary },
     { id: 'shortcuts', label: 'Keyboard shortcuts', icon: Keyboard, shortcut: '?', onSelect: onShortcuts },
     { id: 'new', label: `What's new · v${APP_VERSION}`, icon: Megaphone, onSelect: onWhatsNew },
-    ...(ai
-      ? [
-          { type: 'separator' as const, id: 'sep' },
-          { id: 'ai', label: 'Ask the assistant', icon: Sparkles, onSelect: onAssistant },
-        ]
-      : []),
+    { type: 'separator' as const, id: 'sep' },
+    { id: 'ai', label: 'Ask Tom', icon: Sparkles, onSelect: onAssistant },
   ];
   return <Menu label="Help" items={items} trigger={<IconButton icon={CircleQuestionMark} label="Help" />} />;
 }
@@ -239,6 +238,7 @@ export interface TopBarProps {
   onShortcuts: () => void;
   onWhatsNew: () => void;
   onAssistant: () => void;
+  onTour: () => void;
   /** Mobile page title (below 768 px the top bar shows menu, title and user menu only). */
   mobileTitle?: string;
 }
@@ -267,7 +267,7 @@ export function TopBar(p: TopBarProps) {
         <div className="pcp-topbar__switcher">
           <WorkspaceSwitcher />
         </div>
-        <div className="pcp-topbar__search">
+        <div className="pcp-topbar__search" data-tour="search">
           <SearchTrigger onOpen={p.onOpenSearch} />
         </div>
       </div>
@@ -275,15 +275,16 @@ export function TopBar(p: TopBarProps) {
         <span className="pcp-topbar__context">
           <DataContextPill />
         </span>
-        <span className="pcp-topbar__desktop">
+        <span className="pcp-topbar__desktop" data-tour="help">
           <HelpMenu
             onGlossary={p.onGlossary}
             onShortcuts={p.onShortcuts}
             onWhatsNew={p.onWhatsNew}
             onAssistant={p.onAssistant}
+            onTour={p.onTour}
           />
         </span>
-        <span className="pcp-topbar__desktop">
+        <span className="pcp-topbar__desktop" data-tour="notifications">
           <NotificationsBell />
         </span>
         <UserMenu onSignOut={p.onSignOut} />

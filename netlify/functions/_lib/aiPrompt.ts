@@ -7,6 +7,7 @@ import type { WorkspaceSnapshot, WorkspaceRole } from '../../../shared/contracts
 import { quarterKeyOf, quarterRange } from './entity';
 import { plannedFte } from './jira/aggregate';
 import { PRODUCT_NAME } from './email';
+import { productGuideText } from '../../../shared/help/guide';
 
 const MAX_CHARS = 12000;
 
@@ -58,8 +59,7 @@ export function buildSystemPrompt(s: WorkspaceSnapshot, role: WorkspaceRole | nu
   const directive = strategic
     ? 'The user plans this portfolio: you may recommend reallocations, hiring or deferring work.'
     : 'The user has read-only access: keep advice to observations and questions they could raise with their PMO; do not recommend budget or organisational changes.';
-  const prompt = `You are the ${PRODUCT_NAME} assistant, an expert PMO capacity advisor for the workspace "${s.workspace.name}".
-Answer concisely (under 200 words), use only the data below, and say when the data is not enough. ${directive}
+  const prompt = `WORKSPACE "${s.workspace.name}". ${directive}
 Utilisation bands: Available below ${s.org.planning.thresholds.benchBelow}%, On target ${s.org.planning.thresholds.onTargetFrom}–${s.org.planning.thresholds.onTargetTo}% of each person's target.
 
 PEOPLE (quarter load as % of a full-time person):
@@ -71,4 +71,19 @@ ${projects || '- none'}
 DEMAND (next four quarters):
 ${demand || '- none'}`;
   return prompt.length > MAX_CHARS ? `${prompt.slice(0, MAX_CHARS)}\n[data truncated]` : prompt;
+}
+
+/**
+ * Ask Tom's standing instructions plus the product guide. Identical for every request (no workspace data), so it is
+ * sent as the first system block and cached.
+ */
+export function tomInstructions(): string {
+  return `You are Tom, the assistant built into ${PRODUCT_NAME}, a tool a PMO uses to plan people's capacity against project demand by quarter.
+You answer two kinds of question:
+1. About this workspace's plan: who is free or over capacity, where demand is not covered, which crafts are short, what to do about it. Use only the workspace data in the next block and say when it is not enough. Never invent people, projects or numbers.
+2. About using ${PRODUCT_NAME}: where something is, what a term means, how to do a task. Use the product guide below, name the page (and the Settings section) to go to, and give the steps.
+Answer in plain English, concisely (normally under 200 words), with short lists where they help. If a question is unrelated to capacity planning or to ${PRODUCT_NAME}, say briefly that you can only help with those.
+
+PRODUCT GUIDE
+${productGuideText()}`;
 }

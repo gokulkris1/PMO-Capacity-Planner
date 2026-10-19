@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSession } from '../../state';
 import { Skeleton } from '../ui/Skeleton';
@@ -10,7 +10,9 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { SearchDialog } from './SearchDialog';
-import { AssistantDrawer, GlossaryDrawer, ShortcutsDialog, WhatsNewDialog } from './HelpDialogs';
+import { GlossaryDrawer, ShortcutsDialog, WhatsNewDialog } from './HelpDialogs';
+import { AskTom } from './AskTom';
+import { TOUR_VERSION, Tour, buildTourSteps } from './Tour';
 import { AREA_LABEL, SETTINGS_ITEM, areaViews, useNavGroups } from './nav';
 import { useEmbedded } from './embedded';
 import { useWorkspaceBase } from './workspacePath';
@@ -76,7 +78,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   const collapsed = storedCollapsed ?? isNarrow;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [dialog, setDialog] = useState<null | 'shortcuts' | 'whatsnew' | 'glossary' | 'assistant'>(null);
+  const [dialog, setDialog] = useState<null | 'shortcuts' | 'whatsnew' | 'glossary'>(null);
+  const [tomOpen, setTomOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const tourKey = `tourSeen.${TOUR_VERSION}.${userId}`;
+  const tourSteps = useMemo(
+    () => buildTourSteps([...groups.flatMap((g) => g.items), SETTINGS_ITEM], me?.user.name ?? null),
+    [groups, me?.user.name],
+  );
+  const startTour = useCallback(() => {
+    setTomOpen(false);
+    setDialog(null);
+    setTourOpen(true);
+  }, []);
+  const endTour = useCallback(() => {
+    setTourOpen(false);
+    writeUiPref(tourKey, true);
+  }, [tourKey]);
+
+  // First visit after sign-in: show the tour once per user (and again after a TOUR_VERSION bump). Automated
+  // browsers (e2e) skip it so the overlay does not block their clicks; they can still open it from Help.
+  useEffect(() => {
+    if (embedded || !me || navigator.webdriver || readUiPref<boolean>(tourKey, false)) return;
+    const t = window.setTimeout(() => setTourOpen(true), 600);
+    return () => window.clearTimeout(t);
+  }, [embedded, me, tourKey]);
 
   const toggleSidebar = () => {
     const next = !collapsed;
@@ -174,7 +200,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           onGlossary={() => setDialog('glossary')}
           onShortcuts={() => setDialog('shortcuts')}
           onWhatsNew={() => setDialog('whatsnew')}
-          onAssistant={() => setDialog('assistant')}
+          onAssistant={() => setTomOpen(true)}
+          onTour={startTour}
           mobileTitle={currentItem?.label}
         />
       </div>
@@ -186,7 +213,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ShortcutsDialog open={dialog === 'shortcuts'} onClose={() => setDialog(null)} />
       <WhatsNewDialog open={dialog === 'whatsnew'} onClose={() => setDialog(null)} />
       <GlossaryDrawer open={dialog === 'glossary'} onClose={() => setDialog(null)} />
-      <AssistantDrawer open={dialog === 'assistant'} onClose={() => setDialog(null)} />
+      <AskTom
+        open={tomOpen}
+        onOpenChange={setTomOpen}
+        onTour={startTour}
+        onGlossary={() => {
+          setTomOpen(false);
+          setDialog('glossary');
+        }}
+      />
+      <Tour open={tourOpen} steps={tourSteps} onClose={endTour} />
     </div>
   );
 }

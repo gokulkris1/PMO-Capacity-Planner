@@ -117,7 +117,10 @@ export function createApiClient(t: Transport) {
     },
 
     health: () => get<HealthResponse>(API.health),
-    ai: { ask: (wsId: D.ID, question: string) => post<{ answer: string }>(API.ai, { wsId, question }) },
+    ai: {
+      ask: (wsId: D.ID, question: string, history?: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+        post<{ answer: string }>(API.ai, { wsId, question, history }),
+    },
 
     orgs: {
       create: (r: { name: string; workspaceName: string }) =>

@@ -1,0 +1,91 @@
+/* Guided tour: spotlight on one element plus an explanation card. */
+
+.pcp-tour {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
+.pcp-tour__scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+/* The spotlight's huge shadow is the scrim, so the target stays visible inside it. */
+.pcp-tour__spotlight {
+  position: fixed;
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 3px var(--color-nav-accent),
+    0 0 0 9999px var(--color-scrim);
+  transition:
+    left 160ms ease,
+    top 160ms ease,
+    width 160ms ease,
+    height 160ms ease;
+  pointer-events: none;
+}
+
+.pcp-tour__card {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  padding: var(--space-250);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--elevation-3);
+}
+.pcp-tour__card:focus {
+  outline: none;
+}
+.pcp-tour__card--centred {
+  left: 50%;
+  top: 50%;
+  width: min(440px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+}
+
+.pcp-tour__progress {
+  margin: 0 0 var(--space-050);
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pcp-tour__title {
+  margin: 0 0 var(--space-100);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.pcp-tour__summary {
+  margin: 0;
+  line-height: 1.5;
+}
+.pcp-tour__howto {
+  margin: var(--space-150) 0 0;
+  padding-left: var(--space-250);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+.pcp-tour__howto li + li {
+  margin-top: var(--space-050);
+}
+.pcp-tour__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-100);
+  margin-top: var(--space-250);
+}
+.pcp-tour__nav {
+  display: flex;
+  gap: var(--space-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcp-tour__spotlight {
+    transition: none;
+  }
+}

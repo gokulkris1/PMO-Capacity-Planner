@@ -10,8 +10,8 @@ const AI_EGRESS =
 const FEATURES: Array<{ flag: FeatureFlag; label: string; description: string }> = [
   {
     flag: 'aiAssistant',
-    label: 'AI assistant',
-    description: `Adds "Ask the assistant" to the Help menu. ${AI_EGRESS}`,
+    label: 'Ask Tom (AI assistant)',
+    description: `Lets everyone ask Tom about the plan and about using the tool, from the button at the bottom right of every page. ${AI_EGRESS}`,
   },
   {
     flag: 'qbrSprintModule',
@@ -37,7 +37,7 @@ export default function FeaturesSettings() {
   const toggle = async (flag: FeatureFlag, on: boolean) => {
     if (flag === 'aiAssistant' && on) {
       const ok = await confirm({
-        title: 'Turn on the AI assistant?',
+        title: 'Turn on Ask Tom?',
         body: AI_EGRESS,
         confirmLabel: 'Turn on',
         tone: 'primary',

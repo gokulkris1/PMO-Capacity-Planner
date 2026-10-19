@@ -30,6 +30,7 @@ function NavEntry({ item, collapsed, onNavigate }: { item: NavItem; collapsed: b
       className={cx('pcp-nav__item', active && 'pcp-nav__item--active')}
       aria-current={active ? 'page' : undefined}
       aria-label={collapsed ? item.label : undefined}
+      data-tour={`nav-${item.id}`}
       onClick={onNavigate}
     >
       <Icon icon={item.icon} size={16} className="pcp-nav__icon" />

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { auditCtx, parseWith, withApi } from './_lib/api';
 import { audit } from './_lib/audit';
 import { orgEntitlements, requireFeature, requireWorkspace } from './_lib/authz';
-import { buildSystemPrompt } from './_lib/aiPrompt';
+import { buildSystemPrompt, tomInstructions } from './_lib/aiPrompt';
 import { optionalEnv } from './_lib/env';
 import { badRequest, forbidden, notFound, rateLimited, serviceUnavailable, upstreamError } from './_lib/errors';
 import { AI_NOT_CONFIGURED } from './_lib/handlers/orgs';
@@ -16,10 +16,24 @@ import { buildSnapshot } from './_lib/handlers/snapshot';
 import { MAX_OUTBOUND_MS, safeFetch } from './_lib/net';
 import { errorFields, log } from './_lib/log';
 
+const turn = z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(4000) });
 const schema = z.object({
   wsId: z.string().uuid('Choose a workspace'),
   question: z.string().trim().min(1, 'Ask a question').max(2000, 'Keep questions under 2,000 characters'),
+  // Earlier turns of the same Ask Tom conversation, oldest first, so follow-up questions make sense.
+  history: z.array(turn).max(8).optional(),
 });
+
+/** Earlier turns as alternating user/assistant messages starting with a user turn; anything else is dropped. */
+function priorTurns(history: Array<z.infer<typeof turn>> | undefined): Anthropic.Beta.BetaMessageParam[] {
+  const out: Anthropic.Beta.BetaMessageParam[] = [];
+  for (const t of history ?? []) {
+    const expected = out.length % 2 === 0 ? 'user' : 'assistant';
+    if (t.role !== expected || !t.content.trim()) return [];
+    out.push({ role: t.role, content: t.content });
+  }
+  return out.length % 2 === 0 ? out : out.slice(0, -1);
+}
 
 export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   if (ctx.method !== 'POST') throw notFound('Not found');
@@ -51,7 +65,7 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
   }
 
   const snapshot = await buildSnapshot(ctx.db, access, ctx.actor?.userId ?? null);
-  const system = buildSystemPrompt(snapshot, access.role);
+  const workspaceData = buildSystemPrompt(snapshot, access.role);
   let answer: string;
   try {
     // Outbound calls go through safeFetch (timeout, no redirects); one attempt fits the function's time limit.
@@ -68,8 +82,11 @@ export const handler = withApi({ fn: 'ai' }, async (ctx) => {
       // On a safety decline, the API retries the same request on a fallback model it chooses.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      system,
-      messages: [{ role: 'user', content: body.question }],
+      system: [
+        { type: 'text', text: tomInstructions(), cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: workspaceData },
+      ],
+      messages: [...priorTurns(body.history), { role: 'user', content: body.question }],
     });
     if (message.stop_reason === 'refusal') throw new Error('AI refusal');
     const text = message.content
