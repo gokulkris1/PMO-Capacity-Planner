@@ -147,7 +147,7 @@ function AskTomPanel({ open, onOpenChange, onTour, onGlossary }: AskTomProps) {
       {!open ? (
         <button type="button" className="pcp-tom-launcher" data-tour="ask-tom" onClick={() => onOpenChange(true)}>
           <Icon icon={Sparkles} size={16} />
-          <span>Ask Tom</span>
+          <span className="pcp-tom-launcher__label">Ask Tom</span>
         </button>
       ) : null}
       {open ? (

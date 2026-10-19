@@ -25,8 +25,18 @@ function guide(list: GuideEntry[], id: string): GuideEntry | undefined {
   return list.find((g) => g.id === id);
 }
 
-/** Welcome, every page this user can see (role-aware: built from their navigation), the shell, then a wrap-up. */
-export function buildTourSteps(navItems: NavItem[], userName: string | null): TourStep[] {
+/** Pages where a read-only user still has their own actions (answering proposals, offering capacity). */
+const OWN_ACTION_PAGES = new Set(['me']);
+
+/**
+ * Welcome, every page this user can see (built from their navigation), the shell, then a wrap-up. Users who cannot
+ * change the plan get what each page shows rather than instructions they cannot follow.
+ */
+export function buildTourSteps(
+  navItems: NavItem[],
+  userName: string | null,
+  opts: { canEditPlan: boolean; askTomOn: boolean } = { canEditPlan: true, askTomOn: true },
+): TourStep[] {
   const first = userName?.split(' ')[0];
   const steps: TourStep[] = [
     {
@@ -39,17 +49,27 @@ export function buildTourSteps(navItems: NavItem[], userName: string | null): To
   ];
   for (const item of navItems) {
     const g = guide(PAGE_GUIDE, item.id);
-    if (g) steps.push({ id: item.id, title: item.label, summary: g.summary, howTo: g.howTo, target: `nav-${item.id}` });
+    if (!g) continue;
+    const howTo =
+      opts.canEditPlan || OWN_ACTION_PAGES.has(item.id)
+        ? g.howTo
+        : ['Your role can view this page; Planners and PMO Admins make the changes here.'];
+    steps.push({ id: item.id, title: item.label, summary: g.summary, howTo, target: `nav-${item.id}` });
   }
   for (const id of ['search', 'notifications', 'help', 'ask-tom']) {
     const g = guide(SHELL_GUIDE, id);
-    if (g) steps.push({ id, title: g.title, summary: g.summary, howTo: g.howTo, target: id });
+    if (!g) continue;
+    const howTo =
+      id === 'ask-tom' && !opts.askTomOn
+        ? ['Ask Tom is switched off for your organisation; an Org Admin can switch it on in Settings › Features.']
+        : g.howTo;
+    steps.push({ id, title: g.title, summary: g.summary, howTo, target: id });
   }
   steps.push({
     id: 'done',
     title: "You're ready",
     summary:
-      'Start on Home to see what needs attention. You can take this tour again any time from Help (the ? in the top bar), and Ask Tom can answer questions about any page.',
+      'Start on Home to see what needs attention. You can take this tour again any time from Help (the ? in the top bar) or from the Ask Tom button.',
     howTo: [],
   });
   return steps;

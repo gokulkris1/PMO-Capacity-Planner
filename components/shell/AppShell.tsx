@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSession } from '../../state';
+import { useFeature, useSession, useWorkspace } from '../../state';
 import { Skeleton } from '../ui/Skeleton';
 import { Tabs } from '../ui/Tabs';
 import { useMediaQuery } from '../ui/hooks';
@@ -82,9 +82,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [tomOpen, setTomOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const tourKey = `tourSeen.${TOUR_VERSION}.${userId}`;
+  const { can } = useWorkspace();
+  const askTomOn = useFeature('aiAssistant');
+  const canEditPlan = can('people.write') || can('demand.write') || can('allocations.write');
   const tourSteps = useMemo(
-    () => buildTourSteps([...groups.flatMap((g) => g.items), SETTINGS_ITEM], me?.user.name ?? null),
-    [groups, me?.user.name],
+    () =>
+      buildTourSteps([...groups.flatMap((g) => g.items), SETTINGS_ITEM], me?.user.name ?? null, {
+        canEditPlan,
+        askTomOn,
+      }),
+    [groups, me?.user.name, canEditPlan, askTomOn],
   );
   const startTour = useCallback(() => {
     setTomOpen(false);

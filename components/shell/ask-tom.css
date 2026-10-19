@@ -230,6 +230,15 @@
   .pcp-tom-launcher {
     right: var(--space-200);
     bottom: var(--space-200);
+    padding: var(--space-150);
+  }
+  .pcp-tom-launcher__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
   .pcp-tom {
     right: 0;

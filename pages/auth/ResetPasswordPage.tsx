@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Banner, Button, CodeInput, FormField, LinkButton, PasswordField, TextField } from '../../components/ui';
-import { useClientGaps } from '../../state';
+import { ApiRequestError, useClientGaps } from '../../state';
 import { AuthForm, AuthLayout, MIN_PASSWORD, authErrorMessage, isEmail } from './AuthLayout';
 
 /**
@@ -31,11 +31,14 @@ export default function ResetPasswordPage() {
     setError(null);
     try {
       await gaps.auth.requestPasswordReset(email.trim());
-    } catch {
-      // Same message whether or not the account exists (no account enumeration, HS-13).
+      setStep('confirm');
+    } catch (e) {
+      // Email not set up on this site: say so instead of waiting for a code that cannot come. Any other failure
+      // gets the same next step whether or not the account exists (no account enumeration, HS-13).
+      if (e instanceof ApiRequestError && e.code === 'not_configured') setError(authErrorMessage(e));
+      else setStep('confirm');
     } finally {
       setBusy(false);
-      setStep('confirm');
     }
   };
 
@@ -72,6 +75,7 @@ export default function ResetPasswordPage() {
         showValue={false}
       >
         <AuthForm onSubmit={() => void request()}>
+          {error ? <Banner tone="danger">{error}</Banner> : null}
           <FormField label="Email" error={errors.email}>
             <TextField
               size="lg"

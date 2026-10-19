@@ -196,7 +196,7 @@ describe('orgs and workspaces (AC-08, ST-01, ST-03, ST-05)', () => {
       body: { version: 1, patch: { features: { aiAssistant: true } } },
     });
     expect(noKey.status).toBe(409);
-    expect(noKey.json.error).toMatch(/^The AI assistant is not set up on this deployment/);
+    expect(noKey.json.error).toMatch(/^Ask Tom isn't available yet/);
     testEnv({ ANTHROPIC_API_KEY: 'sk-ant-test-not-real' });
     const ok = await call(v2, 'PATCH', `/api/v2/orgs/${org}`, {
       token: admin.token,

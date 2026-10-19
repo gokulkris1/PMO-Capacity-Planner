@@ -219,7 +219,11 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
 
       <Card
         title={`By ${pivot}`}
-        subtitle="Load and supply in FTE; utilisation is load as a % of target; gap is unstaffed demand (per project and craft, as on the Marketplace)"
+        subtitle={
+          pivot === 'tribe'
+            ? "Tribes are measured by demand: covered is booked FTE as a % of the tribe's demand (Squad row: utilisation of target); gap is unstaffed demand"
+            : 'Load and supply in FTE; utilisation is load as a % of target; gap is unstaffed demand (per project and craft, as on the Marketplace)'
+        }
         flush
       >
         {rows.length === 0 ? (
@@ -238,7 +242,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                     {pivot[0].toUpperCase() + pivot.slice(1)}
                   </th>
                   <th scope="colgroup" colSpan={quarters.length} className="co-qgroup">
-                    Utilisation (% of target)
+                    {pivot === 'tribe' ? 'Demand covered (% booked)' : 'Utilisation (% of target)'}
                   </th>
                   <th scope="colgroup" colSpan={pivot === 'person' ? 3 : 5} className="co-qgroup is-basis">
                     {b.caption} · FTE
@@ -278,7 +282,7 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
               </thead>
               <tbody>
                 {[
-                  { id: '__squad', label: scopeLabel || 'Squad', points: model.squad, total: true },
+                  { id: '__squad', label: scopeLabel ? `Total · ${scopeLabel}` : 'Squad', points: model.squad, total: true },
                   ...rows.map((r) => ({ ...r, total: false })),
                 ].map((r) => {
                   const gaps = r.total ? null : gapFor(r.id);
@@ -304,7 +308,11 @@ function OutlookBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                       </th>
                       {r.points.map((pt, i) => (
                         <td key={pt.quarterKey} className={cx('pcp-num co-util', i === 0 && 'co-first')}>
-                          {pt.supplyFte > 0 ? (
+                          {pivot === 'tribe' && !r.total && pt.demandFte === 0 ? (
+                            <span className="pcp-text-tertiary" title="No demand captured for this tribe and quarter">
+                              —
+                            </span>
+                          ) : pt.supplyFte > 0 ? (
                             <BandCell
                               value={pt.utilisationPct}
                               band={pt.band}

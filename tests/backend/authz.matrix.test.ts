@@ -267,6 +267,28 @@ describe('authorisation matrix (PL-12#AC1)', () => {
  *   SEC-11 domain change clears secret ............. integrations.test.ts
  *   token tv revocation, CSRF, legacy bearer ....... auth.test.ts "sessions"
  */
+describe('people linked to a person record', () => {
+  it('may answer their own proposals, offer their own capacity and suggest their own crafts at any role', () => {
+    const own: Permission[] = ['people.write.own', 'allocations.respond.own', 'offers.write.own'];
+    const viewer = permissionsFor({ isPlatformAdmin: false, orgRole: 'MEMBER', workspaceRole: 'VIEWER' });
+    const linked = permissionsFor({
+      isPlatformAdmin: false,
+      orgRole: 'MEMBER',
+      workspaceRole: 'VIEWER',
+      linkedToPerson: true,
+    });
+    for (const p of own) {
+      expect(viewer).not.toContain(p);
+      expect(linked).toContain(p);
+    }
+    // Still read-only for everyone else's data, and nothing without workspace access.
+    expect(linked).not.toContain('allocations.write');
+    expect(permissionsFor({ isPlatformAdmin: false, orgRole: 'MEMBER', workspaceRole: null, linkedToPerson: true })).toEqual(
+      ['org.view'],
+    );
+  });
+});
+
 describe('regression set (PL-12#AC2)', () => {
   it('cross-tenant PATCH of a member is refused (SEC-03)', async () => {
     const victim = users.PLANNER!.id;

@@ -209,8 +209,16 @@ export function UserMenu({ onSignOut }: { onSignOut: () => void }) {
   const to = useWsPath();
   const { workspace } = useWorkspace();
   if (!me) return null;
+  // The role explains what this person can change (most "why can't I edit?" questions).
+  const role =
+    me.org?.role === 'ORG_ADMIN' ? ROLE_LABEL.ORG_ADMIN : workspace ? ROLE_LABEL[workspace.role] : null;
   const items: MenuItem[] = [
-    { type: 'header', id: 'who', label: me.user.name, description: me.user.email },
+    {
+      type: 'header',
+      id: 'who',
+      label: me.user.name,
+      description: role ? `${me.user.email} · ${role}` : me.user.email,
+    },
     { type: 'separator', id: 's1' },
     ...(workspace ? [{ id: 'profile', label: 'Profile', icon: CircleUserRound, to: to('settings/profile') }] : []),
     { id: 'signout', label: 'Sign out', icon: LogOut, onSelect: onSignOut },

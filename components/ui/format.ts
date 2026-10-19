@@ -141,6 +141,9 @@ export function errorMessage(e: unknown, fallback = 'Something went wrong. Try a
   const err = e as { status?: number; code?: string; message?: string; requestId?: string } | null;
   if (!err || typeof err !== 'object') return fallback;
   const ref = err.requestId ? ` Reference ${err.requestId}.` : '';
+  if (err.status === 401) return 'Your session has ended. Sign in again to continue.';
+  // A setting the administrator has to make (email, AI, integrations key): the API's message says which.
+  if (err.code === 'not_configured' && err.message) return err.message;
   if (err.status === 403 && err.code === 'entitlement') return 'Your plan does not include this.';
   if (err.status === 403) return 'You do not have permission to do that.';
   if (err.status === 404) return 'That item no longer exists. Reload to see the latest data.';

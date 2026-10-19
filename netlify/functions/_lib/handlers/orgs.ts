@@ -22,7 +22,7 @@ import { bestEffort, slugify, staleOrMissing } from '../entity';
 import type { Params } from '../router';
 
 export const AI_NOT_CONFIGURED =
-  'The AI assistant is not set up on this deployment (no Anthropic API key). Ask whoever runs PMO Capacity Planner to add one.';
+  "Ask Tom isn't available yet: no AI service is connected to this site. Ask whoever runs PMO Capacity Planner to connect one.";
 
 export async function loadOrgDTO(q: Queryable, orgId: string): Promise<OrgDTO | null> {
   const r = await one(

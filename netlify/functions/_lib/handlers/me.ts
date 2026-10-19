@@ -63,7 +63,12 @@ export async function getMe(ctx: Ctx): Promise<MeResponse> {
       name: String(r.name),
       role,
       implicit,
-      permissions: permissionsFor({ isPlatformAdmin: actor.isPlatformAdmin, orgRole, workspaceRole: role }),
+      permissions: permissionsFor({
+        isPlatformAdmin: actor.isPlatformAdmin,
+        orgRole,
+        workspaceRole: role,
+        linkedToPerson: !!r.linked_person_id,
+      }),
       linkedPersonId: r.linked_person_id ? String(r.linked_person_id) : null,
     });
   }

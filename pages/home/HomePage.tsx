@@ -292,14 +292,16 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             className="home-sidecard"
             flush
             actions={
-              <LinkButton
-                variant="subtle"
-                size="sm"
-                iconBefore={Store}
-                to={`${wsPath('plan/marketplace')}?quarter=${b.quarter?.key ?? ''}`}
-              >
-                Staff it
-              </LinkButton>
+              can('allocations.propose') ? (
+                <LinkButton
+                  variant="subtle"
+                  size="sm"
+                  iconBefore={Store}
+                  to={`${wsPath('plan/marketplace')}?quarter=${b.quarter?.key ?? ''}`}
+                >
+                  Staff it
+                </LinkButton>
+              ) : undefined
             }
           >
             {unstaffed.length === 0 ? (
@@ -339,6 +341,7 @@ function HomeBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
             <ActionItems
               pendingCraft={pendingCraft.length}
               canApprove={can('craftProfile.approve')}
+              canAddDemand={can('demand.write')}
               myProposals={myProposals.length}
               projectsWithoutDemand={home.projectsWithoutDemand}
               wsPath={wsPath}
@@ -386,12 +389,15 @@ function PeopleList({
 function ActionItems({
   pendingCraft,
   canApprove,
+  canAddDemand,
   myProposals,
   projectsWithoutDemand,
   wsPath,
 }: {
   pendingCraft: number;
   canApprove: boolean;
+  /** Only people who can add demand are asked to add it. */
+  canAddDemand: boolean;
   myProposals: number;
   projectsWithoutDemand: D.ProjectDTO[];
   wsPath(p: string): string;
@@ -413,7 +419,7 @@ function ActionItems({
       to: wsPath('me'),
       cta: 'Respond',
     });
-  for (const p of projectsWithoutDemand.slice(0, 4))
+  for (const p of canAddDemand ? projectsWithoutDemand.slice(0, 4) : [])
     items.push({
       key: `p-${p.id}`,
       icon: FolderKanban,
@@ -468,13 +474,18 @@ function RecentActivity({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
           who: a.proposedBy?.name ?? 'A planner',
           text: `proposed ${person} for ${project} at ${a.percentage}%`,
         });
-      else if (a.respondedAt)
+      else if (a.respondedAt) {
+        // The person answered their own proposal, or a planner confirmed or declined it for them.
+        const linkedUser = idx.people.get(a.resourceId)?.linkedUserId ?? null;
+        const self = !a.updatedBy || a.updatedBy.id === linkedUser;
+        const verb = a.state === 'confirmed' ? (self ? 'accepted' : 'confirmed') : 'declined';
         out.push({
           key: `r${a.id}`,
           at: a.respondedAt,
-          who: person,
-          text: `${a.state === 'confirmed' ? 'accepted' : 'declined'} ${project}`,
+          who: self ? person : a.updatedBy!.name,
+          text: self ? `${verb} ${project}` : `${verb} ${person}'s booking on ${project}`,
         });
+      }
       else if (a.updatedBy)
         out.push({
           key: `a${a.id}`,

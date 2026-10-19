@@ -7,9 +7,8 @@ import { auditCtx, withApi } from './_lib/api';
 import { audit } from './_lib/audit';
 import { normaliseEmail } from './_lib/auth';
 import { one, withTx } from './_lib/db';
-import { emailConfigured } from './_lib/email';
-import { badRequest, notFound, serviceUnavailable } from './_lib/errors';
-import { createOtp, deliverOtp, verifyOtp } from './_lib/otp';
+import { badRequest, notConfigured, notFound } from './_lib/errors';
+import { EMAIL_NOT_SET_UP, createOtp, deliverOtp, otpDeliverable, verifyOtp } from './_lib/otp';
 import { FIFTEEN_MIN, rateLimit } from './_lib/rateLimit';
 
 function emailFrom(ctx: Ctx): string {
@@ -29,9 +28,7 @@ async function limits(ctx: Ctx, email: string) {
 async function send(ctx: Ctx) {
   const email = emailFrom(ctx);
   await limits(ctx, email);
-  if (!emailConfigured()) {
-    throw serviceUnavailable('Email delivery is not configured. Contact your administrator.', 'no email provider configured');
-  }
+  if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, 'Verification code not sent: no email provider configured');
   const user = await one<{ id: string; email_verified_at: unknown }>(
     ctx.db,
     'SELECT id, email_verified_at FROM users WHERE lower(email) = $1 ORDER BY (email = $1) DESC LIMIT 1',

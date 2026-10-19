@@ -19,6 +19,7 @@ import {
   Button,
   Card,
   CraftChip,
+  LinkButton,
   cx,
   EmptyState,
   fmt,
@@ -239,6 +240,13 @@ function ByProject({
             icon={MapIcon}
             title="No projects yet"
             description="Add a project, then capture the crafts it needs per quarter."
+            action={
+              can('projects.write') ? (
+                <LinkButton variant="primary" iconBefore={Plus} to={wsPath('org/projects')}>
+                  Go to Projects
+                </LinkButton>
+              ) : undefined
+            }
           />
         )
       ) : (

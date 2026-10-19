@@ -188,7 +188,11 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
 
       <Card
         title="Utilisation report"
-        subtitle="Load as % of target per group and quarter"
+        subtitle={
+          pivot === 'tribe'
+            ? "Squad row: load as % of target. Tribe rows: booked FTE as a % of the tribe's demand."
+            : 'Load as % of target per group and quarter'
+        }
         flush
         actions={
           <SegmentedControl<'tribe' | 'chapter' | 'craft'>
@@ -232,7 +236,13 @@ function ReportsBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
                   <th scope="row">{r.label}</th>
                   {r.points.map((p, i) => (
                     <td key={p.quarterKey} className="pcp-num rp-util">
-                      <BandCell value={p.utilisationPct} band={p.band} label={`${r.label} ${quarters[i]?.label}`} />
+                      {pivot === 'tribe' && r.id !== '__squad' && p.demandFte === 0 ? (
+                        <span className="pcp-text-tertiary" title="No demand captured for this tribe and quarter">
+                          —
+                        </span>
+                      ) : (
+                        <BandCell value={p.utilisationPct} band={p.band} label={`${r.label} ${quarters[i]?.label}`} />
+                      )}
                     </td>
                   ))}
                   <td className="pcp-num">{fmt.fte(r.points[0]?.supplyFte)}</td>

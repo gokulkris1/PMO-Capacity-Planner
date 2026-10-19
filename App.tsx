@@ -200,6 +200,7 @@ export default function App() {
               </FullPage>
             }
           />
+          <Route path="/verify" element={<Navigate to="/verify-email" replace />} />
           <Route
             path="/verify-email"
             element={

@@ -337,6 +337,23 @@ describe('password reset, change and policy (HS-01, HS-13, HS-14)', () => {
     expect(Object.keys(v.json)).toEqual(['sent']);
   });
 
+  it('says email is not set up for reset, verification and turning 2FA on, for every address alike', async () => {
+    const u = await createUser(db, { email: 'nomail-reset@x.test' });
+    testEnv({ CONTEXT: 'production' });
+    for (const email of ['nomail-reset@x.test', 'ghost2@x.test']) {
+      const r = await call(auth, 'POST', '/api/auth/reset/send-otp', { body: { email } });
+      expect([r.status, r.json.code]).toEqual([503, 'not_configured']);
+    }
+    const v = await call(verify, 'POST', '/api/verify/send', { body: { email: 'nomail-reset@x.test' } });
+    expect([v.status, v.json.code]).toEqual([503, 'not_configured']);
+    const on = await call(auth, 'POST', '/api/auth/2fa', { token: u.token, body: { enabled: true } });
+    expect([on.status, on.json.code]).toEqual([503, 'not_configured']);
+    expect((await db.query(`SELECT two_factor_enabled FROM users WHERE id = $1`, [u.id]))[0].two_factor_enabled).toBe(
+      false,
+    );
+    testEnv({ RESEND_API_KEY: 're_test' });
+  });
+
   it('resets the password with the emailed code, enforces 10 chars and ends other sessions', async () => {
     const u = await createUser(db, { email: 'reset2@x.test' });
     await call(auth, 'POST', '/api/auth/reset/send-otp', { body: { email: 'reset2@x.test' } });

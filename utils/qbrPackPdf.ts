@@ -40,7 +40,7 @@ export function qbrPackModel(data: QbrPackData, meta: QbrPackMeta): QbrPackModel
     },
     {
       kind: 'chart',
-      title: 'Supply and demand, QBR1–QBR4',
+      title: 'Supply and demand, QBR1 to QBR4',
       caption:
         'FTE, quarter-averaged. Bars: booked above the table, below the table, undeclared, free. Markers: demand.',
       categories: data.squad.map((_, i) => qLabel(i)),

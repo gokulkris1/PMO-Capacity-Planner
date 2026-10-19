@@ -36,3 +36,6 @@ test-results/
 *_logs.txt
 *_payload.json
 .system_logs.txt
+
+# Local QA scratch scripts
+*.tmp.mjs

@@ -189,6 +189,8 @@ async function logout(ctx: Ctx, everywhere = false) {
 async function resetSend(ctx: Ctx) {
   const email = normaliseEmail(String((ctx.body as { email?: unknown })?.email ?? ''));
   if (!email) throw badRequest('Email required', { email: 'Email required' });
+  // The same answer for every address, so it reveals nothing about accounts (SEC-01).
+  if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, 'Reset code not sent: no email provider configured');
   await rateLimit(ctx.db, [
     { key: `reset:email:${email}`, max: 5, windowSec: FIFTEEN_MIN },
     { key: `reset:ip:${ctx.ip ?? 'unknown'}`, max: 20, windowSec: FIFTEEN_MIN },
@@ -245,6 +247,12 @@ async function twoFactor(ctx: Ctx, legacyToggle: boolean) {
   const enabled = legacyToggle ? !user.two_factor_enabled : b.enabled === true;
   if (!legacyToggle && typeof b.enabled !== 'boolean')
     throw badRequest('enabled must be true or false', { enabled: 'Required' });
+  // Turning it on without a way to deliver codes would lock the user out at their next sign-in.
+  if (enabled && !user.two_factor_enabled && !otpDeliverable())
+    throw notConfigured(
+      'Two-step verification needs email, which is not set up on this site yet. Contact your administrator.',
+      '2FA not enabled: no email provider configured',
+    );
   if (!enabled && user.two_factor_enabled) {
     // HS-14: switching 2FA off needs the password.
     if (typeof b.password !== 'string' || !b.password) {

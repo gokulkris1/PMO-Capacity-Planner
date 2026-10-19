@@ -478,11 +478,14 @@ html[data-sidebar='rail'] .pcp-toasts {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Search (as an icon), Help and Notifications stay: squad members answer proposals from their phone. */
   .pcp-topbar__switcher,
-  .pcp-topbar__search,
-  .pcp-topbar__context,
-  .pcp-topbar__desktop {
+  .pcp-topbar__context {
     display: none;
+  }
+  .pcp-topbar__mobile-title {
+    flex: 1;
+    min-width: 0;
   }
   .pcp-topbar__start {
     gap: var(--space-100);

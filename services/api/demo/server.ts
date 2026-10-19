@@ -119,8 +119,10 @@ function workspaceRoleFor(
   return null;
 }
 
-function permsFor(u: DemoUser, role: D.WorkspaceRole | null): Set<Permission> {
-  return new Set(permissionsFor({ isPlatformAdmin: u.isPlatformAdmin, orgRole: u.orgRole, workspaceRole: role }));
+function permsFor(u: DemoUser, role: D.WorkspaceRole | null, linkedToPerson = false): Set<Permission> {
+  return new Set(
+    permissionsFor({ isPlatformAdmin: u.isPlatformAdmin, orgRole: u.orgRole, workspaceRole: role, linkedToPerson }),
+  );
 }
 
 function access(c: Ctx, wsId = c.params.wsId): WsAccess {
@@ -129,7 +131,7 @@ function access(c: Ctx, wsId = c.params.wsId): WsAccess {
   if (!ws) notFound('Workspace');
   const r = workspaceRoleFor(c.db, user, wsId);
   if (!r) forbidden("You don't have access to this workspace.");
-  return { user, ws, role: r.role, implicit: r.implicit, perms: permsFor(user, r.role), linkedPersonId: r.linked };
+  return { user, ws, role: r.role, implicit: r.implicit, perms: permsFor(user, r.role, !!r.linked), linkedPersonId: r.linked };
 }
 
 function need(a: { perms: Set<Permission> }, p: Permission): void {
@@ -222,7 +224,7 @@ export function buildMe(db: DemoDb, u: DemoUser): D.MeResponse {
       name: ws.workspace.name,
       role: r.role,
       implicit: r.implicit,
-      permissions: [...permsFor(u, r.role)],
+      permissions: [...permsFor(u, r.role, !!r.linked)],
       linkedPersonId: r.linked,
     });
   }

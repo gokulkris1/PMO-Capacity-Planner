@@ -26,11 +26,22 @@ export const ROLE_LABEL: Record<WorkspaceRole | 'ORG_ADMIN', string> = {
   ORG_ADMIN: 'Org Admin', WORKSPACE_ADMIN: 'PMO Admin', PLANNER: 'Planner', CONTRIBUTOR: 'Squad member', VIEWER: 'Viewer',
 };
 
+/** What a member linked to a person record may always do for that person: answer proposals made to them, offer
+ *  their own capacity and suggest changes to their own crafts. v1.1 squad members migrated as Viewers keep these. */
+export const OWN_RECORD_PERMISSIONS: readonly Permission[] = ['people.write.own', 'allocations.respond.own', 'offers.write.own'];
+
 /** ORG_ADMIN implies WORKSPACE_ADMIN in every workspace of the org. Feature flags and entitlements are checked separately. */
-export function permissionsFor(a: { isPlatformAdmin: boolean; orgRole: OrgRole | null; workspaceRole: WorkspaceRole | null }): Permission[] {
+export function permissionsFor(a: {
+  isPlatformAdmin: boolean;
+  orgRole: OrgRole | null;
+  workspaceRole: WorkspaceRole | null;
+  /** The user is linked to a person record in this workspace. */
+  linkedToPerson?: boolean;
+}): Permission[] {
   const set = new Set<Permission>();
   const ws: WorkspaceRole | null = a.orgRole === 'ORG_ADMIN' ? 'WORKSPACE_ADMIN' : a.workspaceRole;
   if (ws) WORKSPACE_ROLE_PERMISSIONS[ws].forEach((p) => set.add(p));
+  if (ws && a.linkedToPerson) OWN_RECORD_PERMISSIONS.forEach((p) => set.add(p));
   if (a.orgRole === 'ORG_ADMIN') ORG_ADMIN_PERMISSIONS.forEach((p) => set.add(p));
   if (a.orgRole) set.add('org.view');
   if (a.isPlatformAdmin) set.add('platform.admin');

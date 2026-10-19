@@ -115,7 +115,12 @@ export async function resolveWorkspaceAccess(
     }
   }
   let permissions = new Set<Permission>(
-    permissionsFor({ isPlatformAdmin: actor.isPlatformAdmin, orgRole, workspaceRole: role }),
+    permissionsFor({
+      isPlatformAdmin: actor.isPlatformAdmin,
+      orgRole,
+      workspaceRole: role,
+      linkedToPerson: !!row.linked_person_id,
+    }),
   );
   let viaPlatformAdmin = false;
   if (!role && actor.isPlatformAdmin) {
