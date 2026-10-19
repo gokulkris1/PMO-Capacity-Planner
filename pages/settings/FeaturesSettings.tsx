@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { resolveFeatures, type FeatureFlag } from '../../shared/features';
-import { useMutations, useSession } from '../../state';
+import { useApi, useMutations, useSession } from '../../state';
 import { Card, StatusPill, Switch, useConfirm, useToast } from '../../components/ui';
 import { SectionBody, SectionHeader, errorText } from './common';
 
@@ -33,6 +33,23 @@ export default function FeaturesSettings() {
   const confirm = useConfirm();
   const [busy, setBusy] = useState<FeatureFlag | null>(null);
   const features = resolveFeatures(me?.org?.features);
+  const { api } = useApi();
+  // Health reports (true/false only) whether an AI key is set; an older or demo API that does not say counts as yes.
+  const [aiReady, setAiReady] = useState(true);
+  useEffect(() => {
+    let live = true;
+    api
+      .health()
+      .then((h) => {
+        const env = (h as { env?: Record<string, unknown> }).env;
+        if (live) setAiReady(env?.ANTHROPIC_API_KEY !== false);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api]);
+  const unavailable = (flag: FeatureFlag) => flag === 'aiAssistant' && !aiReady && !features.aiAssistant;
 
   const toggle = async (flag: FeatureFlag, on: boolean) => {
     if (flag === 'aiAssistant' && on) {
@@ -65,10 +82,14 @@ export default function FeaturesSettings() {
               <div key={f.flag} className="pcp-settings__row">
                 <Switch
                   checked={features[f.flag]}
-                  disabled={busy === f.flag}
+                  disabled={busy === f.flag || unavailable(f.flag)}
                   onChange={(on) => void toggle(f.flag, on)}
                   label={<span className="pcp-settings__row-title">{f.label}</span>}
-                  description={f.description}
+                  description={
+                    unavailable(f.flag)
+                      ? "Not available yet: no AI service is connected to this site. Whoever runs PMO Capacity Planner needs to connect one first."
+                      : f.description
+                  }
                 />
                 <StatusPill tone={features[f.flag] ? 'success' : 'neutral'}>
                   {features[f.flag] ? 'On' : 'Off'}

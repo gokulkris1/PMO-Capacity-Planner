@@ -169,6 +169,18 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
     expect(r.json.error).toMatch(/^Too many attempts\. Try again in \d+ minutes?\.$/);
   });
 
+  it('does not count successful sign-ins, so colleagues behind one office IP are not locked out', async () => {
+    const headers = { 'x-nf-client-connection-ip': '198.51.100.7' };
+    await createUser(db, { email: 'office@x.test' });
+    for (let i = 0; i < 40; i++) {
+      const r = await call(auth, 'POST', '/api/auth/login', {
+        body: { email: 'office@x.test', password: PASSWORD },
+        headers,
+      });
+      expect(r.status).toBe(200);
+    }
+  }, 30_000);
+
   it('rate limits 30 attempts per IP', async () => {
     const headers = { 'x-nf-client-connection-ip': '203.0.113.9' };
     for (let i = 0; i < 30; i++) {
@@ -179,7 +191,8 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
       headers,
     });
     expect(r.status).toBe(429);
-  });
+    // 31 password checks: slower than the 5 s default when every suite runs in parallel.
+  }, 30_000);
 });
 
 describe('sessions (AC-02, AC-03)', () => {

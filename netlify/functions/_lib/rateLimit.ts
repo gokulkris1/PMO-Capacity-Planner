@@ -40,4 +40,22 @@ export async function rateLimit(q: Queryable, rules: LimitRule[], message?: stri
   }
 }
 
+/**
+ * Gives back the hit `rateLimit` counted for each rule in the current window, e.g. after a successful sign-in, so
+ * only failures use up the allowance (people sharing one office IP do not lock each other out).
+ */
+export async function releaseRateLimit(q: Queryable, rules: LimitRule[]): Promise<void> {
+  for (const rule of rules) {
+    if (!rule.key) continue;
+    const windowMs = rule.windowSec * 1000;
+    const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs);
+    await q
+      .query(`UPDATE rate_limits SET count = greatest(count - 1, 0) WHERE key = $1 AND window_start = $2`, [
+        rule.key,
+        windowStart.toISOString(),
+      ])
+      .catch(() => undefined);
+  }
+}
+
 export const FIFTEEN_MIN = 15 * 60;

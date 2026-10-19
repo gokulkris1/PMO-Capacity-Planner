@@ -103,7 +103,7 @@ export const PAGE_GUIDE: GuideEntry[] = [
     howTo: [
       'The Delivery signal column compares planned FTE with what Jira story points imply.',
       'Open a tribe to see its projects, the PMO people serving it and its story-point calibration.',
-      'Tribe names and leads are managed in Settings › Structure.',
+      'Add a tribe with "Add tribe"; rename or archive tribes in Settings › Structure.',
     ],
   },
   {
@@ -139,9 +139,9 @@ export const PAGE_GUIDE: GuideEntry[] = [
     howTo: [
       'Profile: your own name, password and preferences.',
       'Members and roles: invite people and choose their role.',
-      'Structure: tribes, chapters and teams. Crafts: the craft catalogue and short codes.',
+      'Structure: tribes, chapters and teams, shared by every workspace in the organisation. Crafts: the craft catalogue and short codes.',
       'Planning: fiscal year, utilisation band thresholds, default target utilisation and sprint length.',
-      'Integrations: connect Jira and Planview. Features: switch Ask Tom, Sprint planning, scenarios and the daily Jira sync on or off.',
+      'Integrations: connect Jira and Planview. Features (Org Admins): switch Ask Tom, Sprint planning and the daily Jira sync on or off.',
       'Billing: the organisation\'s plan (Org Admins only).',
     ],
   },

@@ -1,5 +1,10 @@
 /* Ask Tom (HS-11): floating launcher and docked, non-modal chat panel. */
 
+/* Room under the last row of every page so the launcher never covers row actions. */
+.pcp-shell .pcp-main {
+  padding-bottom: calc(var(--space-800) + var(--space-200));
+}
+
 .pcp-tom-launcher {
   position: fixed;
   right: var(--space-300);

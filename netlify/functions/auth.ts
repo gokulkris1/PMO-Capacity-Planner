@@ -27,7 +27,7 @@ import { GONE_MESSAGE, badRequest, forbidden, gone, notConfigured, notFound, una
 import { clearSessionCookies } from './_lib/http';
 import { EMAIL_NOT_SET_UP, createOtp, deliverOtp, otpDeliverable, verifyOtp } from './_lib/otp';
 import { assertNewPassword, hashPassword, verifyPassword } from './_lib/passwords';
-import { FIFTEEN_MIN, rateLimit } from './_lib/rateLimit';
+import { FIFTEEN_MIN, rateLimit, releaseRateLimit } from './_lib/rateLimit';
 import { issueSession, sessionUserPayload } from './_lib/session';
 import { registrationNoticeEmail, sendEmail } from './_lib/email';
 
@@ -42,10 +42,11 @@ const loginSchema = z.object({
 async function login(ctx: Ctx) {
   const body = parseWith(loginSchema, ctx.body, 'Email and password are required');
   const email = normaliseEmail(body.email);
-  await rateLimit(ctx.db, [
+  const loginLimits = [
     { key: `login:email:${email}`, max: 10, windowSec: FIFTEEN_MIN },
     { key: `login:ip:${ctx.ip ?? 'unknown'}`, max: 30, windowSec: FIFTEEN_MIN },
-  ]);
+  ];
+  await rateLimit(ctx.db, loginLimits);
   const user = await loadUserByEmail(ctx.db, email);
   const ok = await verifyPassword(body.password, user?.password_hash);
   if (!user || !ok) {
@@ -63,6 +64,8 @@ async function login(ctx: Ctx) {
       if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, '2FA code not sent: no email provider configured');
       const otp = await createOtp(ctx.db, email, '2fa');
       await deliverOtp(email, otp, '2fa');
+      // The password was right; wrong codes are capped by the code's own attempt limit.
+      await releaseRateLimit(ctx.db, loginLimits);
       return { require2FA: true, email: user.email };
     }
     try {
@@ -86,6 +89,8 @@ async function login(ctx: Ctx) {
       { action: 'auth.login', orgId: user.org_id, targetType: 'user', targetId: user.id },
     );
   });
+  // Only failed attempts use up the sign-in allowance.
+  await releaseRateLimit(ctx.db, loginLimits);
   // AC-03#AC1 (QA-001): the session lives only in the HttpOnly cookie; the body never carries the JWT.
   issueSession(ctx, user);
   return { user: await sessionUserPayload(ctx.db, user) };

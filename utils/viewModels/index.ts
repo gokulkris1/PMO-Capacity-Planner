@@ -512,8 +512,9 @@ export function buildCapacityOutlook(
         ),
       }));
   } else if (o.pivot === 'chapter') {
-    rows = [...s.chapters]
-      .filter((c) => !c.archived && (!o.chapterId || c.id === o.chapterId))
+    const live = s.chapters.filter((c) => !c.archived);
+    rows = [...live]
+      .filter((c) => !o.chapterId || c.id === o.chapterId)
       .sort(byName)
       .map((c) => ({
         id: c.id,
@@ -523,6 +524,11 @@ export function buildCapacityOutlook(
           (l) => lineIn(l) && c.craftId !== null && l.craftId === c.craftId,
         ),
       }));
+    // People outside every active chapter get their own row, so the rows add up to the squad total.
+    const liveIds = new Set(live.map((c) => c.id));
+    const unassigned = scoped.filter((p) => !p.chapterId || !liveIds.has(p.chapterId));
+    if (!o.chapterId && unassigned.length)
+      rows.push({ id: '__no_chapter', label: 'No chapter', points: pointsFor(unassigned, () => false) });
   } else {
     rows = [...s.tribes]
       .filter((tr) => !tr.archived && (!o.tribeId || tr.id === o.tribeId))

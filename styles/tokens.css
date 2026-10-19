@@ -151,7 +151,8 @@
   --z-page-header: 20;
   --z-sidebar: 100;
   --z-topbar: 110;
-  --z-dropdown: 1000;
+  /* Above dialogs and drawers: menus, selects and comboboxes open inside them. Below toasts and tooltips. */
+  --z-dropdown: 1250;
   --z-drawer: 1100;
   --z-modal: 1200;
   --z-toast: 1300;

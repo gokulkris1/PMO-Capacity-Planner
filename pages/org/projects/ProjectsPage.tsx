@@ -320,7 +320,9 @@ function ProjectsBody({ snapshot: s, exportReq }: { snapshot: D.WorkspaceSnapsho
                           <span className="pcp-caption pcp-text-tertiary pj-name__sub">
                             {p.source === 'planview' && <ProvenanceTag source="planview" />}
                             {p.jiraKey && <span className="pj-name__jira pcp-tnum">{p.jiraKey} ·</span>}
-                            {p.initiatedOn ? `Initiated ${fmt.date(p.initiatedOn)}` : p.priority}
+                            {[p.priority, p.initiatedOn ? `Initiated ${fmt.date(p.initiatedOn)}` : null]
+                              .filter(Boolean)
+                              .join(' · ')}
                           </span>
                         </button>
                       </th>

@@ -55,7 +55,7 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     id: 'structure',
     label: 'Structure',
     icon: Network,
-    description: 'Tribes, chapters and teams used to group people and projects.',
+    description: 'Tribes, chapters and teams used to group people and projects, shared by every workspace in the organisation. Archive what you no longer use; nothing is deleted.',
     anyOf: ['structure.write', 'people.write'],
   },
   {
