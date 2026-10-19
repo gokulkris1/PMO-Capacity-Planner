@@ -39,3 +39,6 @@ test-results/
 
 # Local QA scratch scripts
 *.tmp.mjs
+
+# Neon CLI local context
+.neon
