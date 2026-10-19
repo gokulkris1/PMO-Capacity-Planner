@@ -110,6 +110,17 @@ describe('POST /api/auth/login (same logins, AC-03#AC1)', () => {
     expect(r.status).toBe(200);
   });
 
+  it('says email is not set up instead of asking for a 2FA code that cannot be sent', async () => {
+    await createUser(db, { email: 'nomail@x.test', twoFactor: true });
+    testEnv({ CONTEXT: 'production' });
+    const r = await call(auth, 'POST', '/api/auth/login', { body: { email: 'nomail@x.test', password: PASSWORD } });
+    expect(r.status).toBe(503);
+    expect(r.json.code).toBe('not_configured');
+    expect(r.json.error).toMatch(/email is not set up/);
+    expect(await db.query(`SELECT email FROM otps WHERE email = 'nomail@x.test'`)).toEqual([]);
+    testEnv({ RESEND_API_KEY: 're_test' });
+  });
+
   it('runs the 2FA flow end-to-end without ever returning the code (HS-05#AC6)', async () => {
     await createUser(db, { email: 'twofa@x.test', twoFactor: true });
     const first = await call(auth, 'POST', '/api/auth/login', { body: { email: 'twofa@x.test', password: PASSWORD } });
@@ -406,6 +417,17 @@ describe('registration and verification (AC-07, HS-13)', () => {
       body: { email: 'n@x.test', password: 'long enough pw' },
     });
     expect(ok.status).toBe(201);
+  });
+
+  it('refuses to create an account whose verification code cannot be sent', async () => {
+    testEnv({ CONTEXT: 'production' });
+    const r = await call(auth, 'POST', '/api/auth/register', {
+      body: { email: 'stuck@x.test', password: 'long enough pw' },
+    });
+    expect(r.status).toBe(503);
+    expect(r.json.code).toBe('not_configured');
+    expect(await db.query(`SELECT id FROM users WHERE email = 'stuck@x.test'`)).toEqual([]);
+    testEnv({ RESEND_API_KEY: 're_test' });
   });
 
   it('answers identically for new and existing emails and emails the owner (HS-13#AC3)', async () => {

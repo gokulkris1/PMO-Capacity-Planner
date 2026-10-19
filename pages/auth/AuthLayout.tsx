@@ -77,6 +77,8 @@ export function authErrorMessage(err: unknown, context: 'login' | 'generic' = 'g
         ? err.message
         : 'Too many attempts. Wait a few minutes and try again.';
     if (context === 'login' && (err.status === 401 || err.status === 400)) return 'Email or password is incorrect.';
+    // A setting the administrator has to make (e.g. email not set up): the API message says what is missing.
+    if (err.code === 'not_configured' && err.message) return err.message;
     // QA-039: still migrating after the sign-in form's automatic retries.
     if (err.code === 'migration_pending' || err.status === 503)
       return 'PMO Capacity Planner is still being updated. Try again in a minute; your password is unchanged.';

@@ -66,6 +66,12 @@ export async function verifyOtp(q: Queryable, email: string, otp: string, contex
   await del();
 }
 
+export const EMAIL_NOT_SET_UP =
+  'We could not email you a code because email is not set up on this site yet. Contact your administrator.';
+
+/** Codes can reach the user: email is configured, or the code is logged for local development. */
+export const otpDeliverable = (): boolean => emailConfigured() || isLocalDev();
+
 /** Emails the code. Without Resend the code is logged only when running locally (CONTEXT=dev). */
 export async function deliverOtp(email: string, otp: string, context: OtpContext): Promise<{ sent: boolean }> {
   if (!emailConfigured()) {
