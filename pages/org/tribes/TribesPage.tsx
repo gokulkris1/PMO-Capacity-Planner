@@ -2,32 +2,130 @@
  * Tribes (ORG-05#AC1) — route `/o/:org/w/:ws/org/tribes`.
  * Each tribe with projects, demand QBR1–QBR4, QBR1 staffed and gap, PMO people serving and the delivery signal.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Network } from 'lucide-react';
+import { Network, Plus } from 'lucide-react';
 import type * as D from '../../../shared/contracts/dto';
-import { useQuarters } from '../../../state';
+import { useMutations, useQuarters, useWorkspace } from '../../../state';
 import { buildTribeView } from '../../../utils/viewModels';
-import { Card, EmptyState, fmt, PageHeader, StatusPill, TableScroll } from '../../../components/ui';
+import {
+  Banner,
+  Button,
+  Card,
+  Dialog,
+  EmptyState,
+  fmt,
+  FormField,
+  PageHeader,
+  StatusPill,
+  TableScroll,
+  TextField,
+  useToast,
+} from '../../../components/ui';
+import { errorText } from '../../settings/common';
 import { PageBody } from '../../../components/shell/PageBody';
 import { useWsPath } from '../../../components/shell/workspacePath';
 import { deliverySignalOf as deliverySignal, useDelivery } from '../../../state';
 import './tribes.css';
 
+/** Add a tribe from the Tribes page itself (same API as Settings › Structure, which also edits and archives). */
+function AddTribeDialog({ open, onClose, existing }: { open: boolean; onClose: () => void; existing: string[] }) {
+  const m = useMutations();
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [leadName, setLeadName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const close = () => {
+    setName('');
+    setLeadName('');
+    setError(null);
+    onClose();
+  };
+  const save = async () => {
+    const n = name.trim();
+    if (!n) return setError('Enter a name.');
+    if (existing.some((e) => e.trim().toLowerCase() === n.toLowerCase())) return setError('Already exists');
+    setBusy(true);
+    try {
+      await m.structure.save('tribes', { name: n, leadName: leadName.trim() || null });
+      toast.success(`${n} added`);
+      close();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open={open}
+      onClose={close}
+      size="sm"
+      title="Add tribe"
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={close} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={busy} onClick={() => void save()}>
+            Add tribe
+          </Button>
+        </>
+      }
+    >
+      <form
+        className="pcp-stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        {error ? <Banner tone="danger">{error}</Banner> : null}
+        <FormField label="Name">
+          <TextField value={name} onChange={(e) => setName(e.target.value)} data-autofocus="" />
+        </FormField>
+        <FormField label="Tribe lead" optional>
+          <TextField value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+        </FormField>
+        <p className="pcp-text-secondary">Rename, archive and manage chapters and teams in Settings › Structure.</p>
+      </form>
+    </Dialog>
+  );
+}
+
 export default function TribesPage() {
+  const { can } = useWorkspace();
+  const [adding, setAdding] = useState(false);
+  const editable = can('structure.write');
   return (
     <div className="pcp-page">
       <PageHeader
         breadcrumbs={[{ label: 'Organisation' }, { label: 'Tribes' }]}
         title="Tribes"
         description="Demand, PMO staffing and delivery signal per tribe for the next four quarters."
+        actions={
+          editable ? (
+            <Button variant="primary" iconBefore={Plus} onClick={() => setAdding(true)}>
+              Add tribe
+            </Button>
+          ) : undefined
+        }
       />
-      <PageBody label="tribes">{(s) => <TribesBody snapshot={s} />}</PageBody>
+      <PageBody label="tribes">
+        {(s) => (
+          <>
+            <TribesBody snapshot={s} onAdd={editable ? () => setAdding(true) : undefined} />
+            <AddTribeDialog open={adding} onClose={() => setAdding(false)} existing={s.tribes.map((t) => t.name)} />
+          </>
+        )}
+      </PageBody>
     </div>
   );
 }
 
-function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
+function TribesBody({ snapshot: s, onAdd }: { snapshot: D.WorkspaceSnapshot; onAdd?: () => void }) {
   const quarters = useQuarters();
   const wsPath = useWsPath();
   const delivery = useDelivery(s);
@@ -46,7 +144,18 @@ function TribesBody({ snapshot: s }: { snapshot: D.WorkspaceSnapshot }) {
         <EmptyState
           icon={Network}
           title="No tribes yet"
-          description="A PMO Admin adds tribes in Settings › Structure."
+          description={
+            onAdd
+              ? 'Tribes are the business units your PMO serves. Add the first one to group projects and demand.'
+              : 'A PMO Admin adds tribes here or in Settings › Structure.'
+          }
+          action={
+            onAdd ? (
+              <Button variant="primary" iconBefore={Plus} onClick={onAdd}>
+                Add tribe
+              </Button>
+            ) : undefined
+          }
         />
       </Card>
     );

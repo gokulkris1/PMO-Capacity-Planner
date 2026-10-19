@@ -71,9 +71,16 @@ export interface MaintenanceState {
   nextRetryAt: number | null;
 }
 
-/** 503 from the API: a deploy is migrating the database (or the API is briefly unavailable). */
+/**
+ * 503 from the API: a deploy is migrating the database (or the API is briefly unavailable). A 503 `not_configured`
+ * (a setting the administrator must make, such as email) is not maintenance: retrying cannot fix it.
+ */
 export function isMaintenanceError(e: unknown): e is ApiRequestError {
-  return e instanceof ApiRequestError && (e.code === 'migration_pending' || e.status === 503);
+  return (
+    e instanceof ApiRequestError &&
+    e.code !== 'not_configured' &&
+    (e.code === 'migration_pending' || e.status === 503)
+  );
 }
 
 export interface Timers {

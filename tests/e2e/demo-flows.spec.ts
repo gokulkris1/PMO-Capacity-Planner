@@ -115,19 +115,19 @@ test.describe('settings', () => {
 
   test('turn on the AI assistant with the egress notice (ST-05, HS-11)', async ({ page }) => {
     await openDemo(page, 'settings/features');
-    const ai = page.getByRole('switch', { name: /assistant/i });
+    const ai = page.getByRole('switch', { name: /Ask Tom/i });
     await expect(ai).not.toBeChecked();
     await ai.click();
     const confirm = page.getByRole('alertdialog').or(page.getByRole('dialog'));
     await expect(confirm).toContainText(/people, projects and allocations will be sent/i);
     await confirm.getByRole('button', { name: 'Turn on', exact: true }).click();
     await expect(ai).toBeChecked();
-    // The assistant is now in the help menu and answers from the demo data.
+    // Ask Tom opens from the Help menu (and the floating button) and answers from the demo data.
     await page.getByRole('button', { name: 'Help' }).click();
-    await page.getByRole('menuitem', { name: 'Ask the assistant' }).click();
-    const drawer = page.getByRole('dialog', { name: 'Assistant' });
-    await drawer.getByLabel('Your question').fill('Who is over capacity?');
-    await drawer.getByRole('button', { name: 'Ask' }).click();
-    await expect(drawer.getByRole('list', { name: 'Answers' })).toContainText(/over capacity/i);
+    await page.getByRole('menuitem', { name: 'Ask Tom' }).click();
+    const tom = page.getByRole('dialog', { name: 'Ask Tom' });
+    await tom.getByLabel('Your question').fill('Who is over capacity?');
+    await tom.getByRole('button', { name: 'Send' }).click();
+    await expect(tom.getByRole('list', { name: 'Conversation' })).toContainText(/over capacity/i);
   });
 });

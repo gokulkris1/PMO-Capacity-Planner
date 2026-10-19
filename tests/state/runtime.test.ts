@@ -1,6 +1,7 @@
 import { DemoTransport } from '../../services/api/demoTransport';
 import { HttpTransport } from '../../services/api/httpTransport';
-import { DataRuntime } from '../../state/runtime';
+import { DataRuntime, isMaintenanceError } from '../../state/runtime';
+import { ApiRequestError } from '../../services/api/errors';
 import { createDataRuntime, selectMode } from '../../state/session';
 import { memoryStorage } from './helpers';
 
@@ -267,5 +268,14 @@ describe('deploy migration while signing in (QA-039)', () => {
     await flush();
     expect(rt.getState().status).toBe('authenticated');
     expect(rt.getState().maintenance).toBeNull();
+  });
+});
+
+describe('isMaintenanceError', () => {
+  it('treats a migrating API as maintenance but not a setting the administrator has to make', () => {
+    expect(isMaintenanceError(new ApiRequestError(503, 'migration_pending', 'Updating'))).toBe(true);
+    expect(isMaintenanceError(new ApiRequestError(503, 'server_error', 'Unavailable'))).toBe(true);
+    expect(isMaintenanceError(new ApiRequestError(503, 'not_configured', 'Email is not set up'))).toBe(false);
+    expect(isMaintenanceError(new ApiRequestError(400, 'bad_request', 'No'))).toBe(false);
   });
 });

@@ -39,6 +39,7 @@ import { buildHome } from '../../../utils/viewModels';
 import { applyAllocationOps, isUuid, MAX_BATCH_OPS, MAX_CELL_PCT } from '../../../utils/viewModels/allocationOps';
 import { errorFromResponse } from '../errors';
 import { DEMO_OTP, seedWorkspaceData, type DemoDb, type DemoUser, type DemoWorkspace } from './seed';
+import { GLOSSARY, PAGE_GUIDE, SHELL_GUIDE } from '../../../shared/help/guide';
 
 /* ── plumbing ──────────────────────────────────────────────────────────────────────── */
 
@@ -554,7 +555,7 @@ const auth: Record<string, Handler> = {
     const b = obj(c.body);
     const a = access(c, str(b.wsId));
     if (!resolveFeatures(c.db.org.features).aiAssistant)
-      fail(403, 'feature_disabled', 'The AI assistant is turned off for your organisation.');
+      fail(403, 'feature_disabled', 'Ask Tom is turned off for your organisation.');
     need(a, 'ai.use');
     const q = str(b.question);
     if (!q || q.length > 2000) badRequest({ question: 'Ask a question of up to 2,000 characters' });
@@ -566,6 +567,13 @@ const auth: Record<string, Handler> = {
     const quarters = rollingQuarterViews(today(), c.db.org.planning.fiscalYearStartMonth);
     const home = buildHome(s, quarters, { kind: 'quarter', key: quarters[0].key }, c.db.org.planning.thresholds, null);
     audit(c, 'ai.query', { type: 'workspace', id: a.ws.workspace.id, workspaceId: a.ws.workspace.id });
+    // How-to questions: answer from the product guide entry the question names (the live Tom reads the same guide).
+    const lower = q.toLowerCase();
+    const page = [...PAGE_GUIDE, ...SHELL_GUIDE].find((g) => lower.includes(g.title.toLowerCase()));
+    const term = GLOSSARY.find(([t]) => lower.includes(t.toLowerCase().split(' ')[0]) && lower.includes(t.toLowerCase()));
+    if (term) return { answer: `${term[0]}: ${term[1]}` };
+    if (page && /\b(how|where|what|can i|do i)\b/.test(lower))
+      return { answer: [`${page.title}: ${page.summary}`, ...page.howTo.map((h) => `- ${h}`)].join('\n') };
     return {
       answer:
         `Demo answer. In ${quarters[0].label} the squad is at ${home.kpis.utilisationPct}% of target, ` +
