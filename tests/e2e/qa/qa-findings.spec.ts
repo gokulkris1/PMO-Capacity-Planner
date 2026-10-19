@@ -185,6 +185,8 @@ test('QA-038 a new, empty workspace opens on the first-run state with sample dat
 });
 
 test('QA-030 dark theme: Settings pages meet colour contrast (active nav item included)', async ({ page }) => {
+  // Colours animate when the theme switches; measure the settled colours, not a frame mid-transition.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const section of ['profile', 'organisation', 'members', 'structure', 'crafts', 'planning', 'integrations']) {
     await openDemo(page, `settings/${section}`);
     await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));

@@ -16,6 +16,29 @@ interface Turn {
   content: string;
 }
 
+/**
+ * Whether this site has an AI service connected. GET /api/health reports it as true/false only; an API (or the
+ * demo) that does not say counts as yes, so the server stays the judge.
+ */
+export function useAiServiceReady(): boolean {
+  const { api } = useApi();
+  const [ready, setReady] = useState(true);
+  useEffect(() => {
+    let live = true;
+    api
+      .health()
+      .then((h) => {
+        const env = (h as { env?: Record<string, unknown> }).env;
+        if (live) setReady(env?.ANTHROPIC_API_KEY !== false);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api]);
+  return ready;
+}
+
 /** Turns sent back with each question so follow-ups make sense (the server accepts at most 8). */
 const HISTORY_TURNS = 8;
 
@@ -81,6 +104,7 @@ function AskTomPanel({ open, onOpenChange, onTour, onGlossary }: AskTomProps) {
   const { api, workspaceId } = useApi();
   const { can } = useWorkspace();
   const enabled = useFeature('aiAssistant');
+  const aiReady = useAiServiceReady();
   const to = useWsPath();
   const navigate = useNavigate();
   const [question, setQuestion] = useState('');
@@ -152,7 +176,7 @@ function AskTomPanel({ open, onOpenChange, onTour, onGlossary }: AskTomProps) {
       ) : null}
       {open ? (
         <section
-          className="pcp-tom"
+          className={cx('pcp-tom', !enabled && 'pcp-tom--compact')}
           role="dialog"
           aria-modal="false"
           aria-labelledby="pcp-tom-title"
@@ -172,9 +196,11 @@ function AskTomPanel({ open, onOpenChange, onTour, onGlossary }: AskTomProps) {
             <div className="pcp-tom__body pcp-tom__off">
               <p>
                 <strong>Ask Tom is switched off for your organisation.</strong>{' '}
-                {can('org.manage')
-                  ? 'You can switch it on in Settings › Features.'
-                  : 'An Org Admin can switch it on in Settings › Features.'}
+                {!aiReady
+                  ? 'It needs an AI service connected to this site first; whoever runs PMO Capacity Planner can do that.'
+                  : can('org.manage')
+                    ? 'You can switch it on in Settings › Features.'
+                    : 'An Org Admin can switch it on in Settings › Features.'}
               </p>
               <p className="pcp-text-secondary">Until then, the tour and the glossary explain every page and term.</p>
               <div className="pcp-tom__actions">
@@ -184,7 +210,7 @@ function AskTomPanel({ open, onOpenChange, onTour, onGlossary }: AskTomProps) {
                 <Button iconBefore={BookOpen} onClick={onGlossary}>
                   Glossary
                 </Button>
-                {can('org.manage') ? (
+                {can('org.manage') && aiReady ? (
                   <Button variant="link" onClick={() => navigate(to('settings/features'))}>
                     Open Settings › Features
                   </Button>

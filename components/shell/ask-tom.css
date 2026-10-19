@@ -49,6 +49,9 @@
   box-shadow: var(--elevation-3);
   overflow: hidden;
 }
+.pcp-tom--compact {
+  height: auto;
+}
 
 .pcp-tom__header {
   display: flex;

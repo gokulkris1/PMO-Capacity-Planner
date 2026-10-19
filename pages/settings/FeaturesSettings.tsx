@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { resolveFeatures, type FeatureFlag } from '../../shared/features';
-import { useApi, useMutations, useSession } from '../../state';
+import { useMutations, useSession } from '../../state';
+import { useAiServiceReady } from '../../components/shell/AskTom';
 import { Card, StatusPill, Switch, useConfirm, useToast } from '../../components/ui';
 import { SectionBody, SectionHeader, errorText } from './common';
 
@@ -33,22 +34,7 @@ export default function FeaturesSettings() {
   const confirm = useConfirm();
   const [busy, setBusy] = useState<FeatureFlag | null>(null);
   const features = resolveFeatures(me?.org?.features);
-  const { api } = useApi();
-  // Health reports (true/false only) whether an AI key is set; an older or demo API that does not say counts as yes.
-  const [aiReady, setAiReady] = useState(true);
-  useEffect(() => {
-    let live = true;
-    api
-      .health()
-      .then((h) => {
-        const env = (h as { env?: Record<string, unknown> }).env;
-        if (live) setAiReady(env?.ANTHROPIC_API_KEY !== false);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [api]);
+  const aiReady = useAiServiceReady();
   const unavailable = (flag: FeatureFlag) => flag === 'aiAssistant' && !aiReady && !features.aiAssistant;
 
   const toggle = async (flag: FeatureFlag, on: boolean) => {
