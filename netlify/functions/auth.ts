@@ -60,7 +60,7 @@ async function login(ctx: Ctx) {
   if (user.two_factor_enabled) {
     if (!body.otp) {
       // Say so now rather than asking for a code that can never arrive.
-      if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, '2FA code not sent: RESEND_API_KEY missing');
+      if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, '2FA code not sent: no email provider configured');
       const otp = await createOtp(ctx.db, email, '2fa');
       await deliverOtp(email, otp, '2fa');
       return { require2FA: true, email: user.email };
@@ -100,7 +100,7 @@ const registerSchema = z.object({
 async function register(ctx: Ctx) {
   if (!publicSignupAllowed()) throw forbidden('Sign-up is by invitation only.');
   // An account that can never receive its verification code would be stuck: refuse before creating it.
-  if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, 'Registration refused: RESEND_API_KEY missing');
+  if (!otpDeliverable()) throw notConfigured(EMAIL_NOT_SET_UP, 'Registration refused: no email provider configured');
   const body = parseWith(registerSchema, ctx.body);
   assertNewPassword(body.password);
   const email = normaliseEmail(body.email);

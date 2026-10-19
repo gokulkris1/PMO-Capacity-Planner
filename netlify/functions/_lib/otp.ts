@@ -76,7 +76,7 @@ export const otpDeliverable = (): boolean => emailConfigured() || isLocalDev();
 export async function deliverOtp(email: string, otp: string, context: OtpContext): Promise<{ sent: boolean }> {
   if (!emailConfigured()) {
     if (isLocalDev()) log('info', { event: 'otp.dev_code', context, code: otp });
-    else log('warn', { event: 'otp.not_sent', context, reason: 'RESEND_API_KEY not set' });
+    else log('warn', { event: 'otp.not_sent', context, reason: 'no email provider configured' });
     return { sent: false };
   }
   return sendEmail(otpEmail(email, otp, context));

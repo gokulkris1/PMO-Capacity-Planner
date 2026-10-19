@@ -19,6 +19,7 @@ export function testEnv(extra: Record<string, string> = {}): void {
   process.env.CONTEXT = 'dev';
   process.env.INTEGRATIONS_ENC_KEY = Buffer.alloc(32, 7).toString('base64');
   delete process.env.RESEND_API_KEY;
+  for (const k of ['TWILIO_API_KEY', 'TWILIO_API_SECRET', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN']) delete process.env[k];
   delete process.env.APP_MODE;
   delete process.env.ALLOW_PUBLIC_SIGNUP;
   delete process.env.ALLOWED_ORIGINS;

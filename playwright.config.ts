@@ -59,7 +59,7 @@ export default defineConfig({
           // The production environment as it is today (CONTEXT=production; no INTEGRATIONS_ENC_KEY, ALLOWED_ORIGINS,
           // APP_MODE, FROM_EMAIL or ANTHROPIC_API_KEY): no page may answer 5xx under it.
           command:
-            'env -u INTEGRATIONS_ENC_KEY -u ALLOWED_ORIGINS -u APP_MODE -u FROM_EMAIL -u ANTHROPIC_API_KEY -u RESEND_API_KEY ' +
+            'env -u INTEGRATIONS_ENC_KEY -u ALLOWED_ORIGINS -u APP_MODE -u FROM_EMAIL -u ANTHROPIC_API_KEY -u RESEND_API_KEY -u TWILIO_API_KEY -u TWILIO_API_SECRET -u TWILIO_ACCOUNT_SID -u TWILIO_AUTH_TOKEN ' +
             `CONTEXT=production URL=${liveURL} LOCAL_API_DB=v11 LOCAL_API_PORT=8899 npx tsx scripts/local-api.ts`,
           url: 'http://localhost:8899/api/health',
           reuseExistingServer: false,

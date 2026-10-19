@@ -1,11 +1,14 @@
 /**
  * Outbound email (HS-07, SH-10). Called directly by functions; there is no public send endpoint.
- * Every interpolated value is HTML-escaped. Without RESEND_API_KEY a send is skipped with a structured log and the
- * business action still succeeds. Sends are bounded to 5 s so the request stays under Netlify's limit.
+ * Every interpolated value is HTML-escaped. The provider is Twilio (TWILIO_API_KEY + TWILIO_API_SECRET, or
+ * TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN) or else Resend (RESEND_API_KEY). With neither, a send is skipped with a
+ * structured log and the business action still succeeds. Sends are bounded to 5 s so the request stays under
+ * Netlify's limit.
  */
 import { Resend } from 'resend';
 import { optionalEnv } from './env';
 import { log, errorFields } from './log';
+import { safeFetch } from './net';
 
 export const PRODUCT_NAME = 'PMO Capacity Planner';
 /** v1.1 sender address, kept only so 2FA/reset mail keeps flowing until FROM_EMAIL is set (CA-4). */
@@ -27,8 +30,57 @@ export interface EmailMessage {
   text: string;
 }
 
+const TWILIO_EMAIL_URL = 'https://comms.twilio.com/v1/Emails';
+const SEND_TIMEOUT_MS = 5000;
+
+/** Twilio basic-auth pair: an API key (preferred, revocable) or the account SID and auth token. */
+function twilioCredentials(): [string, string] | null {
+  const key = optionalEnv('TWILIO_API_KEY');
+  const secret = optionalEnv('TWILIO_API_SECRET');
+  if (key && secret) return [key, secret];
+  const sid = optionalEnv('TWILIO_ACCOUNT_SID');
+  const token = optionalEnv('TWILIO_AUTH_TOKEN');
+  return sid && token ? [sid, token] : null;
+}
+
+export type EmailProvider = 'twilio' | 'resend';
+
+export function emailProvider(): EmailProvider | null {
+  if (twilioCredentials()) return 'twilio';
+  return optionalEnv('RESEND_API_KEY') ? 'resend' : null;
+}
+
 export function emailConfigured(): boolean {
-  return !!optionalEnv('RESEND_API_KEY');
+  return emailProvider() !== null;
+}
+
+/** "Name <address>" or a bare address. */
+export function parseSender(from: string): { address: string; name?: string } {
+  const m = /^\s*(.*?)\s*<\s*([^>]+?)\s*>\s*$/.exec(from);
+  if (!m) return { address: from.trim() };
+  const name = m[1].replace(/^"|"$/g, '').trim();
+  return name ? { address: m[2], name } : { address: m[2] };
+}
+
+async function twilioSend(m: EmailMessage & { from: string }, [user, pass]: [string, string]) {
+  const res = await safeFetch(
+    TWILIO_EMAIL_URL,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`,
+      },
+      body: JSON.stringify({
+        from: parseSender(m.from),
+        to: [{ address: m.to }],
+        content: { subject: m.subject, html: m.html, text: m.text },
+      }),
+    },
+    { label: 'Email service', timeoutMs: SEND_TIMEOUT_MS },
+  );
+  // 202 Accepted: queued. The body of an error may echo request details, so only the status is logged.
+  return res.ok ? {} : { error: `Twilio email ${res.status}` };
 }
 
 let client: { send: (m: EmailMessage & { from: string }) => Promise<{ error?: unknown }> } | null = null;
@@ -40,6 +92,8 @@ export function setEmailTransport(t: typeof client): void {
 
 function transport() {
   if (client) return client;
+  const twilio = twilioCredentials();
+  if (twilio) return { send: (m: EmailMessage & { from: string }) => twilioSend(m, twilio) };
   const resend = new Resend(optionalEnv('RESEND_API_KEY'));
   return {
     send: async (m: EmailMessage & { from: string }) => {
@@ -51,7 +105,7 @@ function transport() {
 
 export async function sendEmail(msg: EmailMessage): Promise<{ sent: boolean }> {
   if (!emailConfigured() && !client) {
-    log('info', { event: 'email.skipped', reason: 'RESEND_API_KEY not set', subject: msg.subject });
+    log('info', { event: 'email.skipped', reason: 'no email provider configured', subject: msg.subject });
     return { sent: false };
   }
   const from = optionalEnv('FROM_EMAIL') || `${PRODUCT_NAME} <${LEGACY_FROM_ADDRESS}>`;
@@ -60,7 +114,7 @@ export async function sendEmail(msg: EmailMessage): Promise<{ sent: boolean }> {
     const result = await Promise.race([
       transport().send({ ...msg, from }),
       new Promise<{ error: unknown }>((resolve) => {
-        timer = setTimeout(() => resolve({ error: 'timeout' }), 5000);
+        timer = setTimeout(() => resolve({ error: 'timeout' }), SEND_TIMEOUT_MS);
       }),
     ]).finally(() => clearTimeout(timer));
     if (result.error) {

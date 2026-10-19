@@ -30,7 +30,7 @@ async function send(ctx: Ctx) {
   const email = emailFrom(ctx);
   await limits(ctx, email);
   if (!emailConfigured()) {
-    throw serviceUnavailable('Email delivery is not configured. Contact your administrator.', 'RESEND_API_KEY missing');
+    throw serviceUnavailable('Email delivery is not configured. Contact your administrator.', 'no email provider configured');
   }
   const user = await one<{ id: string; email_verified_at: unknown }>(
     ctx.db,
